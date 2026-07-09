@@ -9,7 +9,7 @@ public class LoyaltyandRewardsService {
         System.out.print("Please Enter A number:");
     }
 
-    public static void memberOperator(Scanner scanner, MemberControl memberLinkedList) {
+    public static void memberOperator(Scanner scanner, MemberControl memberLinkedList, TierControl tierLinkedList) {
         boolean exit = false;
 
         while (!exit) {
@@ -30,10 +30,20 @@ public class LoyaltyandRewardsService {
                     int point = promptInt(scanner, "Enter Current Member Point: ");
 
                     String newMemberId = memberLinkedList.generateMemberId();
-
-                    Member member = new Member(newMemberId, name, point);
-
-                    memberLinkedList.addMember(member);
+                    scanner.nextLine();
+                    String newTierId = promptText(scanner, "Enter Tier Id: ");
+                    if (tierLinkedList.isEmpty()) {
+                        System.out.println("Empty record of Tier List");
+                        exit = true;
+                    } else {
+                        if (tierLinkedList.findTier(newTierId)) {
+                            Member member = new Member(newMemberId, name, point, newTierId);
+                            memberLinkedList.addMember(member);
+                        } else {
+                            System.out.println("Add new member failed, Please enter valid Tier Id");
+                            break;
+                        }
+                    }
 
                     break;
                 }
@@ -190,18 +200,22 @@ public class LoyaltyandRewardsService {
     public static void main(String[] args) {
         Scanner input = new Scanner(System.in);
         MemberControl memberList = new MemberControl();
+        memberList.loadFromMemberFile();
         TierControl tierLevelList = new TierControl();
+        tierLevelList.loadFromTierFile();
         displayMenu(input);
         int menuSelected = input.nextInt();
         switch (menuSelected) {
             case 1:
-                memberOperator(input, memberList);
+                memberOperator(input, memberList, tierLevelList);
                 break;
             case 2:
                 tierOperator(input, tierLevelList);
             default:
                 break;
         }
+        memberList.saveToMemberFile();
+        tierLevelList.saveToTierFile();
         input.close();
     }
 

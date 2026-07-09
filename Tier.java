@@ -49,4 +49,8 @@ public class Tier {
     public void setMinPoint(int minPoint) {
         this.minPoint = minPoint;
     }
+
+    public String toCsvLine(){
+        return tierId + "," + tierLevel + "," + minPoint + "," + maxPoint;
+    }
 }
