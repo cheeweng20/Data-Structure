@@ -1,7 +1,7 @@
 package LoyaltyAndRewardsService;
+
 import adt.LinkedList;
 import java.io.*;
-
 
 public class MemberControl {
     private LinkedList<Member> memberList;
@@ -58,6 +58,22 @@ public class MemberControl {
         }
 
         int newPoint = member.getPoint() + point;
+        member.setPoint(newPoint);
+
+        String newTierId = tierControl.getTierIdByPoint(newPoint);
+        member.setTierId(newTierId);
+
+        return newPoint;
+    }
+
+    public int redeemPoint(String memberId, int pointRedeem) {
+        Member member = getMemberById(memberId);
+
+        if (member == null) {
+            System.out.println("Member Not Found");
+        }
+
+        int newPoint = member.getPoint() - pointRedeem;
         member.setPoint(newPoint);
 
         String newTierId = tierControl.getTierIdByPoint(newPoint);
