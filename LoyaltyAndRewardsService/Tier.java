@@ -1,3 +1,6 @@
+package LoyaltyAndRewardsService;
+
+
 public class Tier {
     private String tierId;
     private String tierLevel;

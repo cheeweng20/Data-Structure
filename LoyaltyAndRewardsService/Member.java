@@ -1,3 +1,5 @@
+package LoyaltyAndRewardsService;
+
 public class Member {
     private String memberId;
     private String name;
@@ -46,6 +48,5 @@ public class Member {
     public String toCsvLine(){
         return memberId + "," + name + "," + point + "," + tierId;
     }
-
     
 }

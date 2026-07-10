@@ -1,14 +1,18 @@
+package LoyaltyAndRewardsService;
 import adt.LinkedList;
 import java.io.*;
 
+
 public class MemberControl {
     private LinkedList<Member> memberList;
+    private TierControl tierControl;
 
     // File Variable
     private static final String FILE_NAME = "src/member.csv";
 
-    public MemberControl() {
+    public MemberControl(TierControl tierControl) {
         memberList = new LinkedList<>();
+        this.tierControl = tierControl;
     }
 
     public int size() {
@@ -56,14 +60,19 @@ public class MemberControl {
         int newPoint = member.getPoint() + point;
         member.setPoint(newPoint);
 
+        String newTierId = tierControl.getTierIdByPoint(newPoint);
+        member.setTierId(newTierId);
+
         return newPoint;
     }
 
     public void displayAllMember() {
+        System.out.printf("%-10s %-15s %-8s %-10s\n", "Member Id", "Name", "Point", "Tier Level");
         for (int i = 1; i <= memberList.size(); i++) {
             Member member = memberList.getEntry(i);
-            System.out.printf("%s\t%s\t%s\n", "Member Id", "Name", "Point");
-            System.out.printf("%s\t%s\t%05d\n", member.getMemberId(), member.getName(), member.getPoint());
+            Tier tier = tierControl.getExistTierById(member.getTierId());
+            System.out.printf("%-10s %-15s %-8d %-10s\n", member.getMemberId(), member.getName(), member.getPoint(),
+                    tier.getTierLevel());
         }
     }
 

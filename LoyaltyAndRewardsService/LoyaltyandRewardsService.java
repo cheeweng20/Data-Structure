@@ -1,4 +1,6 @@
+package LoyaltyAndRewardsService;
 import java.util.Scanner;
+
 
 public class LoyaltyandRewardsService {
 
@@ -17,6 +19,7 @@ public class LoyaltyandRewardsService {
             System.out.println("2. Remove Member");
             System.out.println("3. Update Member Info");
             System.out.println("4. Add Point for Member");
+            System.out.println("5. Member List");
             System.out.println("0. Return Main Menu");
             System.out.print("Please Enter A number:");
 
@@ -31,19 +34,10 @@ public class LoyaltyandRewardsService {
 
                     String newMemberId = memberLinkedList.generateMemberId();
                     scanner.nextLine();
-                    String newTierId = promptText(scanner, "Enter Tier Id: ");
-                    if (tierLinkedList.isEmpty()) {
-                        System.out.println("Empty record of Tier List");
-                        exit = true;
-                    } else {
-                        if (tierLinkedList.findTier(newTierId)) {
-                            Member member = new Member(newMemberId, name, point, newTierId);
-                            memberLinkedList.addMember(member);
-                        } else {
-                            System.out.println("Add new member failed, Please enter valid Tier Id");
-                            break;
-                        }
-                    }
+
+                    String tierId = tierLinkedList.getTierIdByPoint(point);
+                    Member member = new Member(newMemberId, name, point, tierId);
+                    memberLinkedList.addMember(member);
 
                     break;
                 }
@@ -114,6 +108,10 @@ public class LoyaltyandRewardsService {
                     }
                     break;
                 }
+                case 5: {
+                    memberLinkedList.displayAllMember();
+                    break;
+                }
 
                 case 0:
                     exit = true;
@@ -131,6 +129,7 @@ public class LoyaltyandRewardsService {
             System.out.println("1. New Tier Level");
             System.out.println("2. Remove Tier Level");
             System.out.println("3. Update Tier Level Info");
+            System.out.println("4. Tier List");
             System.out.println("0. Return Main Menu");
 
             int userEntry = promptInt(scanner, "Please Enter A number:");
@@ -166,7 +165,7 @@ public class LoyaltyandRewardsService {
                     }
                     break;
                 }
-                case 3:
+                case 3: {
                     scanner.nextLine();
                     if (tierLinkedList.size() < 1) {
                         System.out.println("Not Tier Record");
@@ -188,6 +187,11 @@ public class LoyaltyandRewardsService {
                     }
 
                     break;
+                }
+                case 4: {
+                    tierLinkedList.displayAllTierLevel();
+                    break;
+                }
                 case 0:
                     exit = true;
                     break;
@@ -199,21 +203,30 @@ public class LoyaltyandRewardsService {
 
     public static void main(String[] args) {
         Scanner input = new Scanner(System.in);
-        MemberControl memberList = new MemberControl();
-        memberList.loadFromMemberFile();
+        boolean exit = false;
+
         TierControl tierLevelList = new TierControl();
         tierLevelList.loadFromTierFile();
-        displayMenu(input);
-        int menuSelected = input.nextInt();
-        switch (menuSelected) {
-            case 1:
-                memberOperator(input, memberList, tierLevelList);
-                break;
-            case 2:
-                tierOperator(input, tierLevelList);
-            default:
-                break;
+
+        MemberControl memberList = new MemberControl(tierLevelList);
+        memberList.loadFromMemberFile();
+        while (!exit) {
+            displayMenu(input);
+            int menuSelected = input.nextInt();
+            switch (menuSelected) {
+                case 1:
+                    memberOperator(input, memberList, tierLevelList);
+                    break;
+                case 2:
+                    tierOperator(input, tierLevelList);
+                    break;
+                case 0:
+                    exit = true;
+                default:
+                    break;
+            }
         }
+
         memberList.saveToMemberFile();
         tierLevelList.saveToTierFile();
         input.close();

@@ -1,3 +1,5 @@
+package LoyaltyAndRewardsService;
+
 import adt.LinkedList;
 import java.io.*;
 
@@ -16,7 +18,7 @@ public class TierControl {
     }
 
     public boolean updateTierLevelById(String tierId, String tierLevelName, int minPoint, int maxPoint) {
-        Tier tier = getTierById(tierId);
+        Tier tier = getExistTierById(tierId);
 
         if (tier == null)
             return false;
@@ -37,21 +39,22 @@ public class TierControl {
     }
 
     public boolean findTier(String tierId) {
-        return getTierById(tierId) != null;
+        return getExistTierById(tierId) != null;
     }
 
     public void displayAllTierLevel() {
+        System.out.printf("%-10s %-12s %-12s %-12s\n", "Tier Id", "Tier Level", "Min Point", "Max Point");
+
         for (int i = 1; i <= tierLinkedList.size(); i++) {
             Tier tier = tierLinkedList.getEntry(i);
-            System.out.printf("%s\t%s\t%s\t%s\n", "Tier Id", "Tier Level Name", "Min Point", "Max Point");
-            System.out.printf("%s\t%s\t%05d\t%05d\n", tier.getTierId(), tier.getTierLevel(), tier.getMinPoint(),
+            System.out.printf("%-10s %-12s %-12d %-12d\n", tier.getTierId(), tier.getTierLevel(), tier.getMinPoint(),
                     tier.getMaxPoint());
         }
     }
 
     public boolean removeTierLevel(String tierId) {
         for (int i = 1; i < tierLinkedList.size(); i++) {
-            if (getTierById(tierId) != null) {
+            if (getExistTierById(tierId) != null) {
                 tierLinkedList.remove(i);
                 return true;
             }
@@ -60,11 +63,21 @@ public class TierControl {
     }
 
     // Helper Function
-    private Tier getTierById(String tierId) {
+    public Tier getExistTierById(String tierId) {
         for (int i = 1; i <= tierLinkedList.size(); i++) {
             Tier current = tierLinkedList.getEntry(i);
             if (current.getTierId().equals(tierId))
                 return current;
+        }
+
+        return null;
+    }
+
+    public String getTierIdByPoint(int point) {
+        for (int i = 1; i <= tierLinkedList.size(); i++) {
+            Tier current = tierLinkedList.getEntry(i);
+            if (point >= current.getMinPoint() && point <= current.getMaxPoint())
+                return current.getTierId();
         }
 
         return null;
