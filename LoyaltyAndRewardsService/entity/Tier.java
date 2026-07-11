@@ -1,4 +1,4 @@
-package LoyaltyAndRewardsService;
+package LoyaltyAndRewardsService.entity;
 
 
 public class Tier {

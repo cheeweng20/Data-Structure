@@ -2,6 +2,13 @@ package LoyaltyAndRewardsService;
 
 import java.util.Scanner;
 
+import LoyaltyAndRewardsService.boundary.MemberUI;
+import LoyaltyAndRewardsService.boundary.TierUI;
+import LoyaltyAndRewardsService.control.MemberControl;
+import LoyaltyAndRewardsService.control.TierControl;
+import LoyaltyAndRewardsService.dao.MemberDao;
+import LoyaltyAndRewardsService.dao.TierDao;
+
 public class LoyaltyandRewardsService {
 
     public static void displayMenu(Scanner scanner) {
@@ -16,10 +23,10 @@ public class LoyaltyandRewardsService {
         boolean exit = false;
 
         TierControl tierLevelList = new TierControl();
-        tierLevelList.loadFromTierFile();
+        TierDao.loadFromTierFile(tierLevelList);
 
         MemberControl memberList = new MemberControl(tierLevelList);
-        memberList.loadFromMemberFile();
+        MemberDao.loadFromMemberFile(memberList);
         while (!exit) {
             displayMenu(input);
             int menuSelected = input.nextInt();
@@ -37,8 +44,8 @@ public class LoyaltyandRewardsService {
             }
         }
 
-        memberList.saveToMemberFile();
-        tierLevelList.saveToTierFile();
+        MemberDao.saveToMemberFile(memberList);
+        TierDao.saveToTierFile(tierLevelList);
         input.close();
     }
 }

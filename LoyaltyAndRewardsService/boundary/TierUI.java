@@ -1,6 +1,9 @@
-package LoyaltyAndRewardsService;
+package LoyaltyAndRewardsService.boundary;
 
 import java.util.Scanner;
+
+import LoyaltyAndRewardsService.control.TierControl;
+import LoyaltyAndRewardsService.entity.Tier;
 
 public class TierUI {
     public static void tierOperator(Scanner scanner, TierControl tierLinkedList) {

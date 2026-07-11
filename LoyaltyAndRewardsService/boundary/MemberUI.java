@@ -1,6 +1,10 @@
-package LoyaltyAndRewardsService;
+package LoyaltyAndRewardsService.boundary;
 
 import java.util.Scanner;
+
+import LoyaltyAndRewardsService.control.MemberControl;
+import LoyaltyAndRewardsService.control.TierControl;
+import LoyaltyAndRewardsService.entity.Member;
 
 public class MemberUI {
     public static void memberOperator(Scanner scanner, MemberControl memberLinkedList, TierControl tierLinkedList) {
