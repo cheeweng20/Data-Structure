@@ -1,7 +1,7 @@
 package LoyaltyAndRewardsService.control;
 
+import adt.ArrayList;
 import adt.LinkedList;
-import java.io.*;
 
 import LoyaltyAndRewardsService.entity.Member;
 import LoyaltyAndRewardsService.entity.Tier;
@@ -33,8 +33,8 @@ public class MemberControl {
 
     public boolean deleteMemberById(String memberId) {
         for (int i = 1; i <= memberList.size(); i++) {
-
-            if (getMemberById(memberId) != null) {
+            Member member = memberList.getEntry(i);
+            if (member.getMemberId().equals(memberId)) {
                 memberList.remove(i);
                 return true;
             }
@@ -50,6 +50,7 @@ public class MemberControl {
 
         member.setName(name);
         member.setPoint(point);
+        member.setTierId(tierControl.getTierIdByPoint(point));
 
         return true;
     }
@@ -59,6 +60,7 @@ public class MemberControl {
 
         if (member == null) {
             System.out.println("Member Not Found");
+            return -1;
         }
 
         int newPoint = member.getPoint() + point;
@@ -75,6 +77,7 @@ public class MemberControl {
 
         if (member == null) {
             System.out.println("Member Not Found");
+            return -1;
         }
 
         int newPoint = member.getPoint() - pointRedeem;
@@ -98,7 +101,7 @@ public class MemberControl {
 
     // Helper Function
 
-    private Member getMemberById(String memberId) {
+    public Member getMemberById(String memberId) {
         for (int i = 1; i <= memberList.size(); i++) {
             Member member = memberList.getEntry(i);
             if (member.getMemberId().equals(memberId)) {
@@ -125,4 +128,68 @@ public class MemberControl {
 
     }
 
+    public ArrayList<Member> generateRankingReport(int minPoint, String targetTierId) {
+        ArrayList<Member> filteredResult = new ArrayList<>();
+        boolean hasTargetTier = targetTierId != null && !targetTierId.isEmpty();
+
+        for (int i = 1; i <= memberList.size(); i++) {
+            Member current = memberList.getEntry(i);
+            boolean matchesCriteria = current.getPoint() >= minPoint
+                    && (!hasTargetTier || current.getTierId().equals(targetTierId));
+            if (matchesCriteria) {
+                filteredResult.add(current);
+            }
+        }
+
+        selectionSortByPoint(filteredResult, false);
+        return filteredResult;
+    }
+
+    public ArrayList<Member> generateLowPointReport(int maxPoint, String excludeTierId) {
+        ArrayList<Member> filteredResult = new ArrayList<>();
+        boolean hasExcludedTier = excludeTierId != null && !excludeTierId.isEmpty();
+
+        for (int i = 1; i <= memberList.size(); i++) {
+            Member current = memberList.getEntry(i);
+
+            boolean matchesCriteria = current.getPoint() <= maxPoint
+                    && (!hasExcludedTier || !current.getTierId().equals(excludeTierId));
+
+            if (matchesCriteria) {
+                filteredResult.add(current);
+            }
+        }
+
+        selectionSortByPoint(filteredResult, true);
+        return filteredResult;
+    }
+
+    private void selectionSortByPoint(ArrayList<Member> list, boolean ascending) {
+        for (int i = 1; i <= list.getNumberOfEntries() - 1; i++) {
+            int targetPosition = i;
+            Member targetValue = list.getEntry(i);
+
+            for (int j = i + 1; j <= list.getNumberOfEntries(); j++) {
+                Member current = list.getEntry(j);
+
+                boolean shouldSwap;
+                if (ascending) {
+                    shouldSwap = current.getPoint() < targetValue.getPoint();
+                } else {
+                    shouldSwap = current.getPoint() > targetValue.getPoint();
+                }
+
+                if (shouldSwap) {
+                    targetValue = current;
+                    targetPosition = j;
+                }
+            }
+
+            if (targetPosition != i) {
+                Member temp = list.getEntry(i);
+                list.replace(i, targetValue);
+                list.replace(targetPosition, temp);
+            }
+        }
+    }
 }

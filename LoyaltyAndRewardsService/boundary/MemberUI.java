@@ -4,10 +4,12 @@ import java.util.Scanner;
 
 import LoyaltyAndRewardsService.control.MemberControl;
 import LoyaltyAndRewardsService.control.TierControl;
+import LoyaltyAndRewardsService.control.TransactionControl;
 import LoyaltyAndRewardsService.entity.Member;
 
 public class MemberUI {
-    public static void memberOperator(Scanner scanner, MemberControl memberLinkedList, TierControl tierLinkedList) {
+    public static void memberOperator(Scanner scanner, MemberControl memberLinkedList,
+            TierControl tierLinkedList, TransactionControl transactionList) {
         boolean exit = false;
 
         while (!exit) {
@@ -102,6 +104,7 @@ public class MemberUI {
                         int addPoint = promptInt(scanner, "Please Enter a Added Point: ");
 
                         int newPoint = memberLinkedList.addMemberPoint(memberId, addPoint);
+                        transactionList.addTransaction(memberId, newPoint);
 
                         System.out.println("New point " + Integer.toString(addPoint) + " added successful");
                         System.out.println("Current point : " + Integer.toString(newPoint));

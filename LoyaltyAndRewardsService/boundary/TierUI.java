@@ -23,7 +23,7 @@ public class TierUI {
                     scanner.nextLine();
                     String tierLevel = promptText(scanner, "Tier Level Name: ");
                     int minPoint = promptInt(scanner, "Min Point: ");
-                    int maxPoint = promptInt(scanner, "Max Point: ");
+                    int maxPoint = promptInt(scanner, "Max Point(Enter 0 for highest level): ");
 
                     String tierId = tierLinkedList.generateTierId();
                     Tier tier = new Tier(tierId, tierLevel, minPoint, maxPoint);

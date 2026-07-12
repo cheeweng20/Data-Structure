@@ -11,7 +11,7 @@ import LoyaltyAndRewardsService.control.TierControl;
 import LoyaltyAndRewardsService.entity.Tier;
 
 public class TierDao {
-    private static final String FILE_NAME = "src/tier.csv";
+    private static final String FILE_NAME = "LoyaltyAndRewardsService/src/tier.csv";
 
     // CSV File Reader and Writter
     public static void loadFromTierFile(TierControl tierLinkedList) {

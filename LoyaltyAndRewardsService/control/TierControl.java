@@ -1,7 +1,6 @@
 package LoyaltyAndRewardsService.control;
 
 import adt.LinkedList;
-import java.io.*;
 
 import LoyaltyAndRewardsService.entity.Tier;
 
@@ -79,11 +78,22 @@ public class TierControl {
     public String getTierIdByPoint(int point) {
         for (int i = 1; i <= tierLinkedList.size(); i++) {
             Tier current = tierLinkedList.getEntry(i);
-            if (point >= current.getMinPoint() && point <= current.getMaxPoint())
+            if (point >= current.getMinPoint() && (current.getMaxPoint() == 0 || point <= current.getMaxPoint()))
                 return current.getTierId();
         }
 
         return null;
+    }
+
+    public String getTierNameById(String tierId){
+        for(int i = 1; i <= tierLinkedList.size(); i++){
+            Tier current = tierLinkedList.getEntry(i);
+            if(current.getTierId().equals(tierId)){
+                return current.getTierId();
+            }
+        }
+
+        return "Unknown";
     }
 
     public String generateTierId() {

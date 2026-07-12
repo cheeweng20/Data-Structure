@@ -6,13 +6,12 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.LinkedList;
 
 import LoyaltyAndRewardsService.control.MemberControl;
 import LoyaltyAndRewardsService.entity.Member;
 
 public class MemberDao {
-    private static final String FILE_NAME = "src/member.csv";
+    private static final String FILE_NAME = "LoyaltyAndRewardsService/src/member.csv";
 
         // CSV File Reader and Writer
     public static void loadFromMemberFile(MemberControl memberList) {
@@ -40,7 +39,7 @@ public class MemberDao {
 
     public static void saveToMemberFile(MemberControl memberList) {
         try (PrintWriter writer = new PrintWriter(new FileWriter(FILE_NAME))) {
-            writer.println("MemberId,Name,Email,TierId");
+            writer.println("MemberId,Name,Point,TierId");
             for (int i = 1; i <= memberList.size(); i++) {
                 Member member = memberList.getEntry(i);
                 writer.println(member.toCsvLine());
@@ -52,7 +51,7 @@ public class MemberDao {
 
     private static void createMemberCSVFile() {
         try (PrintWriter writer = new PrintWriter(FILE_NAME)) {
-            writer.println("MemberId,Name,Email,TierId");
+            writer.println("MemberId,Name,Point,TierId");
 
             System.out.println("CSV File created success !");
         } catch (IOException e) {
