@@ -8,15 +8,26 @@ import LoyaltyAndRewardsService.entity.Tier;
 public class TierUI {
     public static void tierOperator(Scanner scanner, TierControl tierLinkedList) {
         boolean exit = false;
+        System.out.print("\033[H\033[2J");
+        System.out.flush();
 
         while (!exit) {
-            System.out.println("1. New Tier Level");
-            System.out.println("2. Remove Tier Level");
-            System.out.println("3. Update Tier Level Info");
-            System.out.println("4. Tier List");
-            System.out.println("0. Return Main Menu");
+            System.out.println("\r\n" + //
+                    ".-----.------------------------.\r\n" + //
+                    "| No. |        Function        |\r\n" + //
+                    ":-----+------------------------:\r\n" + //
+                    "|  1. | New Tier Level         |\r\n" + //
+                    ":-----+------------------------:\r\n" + //
+                    "|  2. | Remove Tier Level      |\r\n" + //
+                    ":-----+------------------------:\r\n" + //
+                    "|  3. | Update Tier Level Info |\r\n" + //
+                    ":-----+------------------------:\r\n" + //
+                    "|  4. | Tier List              |\r\n" + //
+                    "'-----'------------------------'\r\n" + //
+                    "\r\n" + //
+                    "");
 
-            int userEntry = promptInt(scanner, "Please Enter A number:");
+            int userEntry = promptInt(scanner, "Please Enter A number(0 to exit):");
 
             switch (userEntry) {
                 case 1: {

@@ -3,25 +3,40 @@ package LoyaltyAndRewardsService.boundary;
 import java.util.Scanner;
 
 import LoyaltyAndRewardsService.control.MemberControl;
+import LoyaltyAndRewardsService.control.RequestControl;
 import LoyaltyAndRewardsService.control.TierControl;
 import LoyaltyAndRewardsService.control.TransactionControl;
 import LoyaltyAndRewardsService.entity.Member;
 
 public class MemberUI {
     public static void memberOperator(Scanner scanner, MemberControl memberLinkedList,
-            TierControl tierLinkedList, TransactionControl transactionList) {
+            TierControl tierLinkedList, TransactionControl transactionList, RequestControl requestControl) {
         boolean exit = false;
+        System.out.print("\033[H\033[2J");
+        System.out.flush();
 
         while (!exit) {
-            System.out.println("1. New Member");
-            System.out.println("2. Remove Member");
-            System.out.println("3. Update Member Info");
-            System.out.println("4. Add Point for Member");
-            System.out.println("5. Point Redeem");
-            System.out.println("6. Member List");
-            System.out.println("7. Member Promotion Test");
-            System.out.println("0. Return Main Menu");
-            System.out.print("Please Enter A number:");
+            System.out.println("\r\n" + //
+                    ".-----.----------------------.\r\n" + //
+                    "| No. |       Function       |\r\n" + //
+                    ":-----+----------------------:\r\n" + //
+                    "| 1.  | New Member           |\r\n" + //
+                    ":-----+----------------------:\r\n" + //
+                    "| 2.  | Remove Member        |\r\n" + //
+                    ":-----+----------------------:\r\n" + //
+                    "| 3.  | Update Member Info   |\r\n" + //
+                    ":-----+----------------------:\r\n" + //
+                    "| 4.  | Add Point for Member |\r\n" + //
+                    ":-----+----------------------:\r\n" + //
+                    "| 5.  | Point Redemption     |\r\n" + //
+                    ":-----+----------------------:\r\n" + //
+                    "| 6.  | Member List          |\r\n" + //
+                    ":-----+----------------------:\r\n" + //
+                    "| 7.  | Member Promotion     |\r\n" + //
+                    "'-----'----------------------'\r\n" + //
+                    "\r\n" + //
+                    "");
+            System.out.print("Please Enter A number(0 to exit): ");
 
             int userEntry = scanner.nextInt();
             switch (userEntry) {
@@ -120,16 +135,8 @@ public class MemberUI {
                     }
                     scanner.nextLine();
 
-                    String memberId = promptText(scanner, "Enter a Member ID:");
+                    RequestUI.requestOperator(scanner, requestControl, memberLinkedList);
 
-                    if (memberLinkedList.findMember(memberId)) {
-                        int redeemPoint = promptInt(scanner, "Please Enter a Redeem Point: ");
-
-                        int newPoint = memberLinkedList.redeemPoint(memberId, redeemPoint);
-
-                        System.out.println(Integer.toString(redeemPoint) + " point redeem successful");
-                        System.out.println("Current point : " + Integer.toString(newPoint));
-                    }
                     break;
                 }
 

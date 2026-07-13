@@ -8,7 +8,43 @@ import LoyaltyAndRewardsService.entity.*;
 
 public class ReportUI {
 
-    public static void memberRankingReport(Scanner scanner, MemberControl memberControl, TierControl tierControl) {
+    public static void reportOperator(Scanner scanner, MemberControl memberControl, TierControl tierControl) {
+        System.out.print("\033[H\033[2J");
+        System.out.flush();
+
+        System.out.println("\r\n" + //
+                ".-----.-----------------------------.\r\n" + //
+                "| No. |          Function           |\r\n" + //
+                ":-----+-----------------------------:\r\n" + //
+                "|  1. | Member Point Ranking Report |\r\n" + //
+                ":-----+-----------------------------:\r\n" + //
+                "|  2. | Member Low Point Report     |\r\n" + //
+                "'-----'-----------------------------'\r\n" + //
+                "\r\n" + //
+                "");
+        System.out.print("Enter a number (0 to exit): ");
+        int userSelection = scanner.nextInt();
+
+        boolean exit = false;
+        while (!exit) {
+            switch (userSelection) {
+                case 1:
+                    memberRankingReport(scanner, memberControl, tierControl);
+                    break;
+                case 2:
+                    lowPointMemberReport(scanner, memberControl, tierControl);
+                    break;
+                case 0:
+                    exit = true;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+    }
+
+    private static void memberRankingReport(Scanner scanner, MemberControl memberControl, TierControl tierControl) {
 
         int minPoint = promptInt(scanner, "Enter minimum point of member: ");
         scanner.nextLine();
@@ -34,7 +70,7 @@ public class ReportUI {
         }
     }
 
-    public static void lowPointMemberReport(Scanner scanner, MemberControl memberControl, TierControl tierControl) {
+    private static void lowPointMemberReport(Scanner scanner, MemberControl memberControl, TierControl tierControl) {
         int maxPoint = promptInt(scanner, "Enter maximum point threshold: ");
         scanner.nextLine();
         String excludeTierId = promptText(scanner, "Enter Tier ID to exclude (or leave blank): ");

@@ -9,13 +9,21 @@ import LoyaltyAndRewardsService.dao.*;
 public class Main {
 
     public static void displayMenu(Scanner scanner) {
-        System.out.println("1. Member");
-        System.out.println("2. Tier");
-        System.out.println("3. Member Point Ranking Report");
-        System.out.println("4. Member Low Point Report");
-        System.out.println("5. Member Point Redemption Request");
-        System.out.println("0. Exit");
-        System.out.print("Please Enter A number:");
+        System.out.print("\033[H\033[2J");
+        System.out.flush();
+        System.out.println("\r\n" + //
+                ".-----.-------------------.\r\n" + //
+                "| No. |     Function      |\r\n" + //
+                ":-----+-------------------:\r\n" + //
+                "|  1. | Member Management |\r\n" + //
+                ":-----+-------------------:\r\n" + //
+                "|  2. | Tier Management   |\r\n" + //
+                ":-----+-------------------:\r\n" + //
+                "|  3. | Report            |\r\n" + //
+                "'-----'-------------------'\r\n" + //
+                "\r\n" + //
+                "");
+        System.out.print("Enter Number of Function(0 to exit current program): ");
     }
 
     public static void main(String[] args) {
@@ -39,19 +47,13 @@ public class Main {
             int menuSelected = input.nextInt();
             switch (menuSelected) {
                 case 1:
-                    MemberUI.memberOperator(input, memberList, tierLevelList, transactionList);
+                    MemberUI.memberOperator(input, memberList, tierLevelList, transactionList, requestControl);
                     break;
                 case 2:
                     TierUI.tierOperator(input, tierLevelList);
                     break;
                 case 3:
-                    ReportUI.memberRankingReport(input, memberList, tierLevelList);
-                    break;
-                case 4:
-                    ReportUI.lowPointMemberReport(input, memberList, tierLevelList);
-                    break;
-                case 5:
-                    RequestUI.requestOperator(input, requestControl, memberList);
+                    ReportUI.reportOperator(input, memberList, tierLevelList);
                     break;
                 case 0:
                     exit = true;

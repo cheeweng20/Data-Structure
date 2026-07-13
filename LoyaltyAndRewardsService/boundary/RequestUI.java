@@ -11,13 +11,22 @@ public class RequestUI {
 
     public static void requestOperator(Scanner scanner, RequestControl requestControl, MemberControl memberControl) {
         boolean exit = false;
+        System.out.print("\033[H\033[2J");
+        System.out.flush();
 
         while (!exit) {
-            System.out.println("1. Submit Redemption Request");
-            System.out.println("2. Process Next Request");
-            System.out.println("0. Return Main Menu");
+            System.out.println("\r\n" + //
+                    ".-----.---------------------------.\r\n" + //
+                    "| No. |         Function          |\r\n" + //
+                    ":-----+---------------------------:\r\n" + //
+                    "|  1. | Submit Redemption Request |\r\n" + //
+                    ":-----+---------------------------:\r\n" + //
+                    "|  2. | Process Next Request      |\r\n" + //
+                    "'-----'---------------------------'\r\n" + //
+                    "\r\n" + //
+                    "");
 
-            int userEntry = promptInt(scanner, "Please Enter A number:");
+            int userEntry = promptInt(scanner, "Please Enter A number(0 to exit):");
             scanner.nextLine();
 
             switch (userEntry) {
