@@ -40,7 +40,7 @@ public class TierControl {
         return getExistTierById(tierId) != null;
     }
 
-    public Tier getEntry(int position){
+    public Tier getEntry(int position) {
         return tierLinkedList.getEntry(position);
     }
 
@@ -85,15 +85,40 @@ public class TierControl {
         return null;
     }
 
-    public String getTierNameById(String tierId){
-        for(int i = 1; i <= tierLinkedList.size(); i++){
+    public String getTierNameById(String tierId) {
+        for (int i = 1; i <= tierLinkedList.size(); i++) {
             Tier current = tierLinkedList.getEntry(i);
-            if(current.getTierId().equals(tierId)){
+            if (current.getTierId().equals(tierId)) {
                 return current.getTierId();
             }
         }
 
         return "Unknown";
+    }
+
+    public Tier getNextTier(String tierId) {
+        Tier currentTier = getExistTierById(tierId);
+
+        if (currentTier == null || currentTier.getMaxPoint() == 0) // Top Tier
+            return null;
+
+        Tier nextTier = null;
+
+        for (int i = 1; i <= tierLinkedList.size(); i++) {
+            Tier candidate = tierLinkedList.getEntry(i);
+
+            if (candidate.getTierId().equals(currentTier.getTierId()))
+                continue;
+
+            if (candidate.getMinPoint() >= currentTier.getMaxPoint()) {
+
+                if (nextTier == null || candidate.getMinPoint() < nextTier.getMinPoint()) {
+                    nextTier = candidate;
+                }
+            }
+        }
+
+        return nextTier;
     }
 
     public String generateTierId() {

@@ -192,4 +192,28 @@ public class MemberControl {
             }
         }
     }
+
+
+    // Promotion Control
+    public String generatePersonalizedPromotion(String memberId){
+        Member member = getMemberById(memberId);
+
+        if(member == null) return "Member Not Found";
+
+        String currentTierId = member.getTierId();
+        if (currentTierId == null || tierControl.getExistTierById(currentTierId) == null) {
+            currentTierId = tierControl.getTierIdByPoint(member.getPoint());
+            member.setTierId(currentTierId);
+        }
+
+        Tier nextTier = tierControl.getNextTier(currentTierId);
+
+        if(nextTier == null) return "Congratulations! You are already at our highest membership tier.";
+        
+
+        int pointNeeded = nextTier.getMinPoint() - member.getPoint();
+
+        String message = "To achieve " + nextTier.getTierLevel() + " You Require " + pointNeeded + " points.";
+        return message;
+    }
 }

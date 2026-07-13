@@ -19,6 +19,7 @@ public class MemberUI {
             System.out.println("4. Add Point for Member");
             System.out.println("5. Point Redeem");
             System.out.println("6. Member List");
+            System.out.println("7. Member Promotion Test");
             System.out.println("0. Return Main Menu");
             System.out.print("Please Enter A number:");
 
@@ -134,6 +135,19 @@ public class MemberUI {
 
                 case 6: {
                     memberLinkedList.displayAllMember();
+                    break;
+                }
+
+                case 7: {
+                    scanner.nextLine();
+                    String memberId = promptText(scanner, "Enter a Member ID:");
+
+                    if (memberLinkedList.findMember(memberId)) {
+                        String promotion = memberLinkedList.generatePersonalizedPromotion(memberId);
+                        System.out.println(promotion);
+                    } else {
+                        System.out.println("Member Not Found");
+                    }
                     break;
                 }
 
