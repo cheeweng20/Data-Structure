@@ -1,6 +1,7 @@
 import java.util.Scanner;
 
 import LoyaltyAndRewardsService.LoyaltyAndRewardsService;
+import WalkInRegistrationAndReservation.WalkInRegistrationAndReservation;
 import common.src.Logo;
 
 public class Main {
@@ -37,7 +38,7 @@ public class Main {
 
             switch (userSelection) {
                 case 1:
-                    System.out.println("Comming Soon");
+                    WalkInRegistrationAndReservation.WalkInRegistrationAndReservationMain(input);
                     break;
                 case 2:
                     System.out.println("Comming Soon");
@@ -56,6 +57,5 @@ public class Main {
                     break;
             }
         }
-
     }
 }
