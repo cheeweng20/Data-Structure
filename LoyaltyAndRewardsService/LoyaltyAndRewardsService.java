@@ -5,12 +5,13 @@ import java.util.Scanner;
 import LoyaltyAndRewardsService.boundary.*;
 import LoyaltyAndRewardsService.control.*;
 import LoyaltyAndRewardsService.dao.*;
+import common.src.Logo;
 
-public class Main {
+public class LoyaltyAndRewardsService {
 
     public static void displayMenu(Scanner scanner) {
-        System.out.print("\033[H\033[2J");
-        System.out.flush();
+
+        Logo.displayLoyaltyAndRewardsService();
         System.out.println("\r\n" + //
                 ".-----.-------------------.\r\n" + //
                 "| No. |     Function      |\r\n" + //
@@ -26,8 +27,7 @@ public class Main {
         System.out.print("Enter Number of Function(0 to exit current program): ");
     }
 
-    public static void main(String[] args) {
-        Scanner input = new Scanner(System.in);
+    public static void LoyaltyAndRewardsServiceMain(Scanner input) {
         boolean exit = false;
 
         TierControl tierLevelList = new TierControl();
@@ -57,6 +57,7 @@ public class Main {
                     break;
                 case 0:
                     exit = true;
+                    break;
                 default:
                     break;
             }
@@ -66,6 +67,7 @@ public class Main {
         TierDao.saveToTierFile(tierLevelList);
         PointTransactionDao.saveToTransactionFile(transactionList);
         RequestDao.saveToRequestFile(requestControl);
-        input.close();
+
+        return;
     }
 }

@@ -1,6 +1,8 @@
 package LoyaltyAndRewardsService.boundary;
 
 import adt.ArrayList;
+import common.src.Logo;
+
 import java.util.Scanner;
 
 import LoyaltyAndRewardsService.control.*;
@@ -9,24 +11,23 @@ import LoyaltyAndRewardsService.entity.*;
 public class ReportUI {
 
     public static void reportOperator(Scanner scanner, MemberControl memberControl, TierControl tierControl) {
-        System.out.print("\033[H\033[2J");
-        System.out.flush();
-
-        System.out.println("\r\n" + //
-                ".-----.-----------------------------.\r\n" + //
-                "| No. |          Function           |\r\n" + //
-                ":-----+-----------------------------:\r\n" + //
-                "|  1. | Member Point Ranking Report |\r\n" + //
-                ":-----+-----------------------------:\r\n" + //
-                "|  2. | Member Low Point Report     |\r\n" + //
-                "'-----'-----------------------------'\r\n" + //
-                "\r\n" + //
-                "");
-        System.out.print("Enter a number (0 to exit): ");
-        int userSelection = scanner.nextInt();
 
         boolean exit = false;
         while (!exit) {
+            Logo.displayLoyaltyAndRewardsService();
+
+            System.out.println("\r\n" + //
+                    ".-----.-----------------------------.\r\n" + //
+                    "| No. |          Function           |\r\n" + //
+                    ":-----+-----------------------------:\r\n" + //
+                    "|  1. | Member Point Ranking Report |\r\n" + //
+                    ":-----+-----------------------------:\r\n" + //
+                    "|  2. | Member Low Point Report     |\r\n" + //
+                    "'-----'-----------------------------'\r\n" + //
+                    "\r\n" + //
+                    "");
+            System.out.print("Enter a number (0 to exit): ");
+            int userSelection = scanner.nextInt();
             switch (userSelection) {
                 case 1:
                     memberRankingReport(scanner, memberControl, tierControl);

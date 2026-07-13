@@ -6,15 +6,15 @@ import LoyaltyAndRewardsService.control.MemberControl;
 import LoyaltyAndRewardsService.control.RequestControl;
 import LoyaltyAndRewardsService.dao.RequestDao;
 import LoyaltyAndRewardsService.entity.RedemptionRequest;
+import common.src.Logo;
 
 public class RequestUI {
 
     public static void requestOperator(Scanner scanner, RequestControl requestControl, MemberControl memberControl) {
         boolean exit = false;
-        System.out.print("\033[H\033[2J");
-        System.out.flush();
 
         while (!exit) {
+            Logo.displayLoyaltyAndRewardsService();
             System.out.println("\r\n" + //
                     ".-----.---------------------------.\r\n" + //
                     "| No. |         Function          |\r\n" + //

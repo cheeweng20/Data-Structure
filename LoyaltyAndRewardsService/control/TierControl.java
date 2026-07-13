@@ -45,12 +45,23 @@ public class TierControl {
     }
 
     public void displayAllTierLevel() {
-        System.out.printf("%-10s %-12s %-12s %-12s\n", "Tier Id", "Tier Level", "Min Point", "Max Point");
+        System.out.println("+------------+--------------+--------------+--------------+\r\n" + //
+                "|  Tier Id   |  Tier Level  |  Min Point   |  Max Point   |\r\n" + //
+                "+------------+--------------+--------------+--------------+");
 
         for (int i = 1; i <= tierLinkedList.size(); i++) {
             Tier tier = tierLinkedList.getEntry(i);
-            System.out.printf("%-10s %-12s %-12d %-12d\n", tier.getTierId(), tier.getTierLevel(), tier.getMinPoint(),
-                    tier.getMaxPoint());
+            String str1 = "|    " + tier.getTierId() + "   |";
+            String str2 = tier.getTierLevel();
+            String str3 = " | " + tier.getMaxPoint();
+            String str4 = "|     " + tier.getMinPoint() + "     |";
+            String str5 = "+------------+";
+            String str6 = "--------------+";
+            String str7 = "--------------+";
+            String str8 = "--------------+";
+            System.out.printf("%-10s %-12s %-12s %-12s\n", str1, str2, str3, str4);
+            System.out.printf("%-10s %-12s %-12s %-12s\n",str5,str6,str7,str8);
+
         }
     }
 

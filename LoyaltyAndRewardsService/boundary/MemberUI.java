@@ -7,15 +7,16 @@ import LoyaltyAndRewardsService.control.RequestControl;
 import LoyaltyAndRewardsService.control.TierControl;
 import LoyaltyAndRewardsService.control.TransactionControl;
 import LoyaltyAndRewardsService.entity.Member;
+import common.src.Logo;
 
 public class MemberUI {
     public static void memberOperator(Scanner scanner, MemberControl memberLinkedList,
             TierControl tierLinkedList, TransactionControl transactionList, RequestControl requestControl) {
         boolean exit = false;
-        System.out.print("\033[H\033[2J");
-        System.out.flush();
 
         while (!exit) {
+            Logo.displayLoyaltyAndRewardsService();
+
             System.out.println("\r\n" + //
                     ".-----.----------------------.\r\n" + //
                     "| No. |       Function       |\r\n" + //

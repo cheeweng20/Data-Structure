@@ -4,14 +4,15 @@ import java.util.Scanner;
 
 import LoyaltyAndRewardsService.control.TierControl;
 import LoyaltyAndRewardsService.entity.Tier;
+import common.src.Logo;
 
 public class TierUI {
     public static void tierOperator(Scanner scanner, TierControl tierLinkedList) {
         boolean exit = false;
-        System.out.print("\033[H\033[2J");
-        System.out.flush();
 
         while (!exit) {
+            Logo.displayLoyaltyAndRewardsService();
+
             System.out.println("\r\n" + //
                     ".-----.------------------------.\r\n" + //
                     "| No. |        Function        |\r\n" + //
