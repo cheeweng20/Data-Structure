@@ -16,7 +16,7 @@ import java.io.PrintWriter;
 public class RoomDAO {
 
     private static final int INITIAL_CAPACITY = 100;
-    private static final String HEADER = "RoomNumber,RoomType,PricePerNight,Status";
+    private static final String HEADER = "RoomNumber,RoomType,Capacity,PricePerNight,Status";
     private final String fileName;
 
     public RoomDAO() {
@@ -46,10 +46,21 @@ public class RoomDAO {
 
                 String roomNumber = fields[0];
                 String roomType = fields[1];
-                double pricePerNight = Double.parseDouble(fields[2]);
-                RoomStatus status = RoomStatus.valueOf(fields[3]);
+                int capacity;
+                double pricePerNight;
+                RoomStatus status;
 
-                rooms.add(new Room(roomNumber, roomType, pricePerNight, status));
+                if (fields.length >= 5) {
+                    capacity = Integer.parseInt(fields[2]);
+                    pricePerNight = Double.parseDouble(fields[3]);
+                    status = RoomStatus.valueOf(fields[4]);
+                } else {
+                    capacity = 0;
+                    pricePerNight = Double.parseDouble(fields[2]);
+                    status = RoomStatus.valueOf(fields[3]);
+                }
+
+                rooms.add(new Room(roomNumber, roomType, capacity, pricePerNight, status));
             }
         } catch (FileNotFoundException ex) {
             createRoomCSVFile();
@@ -78,6 +89,7 @@ public class RoomDAO {
     private String toCsvLine(Room room) {
         return room.getRoomNumber() + ","
                 + room.getRoomType() + ","
+                + room.getCapacity() + ","
                 + room.getPricePerNight() + ","
                 + room.getStatus();
     }

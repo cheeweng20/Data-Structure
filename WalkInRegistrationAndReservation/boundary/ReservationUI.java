@@ -4,6 +4,8 @@ import WalkInRegistrationAndReservation.control.ReservationManager;
 import WalkInRegistrationAndReservation.entity.BookingType;
 import WalkInRegistrationAndReservation.entity.Guest;
 import WalkInRegistrationAndReservation.entity.Reservation;
+import WalkInRegistrationAndReservation.entity.ReservationStatus;
+import WalkInRegistrationAndReservation.entity.Room;
 import WalkInRegistrationAndReservation.utility.InputValidator;
 import adt.ListInterface;
 import java.time.LocalDate;
@@ -13,7 +15,7 @@ import java.util.Scanner;
 
 public class ReservationUI {
 
-    private static final int MAX_GUESTS_PER_ROOM = 5;
+    private static final int MAX_GUESTS_PER_ROOM = 6;
 
     private final ReservationManager reservationManager;
     private final Scanner scanner;
@@ -36,7 +38,7 @@ public class ReservationUI {
 
             switch (choice) {
                 case "1":
-                    createStandardBooking();
+                    checkInStandardReservation();
                     break;
                 case "2":
                     createWalkInRegistration();
@@ -60,8 +62,8 @@ public class ReservationUI {
     }
 
     private void displayMenu() {
-        System.out.println("\n--- Walk-In Registration & Standard Booking ---");
-        System.out.println("1. Standard Booking");
+        System.out.println("\n--- Walk-In Registration & Standard Reservation Check-In ---");
+        System.out.println("1. Check-In Standard Reservation");
         System.out.println("2. Walk-In Registration");
         System.out.println("3. Search Reservation");
         System.out.println("4. Cancel Reservation");
@@ -70,43 +72,93 @@ public class ReservationUI {
         System.out.print("Select an option: ");
     }
 
-    private void createStandardBooking() {
-        Reservation reservation = inputReservation(BookingType.STANDARD, false);
-        displayReservationResult(reservation);
+    //check in (user booking before)
+    private void checkInStandardReservation() {
+        System.out.println("\n--- Check-In Standard Reservation ---");
+        String searchValue = promptRequiredText("Enter reservation ID / IC / Passport / Guest Name: ");
+        Reservation reservation = reservationManager.findReservation(searchValue);
+
+        if (reservation == null) {
+            System.out.println("Reservation not found.");
+            return;
+        }
+
+        if (reservation.getBookingType() != BookingType.STANDARD) {  //check the book type 
+            System.out.println("This is not a standard reservation.");
+            return;
+        }
+
+        if (reservation.getStatus() != ReservationStatus.CONFIRMED) {  //check status
+            System.out.println("Only confirmed reservations can be checked in.");
+            return;
+        }
+
+        if (reservation.getCheckInDate().isAfter(LocalDate.now())) {  //check the booking date n checkin date
+            System.out.println("Check-in date is " + reservation.getCheckInDate()
+                    + ". Guest cannot check in yet.");
+            return;
+        }
+
+        displayReservationDetails(reservation);  //make confirmation
+
+        if (!confirmYes("Confirm guest check-in? (Y/N): ")) {
+            System.out.println("Check-in cancelled.");
+            return;
+        }
+
+        if (reservationManager.checkInStandardReservation(searchValue)) {
+            System.out.println("Check-in successful.");
+            displayReservationDetails(reservationManager.findReservation(searchValue));
+        } else {
+            System.out.println("Check-in failed.");  //not found
+        }
     }
 
+    //register for walk-in
     private void createWalkInRegistration() {
-        Reservation reservation = inputReservation(BookingType.WALK_IN, true);
-        displayReservationResult(reservation);
+        System.out.println("\n--- Walk-In Registration ---");
+        Guest guest = inputGuest();
+        int numberOfGuests = promptNumberOfGuests();
+        LocalDate checkInDate = LocalDate.now();
+        System.out.println("Check-in date: " + checkInDate + " (today)");
+        LocalDate checkOutDate = promptCheckOutDate(checkInDate);
+        Room assignedRoom = reservationManager.findAvailableRoomForGuests(numberOfGuests);
+
+        if (assignedRoom == null) {
+            System.out.println("No suitable room is currently available.");
+            return;
+        }
+
+        System.out.println("\nSuitable room automatically assigned:");
+        displayRoomDetails(assignedRoom);
+
+        String paymentMethod = promptPaymentMethod();
+        System.out.println("Selected payment method: " + paymentMethod);
+
+        if (!confirmYes("Confirm payment? (Y/N): ")) {
+            System.out.println("Walk-in registration cancelled.");
+            return;
+        }
+
+        System.out.println("Payment successful!");
+        Reservation reservation = reservationManager.createWalkInRegistration(
+                guest, checkOutDate, numberOfGuests, paymentMethod);
+
+        if (reservation == null) {
+            System.out.println("No suitable room is currently available.");
+            return;
+        }
+
+        System.out.println("Walk-in registration successful.");
+        displayReservationDetails(reservation);
     }
 
-    public Reservation inputReservation(BookingType bookingType, boolean walkIn) {
+    private Guest inputGuest() {
         String guestId = promptRequiredText("Guest ID / IC / Passport: ");
         String fullName = promptRequiredText("Full name: ");
         String phoneNumber = promptPhoneNumber();
         String email = promptEmail();
-
-        LocalDate checkInDate;
-        if (!walkIn) {
-            checkInDate = promptCheckInDate();
-        } else {
-            checkInDate = LocalDate.now();
-            System.out.println("Check-in date: " + checkInDate + " (today)");
-        }
-
-        LocalDate checkOutDate = promptCheckOutDate(checkInDate);
-        int numberOfGuests = promptNumberOfGuests();
-        String requestedRoomType = promptRoomType(numberOfGuests);
-        Guest guest = new Guest(guestId, fullName, phoneNumber, email);
-
-        if (!confirmBooking(guest, checkInDate, checkOutDate, numberOfGuests,
-                requestedRoomType, bookingType)) {
-            System.out.println("Booking cancelled.");
-            return null;
-        }
-
-        return reservationManager.createReservation(guest, requestedRoomType,
-                checkInDate, checkOutDate, numberOfGuests, bookingType);
+        return new Guest(guestId, fullName, phoneNumber, email);
     }
 
     private String promptRequiredText(String prompt) {
@@ -173,18 +225,6 @@ public class ReservationUI {
         }
     }
 
-    private LocalDate promptCheckInDate() {
-        while (true) {
-            LocalDate checkInDate = promptDate("Check-in date (yyyy-MM-dd): ");
-
-            if (!checkInDate.isBefore(LocalDate.now())) {
-                return checkInDate;
-            }
-
-            System.out.println("Check-in date cannot be before today.");
-        }
-    }
-
     private int promptPositiveInteger(String prompt) {
         while (true) {
             System.out.print(prompt);
@@ -215,137 +255,78 @@ public class ReservationUI {
         }
     }
 
-    private String promptRoomType(int numberOfGuests) {
-        System.out.println("\nSuitable room types for " + numberOfGuests + " guest(s):");
-        displayRoomTypeOption("1", "Standard Room", 2, 150.00, numberOfGuests);
-        displayRoomTypeOption("2", "Deluxe Room", 3, 220.00, numberOfGuests);
-        displayRoomTypeOption("3", "Family Room", 5, 300.00, numberOfGuests);
-        displayRoomTypeOption("4", "Suite Room", 4, 350.00, numberOfGuests);
-        System.out.println("Room assignment still depends on available rooms in the system.");
-
+    private String promptPaymentMethod() {
         while (true) {
-            System.out.print("Select room type: ");
+            System.out.println("\n--- Payment Method ---");
+            System.out.println("1. Touch n Go");
+            System.out.println("2. Credit / Debit Card");
+            System.out.println("3. Cash");
+            System.out.println("4. Online Banking");
+            System.out.print("Enter number to choose: ");
             String choice = scanner.nextLine().trim();
-            String roomType = getRoomTypeByChoice(choice);
 
-            if (roomType == null) {
-                System.out.println("Invalid room type option. Please try again.");
-            } else if (getRoomTypeCapacity(roomType) < numberOfGuests) {
-                System.out.println(roomType + " cannot accommodate " + numberOfGuests + " guests.");
-            } else {
-                return roomType;
+            switch (choice) {
+                case "1":
+                    return "Touch n Go";
+                case "2":
+                    return "Credit / Debit Card";
+                case "3":
+                    return "Cash";
+                case "4":
+                    return "Online Banking";
+                default:
+                    System.out.println("Invalid payment method. Please try again.");
             }
         }
     }
 
-    private void displayRoomTypeOption(String optionNumber, String roomType,
-            int capacity, double price, int numberOfGuests) {
-        if (capacity >= numberOfGuests) {
-            System.out.printf("%s. %s | Capacity: %d guests | Price: RM%.2f per night%n",
-                    optionNumber, roomType, capacity, price);
-        }
-    }
-
-    private String getRoomTypeByChoice(String choice) {
-        switch (choice) {
-            case "1":
-                return "Standard Room";
-            case "2":
-                return "Deluxe Room";
-            case "3":
-                return "Family Room";
-            case "4":
-                return "Suite Room";
-            default:
-                return null;
-        }
-    }
-
-    private int getRoomTypeCapacity(String roomType) {
-        switch (roomType) {
-            case "Standard Room":
-                return 2;
-            case "Deluxe Room":
-                return 3;
-            case "Family Room":
-                return 5;
-            case "Suite Room":
-                return 4;
-            default:
-                return 0;
-        }
-    }
-
-    private double getRoomTypePrice(String roomType) {
-        switch (roomType) {
-            case "Standard Room":
-                return 150.00;
-            case "Deluxe Room":
-                return 220.00;
-            case "Family Room":
-                return 300.00;
-            case "Suite Room":
-                return 350.00;
-            default:
-                return 0.00;
-        }
-    }
-
-    private boolean confirmBooking(Guest guest, LocalDate checkInDate,
-            LocalDate checkOutDate, int numberOfGuests, String roomType,
-            BookingType bookingType) {
-        long numberOfNights = ChronoUnit.DAYS.between(checkInDate, checkOutDate);
-        double totalPrice = numberOfNights * getRoomTypePrice(roomType);
-
-        System.out.println("\n--- Booking Summary ---");
-        System.out.println("Guest Name       : " + guest.getFullName());
-        System.out.println("Guest ID         : " + guest.getGuestId());
-        System.out.println("Phone Number     : " + guest.getPhoneNumber());
-        System.out.println("Email            : " + guest.getEmail());
-        System.out.println("Booking Type     : " + bookingType);
-        System.out.println("Check-in Date    : " + checkInDate);
-        System.out.println("Check-out Date   : " + checkOutDate);
-        System.out.println("Number of Guests : " + numberOfGuests);
-        System.out.println("Room Type        : " + roomType);
-        System.out.println("Number of Nights : " + numberOfNights);
-        System.out.printf("Estimated Price  : RM%.2f%n", totalPrice);
-        System.out.print("Confirm booking? (Y/N): ");
-
+    private boolean confirmYes(String prompt) {
+        System.out.print(prompt);
         String confirmation = scanner.nextLine().trim();
         return confirmation.equalsIgnoreCase("Y");
     }
 
+    //search reserve
     private void searchReservation() {
-        System.out.print("Enter confirmation number: ");
-        String confirmationNumber = scanner.nextLine().trim();
-        Reservation reservation = reservationManager.findByConfirmationNumber(confirmationNumber);
+        System.out.print("Enter reservation ID / IC / Passport / Guest Name: ");
+        String searchValue = scanner.nextLine().trim();
+        Reservation reservation = reservationManager.findReservation(searchValue);
 
         if (reservation == null) {
             System.out.println("Reservation not found.");
         } else {
-            System.out.println(reservation);
+            displayReservationDetails(reservation);
         }
     }
 
+    //cancel reserve
     private void cancelReservation() {
         System.out.print("Enter confirmation number to cancel: ");
         String confirmationNumber = scanner.nextLine().trim();
-        boolean cancelled = reservationManager.cancelReservation(confirmationNumber);
+        Reservation reservation = reservationManager.findReservation(confirmationNumber);
 
-        if (cancelled) {
-            System.out.println("Reservation cancelled successfully.");
-        } else {
-            System.out.println("Reservation not found.");
-        }
-    }
-
-    private void displayReservationResult(Reservation reservation) {
         if (reservation == null) {
+            System.out.println("Reservation not found.");
             return;
         }
 
-        System.out.println("Reservation created successfully.");
-        System.out.println(reservation);
+        if (reservation.getStatus() == ReservationStatus.CHECKED_IN) {
+            System.out.println("Checked-in reservation cannot be cancelled here.");
+            return;
+        }
+
+        displayReservationDetails(reservation);
+
+        if (!confirmYes("Confirm cancellation? (Y/N): ")) {
+            System.out.println("Cancellation cancelled.");
+            return;
+        }
+
+        if (reservationManager.cancelReservation(confirmationNumber)) {
+            System.out.println("Reservation cancelled successfully.");
+        } else {
+            System.out.println("Reservation cancellation failed.");
+        }
     }
 
     public void displayReservations(ListInterface<Reservation> reservations) {
@@ -355,8 +336,50 @@ public class ReservationUI {
         }
 
         for (int position = 1; position <= reservations.getNumberOfEntries(); position++) {
-            System.out.println(reservations.getEntry(position));
+            displayReservationDetails(reservations.getEntry(position));
         }
+    }
+
+    private void displayReservationDetails(Reservation reservation) {
+        Guest guest = reservation.getGuest();
+        Room room = reservation.getAssignedRoom();
+        long numberOfNights = ChronoUnit.DAYS.between(
+                reservation.getCheckInDate(), reservation.getCheckOutDate());
+        double totalPrice = room == null ? 0.00 : numberOfNights * room.getPricePerNight();
+
+        System.out.println("\n--- Reservation Details ---");
+        System.out.println("Reservation ID   : " + reservation.getConfirmationNumber());
+        System.out.println("Guest Name       : " + guest.getFullName());
+        System.out.println("IC / Passport    : " + guest.getGuestId());
+        System.out.println("Phone Number     : " + guest.getPhoneNumber());
+        System.out.println("Email            : " + guest.getEmail());
+        System.out.println("Booking Type     : " + reservation.getBookingType());
+        System.out.println("Number of Guests : " + reservation.getNumberOfGuests());
+        System.out.println("Check-in Date    : " + reservation.getCheckInDate());
+        System.out.println("Check-out Date   : " + reservation.getCheckOutDate());
+        System.out.println("Number of Nights : " + numberOfNights);
+
+        if (room == null) {
+            System.out.println("Room / Unit No.  : Not assigned");
+            System.out.println("Room Type        : " + reservation.getRequestedRoomType());
+        } else {
+            System.out.println("Room / Unit No.  : " + room.getRoomNumber());
+            System.out.println("Room Type        : " + room.getRoomType());
+            System.out.println("Room Capacity    : " + room.getCapacity());
+            System.out.printf("Price per Night  : RM%.2f%n", room.getPricePerNight());
+            System.out.printf("Estimated Price  : RM%.2f%n", totalPrice);
+        }
+
+        System.out.println("Payment Method   : " + reservation.getPaymentMethod());
+        System.out.println("Payment Status   : " + reservation.getPaymentStatus());
+        System.out.println("Status           : " + reservation.getStatus());
+    }
+
+    private void displayRoomDetails(Room room) {
+        System.out.println("Room / Unit No.  : " + room.getRoomNumber());
+        System.out.println("Room Type        : " + room.getRoomType());
+        System.out.println("Room Capacity    : " + room.getCapacity());
+        System.out.printf("Price per Night  : RM%.2f%n", room.getPricePerNight());
     }
 
     public ReservationManager getReservationManager() {

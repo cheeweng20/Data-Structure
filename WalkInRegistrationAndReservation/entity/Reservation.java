@@ -19,6 +19,8 @@ public class Reservation implements Serializable {
     private LocalDateTime bookingDateTime;
     private int numberOfGuests;
     private BookingType bookingType;
+    private String paymentMethod;
+    private String paymentStatus;
     private ReservationStatus status;
 
     public Reservation() {
@@ -27,11 +29,23 @@ public class Reservation implements Serializable {
     }
 
     public Reservation(String confirmationNumber, Guest guest,String requestedRoomType, LocalDate checkInDate, LocalDate checkOutDate, int numberOfGuests, BookingType bookingType) {
-        this(confirmationNumber, guest, requestedRoomType, null, checkInDate, checkOutDate, LocalDateTime.now(), numberOfGuests, bookingType, ReservationStatus.PENDING);
+        this(confirmationNumber, guest, requestedRoomType, null, checkInDate,
+                checkOutDate, LocalDateTime.now(), numberOfGuests, bookingType,
+                "", "UNPAID", ReservationStatus.PENDING);
     }
 
     public Reservation(String confirmationNumber, Guest guest, String requestedRoomType, Room assignedRoom, LocalDate checkInDate,LocalDate checkOutDate, 
         LocalDateTime bookingDateTime, int numberOfGuests, BookingType bookingType,ReservationStatus status) {
+        this(confirmationNumber, guest, requestedRoomType, assignedRoom,
+                checkInDate, checkOutDate, bookingDateTime, numberOfGuests,
+                bookingType, "", "UNPAID", status);
+    }
+
+    public Reservation(String confirmationNumber, Guest guest, String requestedRoomType,
+            Room assignedRoom, LocalDate checkInDate, LocalDate checkOutDate,
+            LocalDateTime bookingDateTime, int numberOfGuests,
+            BookingType bookingType, String paymentMethod,
+            String paymentStatus, ReservationStatus status) {
         this.confirmationNumber = confirmationNumber;
         this.guest = guest;
         this.requestedRoomType = requestedRoomType;
@@ -41,6 +55,8 @@ public class Reservation implements Serializable {
         this.bookingDateTime = bookingDateTime;
         this.numberOfGuests = numberOfGuests;
         this.bookingType = bookingType;
+        this.paymentMethod = paymentMethod;
+        this.paymentStatus = paymentStatus;
         this.status = status;
     }
 
@@ -116,6 +132,22 @@ public class Reservation implements Serializable {
         this.bookingType = bookingType;
     }
 
+    public String getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    public void setPaymentMethod(String paymentMethod) {
+        this.paymentMethod = paymentMethod;
+    }
+
+    public String getPaymentStatus() {
+        return paymentStatus;
+    }
+
+    public void setPaymentStatus(String paymentStatus) {
+        this.paymentStatus = paymentStatus;
+    }
+
     public ReservationStatus getStatus() {
         return status;
     }
@@ -149,8 +181,8 @@ public class Reservation implements Serializable {
 
         return String.format(
                 "Confirmation: %s | Guest: %s | Room type: %s | Room: %s | "
-                + "Check-in: %s | Check-out: %s | Type: %s | Status: %s",
+                + "Check-in: %s | Check-out: %s | Type: %s | Payment: %s | Status: %s",
                 confirmationNumber, guestName, requestedRoomType, roomNumber,
-                checkInDate, checkOutDate, bookingType, status);
+                checkInDate, checkOutDate, bookingType, paymentStatus, status);
     }
 }
