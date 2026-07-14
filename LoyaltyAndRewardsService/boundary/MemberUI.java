@@ -7,6 +7,7 @@ import LoyaltyAndRewardsService.control.RequestControl;
 import LoyaltyAndRewardsService.control.TierControl;
 import LoyaltyAndRewardsService.control.TransactionControl;
 import LoyaltyAndRewardsService.entity.Member;
+import common.src.InputHelper;
 import common.src.Logo;
 
 public class MemberUI {
@@ -37,16 +38,15 @@ public class MemberUI {
                     "'-----'----------------------'\r\n" + //
                     "\r\n" + //
                     "");
-            System.out.print("Please Enter A number(0 to exit): ");
 
-            int userEntry = scanner.nextInt();
+            int userEntry = InputHelper.inputInt(scanner, "Please Enter A number(0 to exit): ");
             switch (userEntry) {
                 case 1: {
                     scanner.nextLine();
 
-                    String name = promptText(scanner, "Enter User Name: ");
+                    String name = InputHelper.inputString(scanner, "Enter User Name: ");
 
-                    int point = promptInt(scanner, "Enter Current Member Point: ");
+                    int point = InputHelper.inputInt(scanner, "Enter Current Member Point: ");
 
                     String newMemberId = memberLinkedList.generateMemberId();
                     scanner.nextLine();
@@ -68,8 +68,7 @@ public class MemberUI {
                     scanner.nextLine();
                     memberLinkedList.displayAllMember();
 
-                    System.out.print("Enter Member ID:");
-                    String memberId = scanner.nextLine();
+                    String memberId = InputHelper.inputString(scanner, "Enter Member ID:");
 
                     if (memberLinkedList.findMember(memberId)) {
                         memberLinkedList.deleteMemberById(memberId);
@@ -89,14 +88,13 @@ public class MemberUI {
 
                     memberLinkedList.displayAllMember();
 
-                    System.out.print("Enter Member ID to Update:");
-                    String memberId = scanner.nextLine();
+                    String memberId = InputHelper.inputString(scanner, "Enter Member ID to Update:");
 
                     if (memberLinkedList.findMember(memberId)) {
-                        System.out.print("Enter Member New Name:");
-                        String newName = scanner.nextLine();
-                        System.out.print("Enter Member New Point:");
-                        int newPoint = scanner.nextInt();
+
+                        String newName = InputHelper.inputString(scanner, "Enter Member New Name:");
+
+                        int newPoint = InputHelper.inputInt(scanner, "Enter Member New Point:");
 
                         memberLinkedList.updateMemberById(memberId, newName, newPoint);
                         System.out.println("Member Updated Successful");
@@ -115,10 +113,10 @@ public class MemberUI {
                     }
                     scanner.nextLine();
 
-                    String memberId = promptText(scanner, "Enter a Member ID:");
+                    String memberId = InputHelper.inputString(scanner, "Enter Member ID:");
 
                     if (memberLinkedList.findMember(memberId)) {
-                        int addPoint = promptInt(scanner, "Please Enter a Added Point: ");
+                        int addPoint = InputHelper.inputInt(scanner, "Please Enter a Added Point: ");
 
                         int newPoint = memberLinkedList.addMemberPoint(memberId, addPoint);
                         transactionList.addTransaction(memberId, newPoint);
@@ -126,6 +124,8 @@ public class MemberUI {
                         System.out.println("New point " + Integer.toString(addPoint) + " added successful");
                         System.out.println("Current point : " + Integer.toString(newPoint));
                     }
+
+                    System.out.println("Member Not Found");
                     break;
                 }
 
@@ -148,7 +148,7 @@ public class MemberUI {
 
                 case 7: {
                     scanner.nextLine();
-                    String memberId = promptText(scanner, "Enter a Member ID:");
+                    String memberId = InputHelper.inputString(scanner, "Enter Member ID:");
 
                     if (memberLinkedList.findMember(memberId)) {
                         String promotion = memberLinkedList.generatePersonalizedPromotion(memberId);
@@ -166,16 +166,5 @@ public class MemberUI {
                     break;
             }
         }
-    }
-
-    // Helper Function
-    private static String promptText(Scanner scanner, String prompt) {
-        System.out.print(prompt);
-        return scanner.nextLine();
-    }
-
-    private static int promptInt(Scanner scanner, String prompt) {
-        System.out.print(prompt);
-        return scanner.nextInt();
     }
 }

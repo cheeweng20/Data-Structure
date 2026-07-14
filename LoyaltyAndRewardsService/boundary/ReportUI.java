@@ -1,6 +1,7 @@
 package LoyaltyAndRewardsService.boundary;
 
 import adt.ArrayList;
+import common.src.InputHelper;
 import common.src.Logo;
 
 import java.util.Scanner;
@@ -26,8 +27,7 @@ public class ReportUI {
                     "'-----'-----------------------------'\r\n" + //
                     "\r\n" + //
                     "");
-            System.out.print("Enter a number (0 to exit): ");
-            int userSelection = scanner.nextInt();
+            int userSelection = InputHelper.inputInt(scanner, "Enter a number (0 to exit): ");
             switch (userSelection) {
                 case 1:
                     memberRankingReport(scanner, memberControl, tierControl);
@@ -47,9 +47,9 @@ public class ReportUI {
 
     private static void memberRankingReport(Scanner scanner, MemberControl memberControl, TierControl tierControl) {
 
-        int minPoint = promptInt(scanner, "Enter minimum point of member: ");
+        int minPoint = InputHelper.inputInt(scanner, "Enter minimum point of member: ");
         scanner.nextLine();
-        String targetTierId = promptText(scanner, "Enter Tier ID to filter (or leave blank for all): ");
+        String targetTierId = InputHelper.inputString(scanner, "Enter Tier ID to filter (or leave blank for all): ");
 
         ArrayList<Member> result = memberControl.generateRankingReport(minPoint, targetTierId);
 
@@ -72,9 +72,9 @@ public class ReportUI {
     }
 
     private static void lowPointMemberReport(Scanner scanner, MemberControl memberControl, TierControl tierControl) {
-        int maxPoint = promptInt(scanner, "Enter maximum point threshold: ");
+        int maxPoint = InputHelper.inputInt(scanner, "Enter maximum point threshold: ");
         scanner.nextLine();
-        String excludeTierId = promptText(scanner, "Enter Tier ID to exclude (or leave blank): ");
+        String excludeTierId = InputHelper.inputString(scanner, "Enter Tier ID to exclude (or leave blank): ");
 
         ArrayList<Member> result = memberControl.generateLowPointReport(maxPoint, excludeTierId);
 
@@ -94,15 +94,5 @@ public class ReportUI {
             System.out.printf("%-10s %-15s %-10s %-8d%n",
                     tierName, member.getName(), member.getMemberId(), member.getPoint());
         }
-    }
-
-    private static String promptText(Scanner scanner, String prompt) {
-        System.out.print(prompt);
-        return scanner.nextLine();
-    }
-
-    private static int promptInt(Scanner scanner, String prompt) {
-        System.out.print(prompt);
-        return scanner.nextInt();
     }
 }

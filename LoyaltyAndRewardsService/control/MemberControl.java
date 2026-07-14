@@ -104,7 +104,7 @@ public class MemberControl {
     public Member getMemberById(String memberId) {
         for (int i = 1; i <= memberList.size(); i++) {
             Member member = memberList.getEntry(i);
-            if (member.getMemberId().equals(memberId)) {
+            if (member.getMemberId().equalsIgnoreCase(memberId)) {
                 return member;
             }
         }
@@ -135,7 +135,7 @@ public class MemberControl {
         for (int i = 1; i <= memberList.size(); i++) {
             Member current = memberList.getEntry(i);
             boolean matchesCriteria = current.getPoint() >= minPoint
-                    && (!hasTargetTier || current.getTierId().equals(targetTierId));
+                    && (!hasTargetTier || current.getTierId().equalsIgnoreCase(targetTierId));
             if (matchesCriteria) {
                 filteredResult.add(current);
             }
@@ -153,7 +153,7 @@ public class MemberControl {
             Member current = memberList.getEntry(i);
 
             boolean matchesCriteria = current.getPoint() <= maxPoint
-                    && (!hasExcludedTier || !current.getTierId().equals(excludeTierId));
+                    && (!hasExcludedTier || !current.getTierId().equalsIgnoreCase(excludeTierId));
 
             if (matchesCriteria) {
                 filteredResult.add(current);

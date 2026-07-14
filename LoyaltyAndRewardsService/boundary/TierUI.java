@@ -4,7 +4,7 @@ import java.util.Scanner;
 
 import LoyaltyAndRewardsService.control.TierControl;
 import LoyaltyAndRewardsService.entity.Tier;
-import common.src.Logo;
+import common.src.*;
 
 public class TierUI {
     public static void tierOperator(Scanner scanner, TierControl tierLinkedList) {
@@ -28,14 +28,14 @@ public class TierUI {
                     "\r\n" + //
                     "");
 
-            int userEntry = promptInt(scanner, "Please Enter A number(0 to exit):");
+            int userEntry = InputHelper.inputInt(scanner, "Please Enter A number(0 to exit):");
 
             switch (userEntry) {
                 case 1: {
                     scanner.nextLine();
-                    String tierLevel = promptText(scanner, "Tier Level Name: ");
-                    int minPoint = promptInt(scanner, "Min Point: ");
-                    int maxPoint = promptInt(scanner, "Max Point(Enter 0 for highest level): ");
+                    String tierLevel = InputHelper.inputString(scanner, "Tier Level Name: ");
+                    int minPoint = InputHelper.inputInt(scanner, "Min Point: ");
+                    int maxPoint = InputHelper.inputInt(scanner, "Max Point(Enter 0 for highest level): ");
 
                     String tierId = tierLinkedList.generateTierId();
                     Tier tier = new Tier(tierId, tierLevel, minPoint, maxPoint);
@@ -52,7 +52,7 @@ public class TierUI {
 
                     tierLinkedList.displayAllTierLevel();
 
-                    String tierId = promptText(scanner, "Enter Tier ID:");
+                    String tierId = InputHelper.inputString(scanner, "Enter Tier ID:");
 
                     if (tierLinkedList.findTier(tierId)) {
                         tierLinkedList.removeTierLevel(tierId);
@@ -71,12 +71,12 @@ public class TierUI {
 
                     tierLinkedList.displayAllTierLevel();
 
-                    String tierId = promptText(scanner, "Enter Tier ID to Update:");
+                    String tierId = InputHelper.inputString(scanner, "Enter Tier ID to Update:");
 
                     if (tierLinkedList.findTier(tierId)) {
-                        String newName = promptText(scanner, "Enter New Tier Level Name:");
-                        int minPoint = promptInt(scanner, "Enter New Min Point:");
-                        int maxPoint = promptInt(scanner, "Enter New Max Point:");
+                        String newName = InputHelper.inputString(scanner, "Enter New Tier Level Name:");
+                        int minPoint = InputHelper.inputInt(scanner, "Enter New Min Point:");
+                        int maxPoint = InputHelper.inputInt(scanner, "Enter New Max Point:");
 
                         tierLinkedList.updateTierLevelById(tierId, newName, minPoint, maxPoint);
                         System.out.println("Update Tier Level Successful");
@@ -98,16 +98,5 @@ public class TierUI {
                     break;
             }
         }
-    }
-
-    // Helper Function
-    private static String promptText(Scanner scanner, String prompt) {
-        System.out.print(prompt);
-        return scanner.nextLine();
-    }
-
-    private static int promptInt(Scanner scanner, String prompt) {
-        System.out.print(prompt);
-        return scanner.nextInt();
     }
 }

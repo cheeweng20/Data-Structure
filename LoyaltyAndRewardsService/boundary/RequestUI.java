@@ -6,7 +6,8 @@ import LoyaltyAndRewardsService.control.MemberControl;
 import LoyaltyAndRewardsService.control.RequestControl;
 import LoyaltyAndRewardsService.dao.RequestDao;
 import LoyaltyAndRewardsService.entity.RedemptionRequest;
-import common.src.Logo;
+import common.src.*;
+
 
 public class RequestUI {
 
@@ -26,19 +27,19 @@ public class RequestUI {
                     "\r\n" + //
                     "");
 
-            int userEntry = promptInt(scanner, "Please Enter A number(0 to exit):");
+            int userEntry = InputHelper.inputInt(scanner, "Please Enter A number(0 to exit):");
             scanner.nextLine();
 
             switch (userEntry) {
                 case 1: {
-                    String memberId = promptText(scanner, "Enter Member ID: ");
+                    String memberId = InputHelper.inputString(scanner, "Enter Member ID: ");
 
                     if (!memberControl.findMember(memberId)) {
                         System.out.println("Member Not Found");
                         break;
                     }
 
-                    int points = promptInt(scanner, "Enter Points to Redeem: ");
+                    int points = InputHelper.inputInt(scanner, "Enter Points to Redeem: ");
                     scanner.nextLine();
 
                     boolean success = requestControl.submitRequest(memberId, points);
@@ -61,7 +62,7 @@ public class RequestUI {
                     System.out.println("Next Request -> Member: " + next.getMemberId()
                             + ", Points: " + next.getPointsRequested());
 
-                    String decision = promptText(scanner, "Approve this request? (Y/N): ");
+                    String decision = InputHelper.inputString(scanner, "Approve this request? (Y/N): ");
                     boolean approve = decision.equalsIgnoreCase("Y");
 
                     RedemptionRequest processed = requestControl.processNextRequest(approve);
@@ -79,13 +80,4 @@ public class RequestUI {
         }
     }
 
-    private static String promptText(Scanner scanner, String prompt) {
-        System.out.print(prompt);
-        return scanner.nextLine();
-    }
-
-    private static int promptInt(Scanner scanner, String prompt) {
-        System.out.print(prompt);
-        return scanner.nextInt();
-    }
 }

@@ -11,7 +11,7 @@ import LoyaltyAndRewardsService.entity.RedemptionRequest;
 
 public class RequestControl {
     private LinkedQueue<RedemptionRequest> requestQueue;
-    private MemberControl memberControl;   // 需要它来验证点数、真正执行扣分
+    private MemberControl memberControl;
     private int nextRequestNumber;
 
     public RequestControl(MemberControl memberControl) {
