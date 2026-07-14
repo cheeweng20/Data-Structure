@@ -9,13 +9,11 @@ import WalkInRegistrationAndReservation.entity.ReservationStatus;
 import WalkInRegistrationAndReservation.entity.Room;
 import WalkInRegistrationAndReservation.entity.Room.RoomStatus;
 import WalkInRegistrationAndReservation.utility.ConfirmationNumberGenerator;
-import adt.LinkedQueue;
 import adt.ListInterface;
-import adt.QueueInterface;
 import java.time.LocalDate;
 
 /**
- * Coordinates reservation, room-assignment and waiting-queue operations.
+ * Coordinates reservation check-in, walk-in registration and room assignment.
  *
  */
 public class ReservationManager {
@@ -24,7 +22,6 @@ public class ReservationManager {
     private final RoomDAO roomDAO;
     private final ListInterface<Reservation> reservations;
     private final ListInterface<Room> rooms;
-    private final QueueInterface<Reservation> waitingQueue;
 
     public ReservationManager() {
         this(new ReservationDAO(), new RoomDAO());
@@ -35,45 +32,104 @@ public class ReservationManager {
         this.roomDAO = roomDAO;
         reservations = reservationDAO.retrieveFromFile();
         rooms = roomDAO.retrieveFromFile();
-        waitingQueue = new LinkedQueue<>();
-        // Put saved pending reservations back into the waiting queue.
-        for (int i = 1; i <= reservations.getNumberOfEntries(); i++) {
-            Reservation reservation = reservations.getEntry(i);
-            if (reservation.getStatus() == ReservationStatus.PENDING) {
-                waitingQueue.enqueue(reservation);
-            }
-        }
-
     }
 
-    // new reservation
+    // Kept for simple standard reservation creation if needed later.
     public Reservation createReservation(Guest guest, String requestedRoomType,
             LocalDate checkInDate, LocalDate checkOutDate, int numberOfGuests,
             BookingType bookingType) {
-        String confirmationNumber = ConfirmationNumberGenerator.generate(); // here use number generator
+        String confirmationNumber = generateUniqueConfirmationNumber();
 
-        while (findByConfirmationNumber(confirmationNumber) != null) { // check if num exits, if yes create new
-            confirmationNumber = ConfirmationNumberGenerator.generate();
-        }
-
-        Reservation reservation = new Reservation(confirmationNumber, guest, requestedRoomType, checkInDate,
-                checkOutDate, numberOfGuests, bookingType);
+        Reservation reservation = new Reservation(confirmationNumber, guest,
+                requestedRoomType, checkInDate, checkOutDate, numberOfGuests,
+                bookingType);
         boolean assigned = assignAvailableRoom(reservation);
-        if (assigned == false) {
-            waitingQueue.enqueue(reservation);
-        }
+        reservation.setStatus(assigned ? ReservationStatus.CONFIRMED : ReservationStatus.PENDING);
         reservations.add(reservation);
-        saveData(); // DAO Save reservation into the file
+        saveData();
 
         return reservation;
-
     }
 
-    // find reservation by confirmation number
-    public Reservation findByConfirmationNumber(String confirmationNumber) {
+    //create register(walk-in)
+    public Reservation createWalkInRegistration(Guest guest, LocalDate checkOutDate, int numberOfGuests,
+            String paymentMethod) {
+        Room room = findAvailableRoomForGuests(numberOfGuests);
+
+        if (room == null) {
+            return null;
+        }
+
+        room.setStatus(RoomStatus.OCCUPIED);
+        String confirmationNumber = generateUniqueConfirmationNumber();
+
+        Reservation reservation = new Reservation(confirmationNumber, guest, room.getRoomType(), room, LocalDate.now(),
+                checkOutDate, java.time.LocalDateTime.now(), numberOfGuests,
+                BookingType.WALK_IN,
+                paymentMethod,
+                "PAID",
+                ReservationStatus.CHECKED_IN);
+
+        reservations.add(reservation);
+        saveData();
+        return reservation;
+    }
+
+    //help check in (client already book before)
+    public boolean checkInStandardReservation(String searchValue) { 
+        Reservation reservation = findReservation(searchValue);   // find reservation first
+
+        if (reservation == null
+                || reservation.getBookingType() != BookingType.STANDARD
+                || reservation.getStatus() != ReservationStatus.CONFIRMED
+                || reservation.getCheckInDate().isAfter(LocalDate.now())) {
+            return false;
+        }
+
+        Room room = reservation.getAssignedRoom();
+
+        if (room == null) {
+            return false;
+        }
+
+        Room savedRoom = findRoomByNumber(room.getRoomNumber());
+        if (savedRoom != null) {
+            savedRoom.setStatus(RoomStatus.OCCUPIED);
+            reservation.setAssignedRoom(savedRoom);
+        } else {
+            room.setStatus(RoomStatus.OCCUPIED);
+        }
+
+        reservation.setStatus(ReservationStatus.CHECKED_IN);
+        reservation.setPaymentStatus("PAID");  //duble confirm 
+        saveData();
+        return true;
+    }
+
+    // find reservation by confirmation no/guestname/guest ic
+    public Reservation findReservation(String searchValue) {
         for (int i = 1; i <= reservations.getNumberOfEntries(); i++) {
             Reservation reservation = reservations.getEntry(i);
-            if (reservation.getConfirmationNumber().equals(confirmationNumber)) {
+            Guest guest = reservation.getGuest();
+
+            if (reservation.getConfirmationNumber().equalsIgnoreCase(searchValue)) { // reserve no
+                return reservation;
+            } else if (guest != null && guest.getGuestId().equalsIgnoreCase(searchValue)) { // ic/passport
+                return reservation;
+            } else if (guest != null && guest.getFullName().toLowerCase().contains(searchValue.toLowerCase())) { // name
+                return reservation;
+            }
+        }
+        return null;
+    }
+
+    public Reservation findByConfirmationOrGuestId(String searchValue) {
+        for (int i = 1; i <= reservations.getNumberOfEntries(); i++) {
+            Reservation reservation = reservations.getEntry(i);
+            Guest guest = reservation.getGuest();
+
+            if (reservation.getConfirmationNumber().equalsIgnoreCase(searchValue)
+                    || (guest != null && guest.getGuestId().equalsIgnoreCase(searchValue))) {
                 return reservation;
             }
         }
@@ -87,37 +143,36 @@ public class ReservationManager {
             Reservation reservation = reservations.getEntry(i);
 
             if (reservation.getConfirmationNumber().equals(updatedReservation.getConfirmationNumber())) {
-                // Replace old with new one 
+                // Replace old with new one
                 reservations.replace(i, updatedReservation);
                 saveData();
                 return true;
             }
         }
 
-        // No matching reservation found.
         return false;
     }
 
     // cancel reservation
     public boolean cancelReservation(String confirmationNumber) {
-        // Find the reservation using the confirmation number.
-        Reservation reservation = findByConfirmationNumber(confirmationNumber);
+        Reservation reservation = findReservation(confirmationNumber);
 
-        // If no reservation is found, cancellation fails.
-        if (reservation == null) {
+        // If reservation not found/already check in -->fail
+        if (reservation == null || reservation.getStatus() == ReservationStatus.CHECKED_IN) {
             return false;
         } else {
-            // Mark the reservation as cancelled.
-            reservation.setStatus(ReservationStatus.CANCELLED);
+            reservation.setStatus(ReservationStatus.CANCELLED);  //here can cancel
 
-            // If this reservation has a room, release the room.
             Room assignedRoom = reservation.getAssignedRoom();
             if (assignedRoom != null) {
-                assignedRoom.setStatus(RoomStatus.AVAILABLE);
+                Room savedRoom = findRoomByNumber(assignedRoom.getRoomNumber());
+                if (savedRoom != null) {
+                    savedRoom.setStatus(RoomStatus.AVAILABLE);  //same as the upate occcupied (update the assiged and room list)
+                    reservation.setAssignedRoom(savedRoom);
+                } else {
+                    assignedRoom.setStatus(RoomStatus.AVAILABLE);
+                }
             }
-
-            // Try to assign the released room to pending reservations.
-            processWaitingQueue();
 
             saveData();
             return true;
@@ -143,24 +198,42 @@ public class ReservationManager {
         return false;
     }
 
-    // when no room is available, add to waiting queue
-    public void processWaitingQueue() {
-        QueueInterface<Reservation> stillWaitingQueue = new LinkedQueue<>();
+    // check the available room, capacity of room > num of guest
+    public Room findAvailableRoomForGuests(int numberOfGuests) {
+        Room bestRoom = null;
 
-        while (!waitingQueue.isEmpty()) {
-            Reservation reservation = waitingQueue.dequeue();
-            boolean assigned = assignAvailableRoom(reservation);
+        for (int i = 1; i <= rooms.getNumberOfEntries(); i++) {
+            Room room = rooms.getEntry(i);
 
-            if (assigned == false) {
-                stillWaitingQueue.enqueue(reservation);
+            if (room.getStatus() == RoomStatus.AVAILABLE && room.getCapacity() >= numberOfGuests
+                    && (bestRoom == null || room.getCapacity() < bestRoom.getCapacity())) {
+                bestRoom = room;
             }
         }
 
-        while (!stillWaitingQueue.isEmpty()) {
-            waitingQueue.enqueue(stillWaitingQueue.dequeue());
+        return bestRoom;
+    }
+
+    public Room findRoomByNumber(String roomNumber) {
+        for (int i = 1; i <= rooms.getNumberOfEntries(); i++) {
+            Room room = rooms.getEntry(i);
+
+            if (room.getRoomNumber().equalsIgnoreCase(roomNumber)) {
+                return room;
+            }
         }
 
-        saveData();
+        return null;
+    }
+
+    private String generateUniqueConfirmationNumber() {
+        String confirmationNumber = ConfirmationNumberGenerator.generate();
+
+        while (findReservation(confirmationNumber) != null) {
+            confirmationNumber = ConfirmationNumberGenerator.generate();
+        }
+
+        return confirmationNumber;
     }
 
     public boolean addRoom(Room room) {
@@ -184,7 +257,4 @@ public class ReservationManager {
         return rooms;
     }
 
-    public QueueInterface<Reservation> getWaitingQueue() {
-        return waitingQueue;
-    }
 }

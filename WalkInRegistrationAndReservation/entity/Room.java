@@ -18,6 +18,7 @@ public class Room implements Serializable {
 
     private String roomNumber;
     private String roomType;
+    private int capacity;
     private double pricePerNight;
     private RoomStatus status;
 
@@ -26,13 +27,19 @@ public class Room implements Serializable {
     }
 
     public Room(String roomNumber, String roomType, double pricePerNight) {
-        this(roomNumber, roomType, pricePerNight, RoomStatus.AVAILABLE);
+        this(roomNumber, roomType, 0, pricePerNight, RoomStatus.AVAILABLE);
     }
 
     public Room(String roomNumber, String roomType, double pricePerNight,
             RoomStatus status) {
+        this(roomNumber, roomType, 0, pricePerNight, status);
+    }
+
+    public Room(String roomNumber, String roomType, int capacity,
+            double pricePerNight, RoomStatus status) {
         this.roomNumber = roomNumber;
         this.roomType = roomType;
+        this.capacity = capacity;
         this.pricePerNight = pricePerNight;
         this.status = status;
     }
@@ -51,6 +58,14 @@ public class Room implements Serializable {
 
     public void setRoomType(String roomType) {
         this.roomType = roomType;
+    }
+
+    public int getCapacity() {
+        return capacity;
+    }
+
+    public void setCapacity(int capacity) {
+        this.capacity = capacity;
     }
 
     public double getPricePerNight() {
@@ -88,7 +103,8 @@ public class Room implements Serializable {
 
     @Override
     public String toString() {
-        return String.format("Room: %s | Type: %s | Rate: RM %.2f | Status: %s",
-                roomNumber, roomType, pricePerNight, status);
+        return String.format(
+                "Room: %s | Type: %s | Capacity: %d | Rate: RM %.2f | Status: %s",
+                roomNumber, roomType, capacity, pricePerNight, status);
     }
 }
