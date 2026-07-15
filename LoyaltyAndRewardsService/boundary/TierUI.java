@@ -3,6 +3,7 @@ package LoyaltyAndRewardsService.boundary;
 import java.util.Scanner;
 
 import LoyaltyAndRewardsService.control.TierControl;
+import LoyaltyAndRewardsService.dao.TierDao;
 import LoyaltyAndRewardsService.entity.Tier;
 import common.src.*;
 
@@ -40,6 +41,7 @@ public class TierUI {
                     String tierId = tierLinkedList.generateTierId();
                     Tier tier = new Tier(tierId, tierLevel, minPoint, maxPoint);
                     tierLinkedList.addTierLevel(tier);
+                    TierDao.saveToTierFile(tierLinkedList);
                     System.out.println("New Tier Level Added Successful");
                     break;
                 }
@@ -56,6 +58,7 @@ public class TierUI {
 
                     if (tierLinkedList.findTier(tierId)) {
                         tierLinkedList.removeTierLevel(tierId);
+                        TierDao.saveToTierFile(tierLinkedList);
                         System.out.println("Delete Tier Level successfully");
                     } else {
                         System.out.println("Tier Level Not Found");
@@ -79,6 +82,7 @@ public class TierUI {
                         int maxPoint = InputHelper.inputInt(scanner, "Enter New Max Point:");
 
                         tierLinkedList.updateTierLevelById(tierId, newName, minPoint, maxPoint);
+                        TierDao.saveToTierFile(tierLinkedList);
                         System.out.println("Update Tier Level Successful");
 
                     } else {

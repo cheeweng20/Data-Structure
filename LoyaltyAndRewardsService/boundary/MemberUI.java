@@ -4,15 +4,19 @@ import java.util.Scanner;
 
 import LoyaltyAndRewardsService.control.MemberControl;
 import LoyaltyAndRewardsService.control.RequestControl;
+import LoyaltyAndRewardsService.control.RewardControl;
 import LoyaltyAndRewardsService.control.TierControl;
 import LoyaltyAndRewardsService.control.TransactionControl;
+import LoyaltyAndRewardsService.dao.MemberDao;
+import LoyaltyAndRewardsService.dao.PointTransactionDao;
 import LoyaltyAndRewardsService.entity.Member;
 import common.src.InputHelper;
 import common.src.Logo;
 
 public class MemberUI {
     public static void memberOperator(Scanner scanner, MemberControl memberLinkedList,
-            TierControl tierLinkedList, TransactionControl transactionList, RequestControl requestControl) {
+            TierControl tierLinkedList, TransactionControl transactionList, RequestControl requestControl,
+            RewardControl rewardControl) {
         boolean exit = false;
 
         while (!exit) {
@@ -54,6 +58,7 @@ public class MemberUI {
                     String tierId = tierLinkedList.getTierIdByPoint(point);
                     Member member = new Member(newMemberId, name, point, tierId);
                     memberLinkedList.addMember(member);
+                    MemberDao.saveToMemberFile(memberLinkedList);
                     System.out.println("Member Added Successful");
 
                     break;
@@ -72,6 +77,7 @@ public class MemberUI {
 
                     if (memberLinkedList.findMember(memberId)) {
                         memberLinkedList.deleteMemberById(memberId);
+                        MemberDao.saveToMemberFile(memberLinkedList);
                         System.out.println("Delete member successfully");
                     } else {
                         System.out.println("Member Not Found");
@@ -97,6 +103,7 @@ public class MemberUI {
                         int newPoint = InputHelper.inputInt(scanner, "Enter Member New Point:");
 
                         memberLinkedList.updateMemberById(memberId, newName, newPoint);
+                        MemberDao.saveToMemberFile(memberLinkedList);
                         System.out.println("Member Updated Successful");
 
                     } else {
@@ -120,12 +127,14 @@ public class MemberUI {
 
                         int newPoint = memberLinkedList.addMemberPoint(memberId, addPoint);
                         transactionList.addTransaction(memberId, newPoint);
+                        MemberDao.saveToMemberFile(memberLinkedList);
+                        PointTransactionDao.saveToTransactionFile(transactionList);
 
                         System.out.println("New point " + Integer.toString(addPoint) + " added successful");
                         System.out.println("Current point : " + Integer.toString(newPoint));
+                    } else {
+                        System.out.println("Member Not Found");
                     }
-
-                    System.out.println("Member Not Found");
                     break;
                 }
 
@@ -136,7 +145,7 @@ public class MemberUI {
                     }
                     scanner.nextLine();
 
-                    RequestUI.requestOperator(scanner, requestControl, memberLinkedList);
+                    RequestUI.requestOperator(scanner, requestControl, memberLinkedList, rewardControl);
 
                     break;
                 }

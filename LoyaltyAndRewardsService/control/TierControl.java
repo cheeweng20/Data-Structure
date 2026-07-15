@@ -21,7 +21,7 @@ public class TierControl {
         if (tier == null)
             return false;
 
-        tier.setTierId(tierLevelName);
+        tier.setTierLevel(tierLevelName);
         tier.setMinPoint(minPoint);
         tier.setMaxPoint(maxPoint);
 
@@ -56,8 +56,9 @@ public class TierControl {
     }
 
     public boolean removeTierLevel(String tierId) {
-        for (int i = 1; i < tierLinkedList.size(); i++) {
-            if (getExistTierById(tierId) != null) {
+        for (int i = 1; i <= tierLinkedList.size(); i++) {
+            Tier tier = tierLinkedList.getEntry(i);
+            if (tier.getTierId().equalsIgnoreCase(tierId)) {
                 tierLinkedList.remove(i);
                 return true;
             }

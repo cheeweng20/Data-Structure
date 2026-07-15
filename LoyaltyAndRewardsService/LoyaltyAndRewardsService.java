@@ -20,7 +20,9 @@ public class LoyaltyAndRewardsService {
                 ":-----+-------------------:\r\n" + //
                 "|  2. | Tier Management   |\r\n" + //
                 ":-----+-------------------:\r\n" + //
-                "|  3. | Report            |\r\n" + //
+                "|  3. | Rewards Management|\r\n" + //
+                ":-----+-------------------:\r\n" + //
+                "|  4. | Report            |\r\n" + //
                 "'-----'-------------------'\r\n" + //
                 "\r\n" + //
                 "");
@@ -42,17 +44,24 @@ public class LoyaltyAndRewardsService {
         RequestControl requestControl = new RequestControl(memberList);
 
         RequestDao.loadFromRequestFile(requestControl);
+
+        RewardControl rewardList = new RewardControl();
+        RewardDao.loadFromRewardFile(rewardList);
         while (!exit) {
             displayMenu(input);
             int menuSelected = input.nextInt();
             switch (menuSelected) {
                 case 1:
-                    MemberUI.memberOperator(input, memberList, tierLevelList, transactionList, requestControl);
+                    MemberUI.memberOperator(input, memberList, tierLevelList, transactionList, requestControl,
+                            rewardList);
                     break;
                 case 2:
                     TierUI.tierOperator(input, tierLevelList);
                     break;
                 case 3:
+                    RewardUI.rewardOperator(input, rewardList);
+                    break;
+                case 4:
                     ReportUI.reportOperator(input, memberList, tierLevelList);
                     break;
                 case 0:
@@ -67,6 +76,7 @@ public class LoyaltyAndRewardsService {
         TierDao.saveToTierFile(tierLevelList);
         PointTransactionDao.saveToTransactionFile(transactionList);
         RequestDao.saveToRequestFile(requestControl);
+        RewardDao.saveToRewardFile(rewardList);
 
         return;
     }
