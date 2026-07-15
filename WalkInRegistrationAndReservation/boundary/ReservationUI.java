@@ -356,6 +356,7 @@ public class ReservationUI {
         for (int i = 1; i <= reportReservations.getNumberOfEntries(); i++) {
             printReportLine(reportReservations.getEntry(i)); // display each sorted reservation
         }
+        printReportBorder(); // print bottom table line
 
         System.out.println("Total checked-in reservations for " + reportDate + ": "
                 + reportReservations.getNumberOfEntries());
@@ -380,8 +381,9 @@ public class ReservationUI {
         for (int i = 1; i <= reportReservations.getNumberOfEntries(); i++) {
             printReportLine(reportReservations.getEntry(i));
         }
+        printReportBorder(); // print bottom table line
 
-        System.out.println("Total occupied/assigned reservation:" + reportReservations.getNumberOfEntries()); // print
+        System.out.println("\n Total occupied/assigned reservation:" + reportReservations.getNumberOfEntries()); // print
                                                                                                             // total
                                                                                                             // assigned
                                                                                                             // records
@@ -423,9 +425,11 @@ public class ReservationUI {
     }
 
     private void printReportHeader() {
-        System.out.printf("%-12s %-18s %-12s %-15s %-8s %-12s %-12s %-12s%n",
+        printReportBorder(); // print top table line
+        System.out.printf("| %-12s | %-18s | %-12s | %-15s | %-8s | %-12s | %-12s | %-12s |%n",
                 "Res ID", "Guest Name", "Room", "Room Type", "Guests",
-                "Check-In", "Check-Out", "Status"); // print report header
+                "Check-In", "Check-Out", "Status"); 
+        printReportBorder(); 
 
     }
 
@@ -434,7 +438,7 @@ public class ReservationUI {
         String roomNumber = room == null ? "-" : room.getRoomNumber(); // get room number
         String roomType = room == null ? "-" : room.getRoomType(); // get room type
 
-        System.out.printf("%-12s %-18s %-12s %-15s %-8d %-12s %-12s %-12s%n",
+        System.out.printf("| %-12s | %-18s | %-12s | %-15s | %-8d | %-12s | %-12s | %-12s |%n",
                 reservation.getConfirmationNumber(),
                 reservation.getGuest().getFullName(),
                 roomNumber,
@@ -444,6 +448,10 @@ public class ReservationUI {
                 reservation.getCheckOutDate(),
                 reservation.getStatus()); // print one report record
 
+    }
+
+    private void printReportBorder() {
+        System.out.println("+--------------+--------------------+--------------+-----------------+----------+--------------+--------------+--------------+");
     }
 
     // ------------------------------------------------------------------------------------
