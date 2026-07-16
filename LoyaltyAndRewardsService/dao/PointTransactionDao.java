@@ -11,6 +11,9 @@ import java.time.LocalDate;
 import LoyaltyAndRewardsService.control.TransactionControl;
 import LoyaltyAndRewardsService.entity.PointTransaction;
 
+/**
+ * @author Chee Weng
+ */
 public class PointTransactionDao {
     private static final String FILE_NAME = "LoyaltyAndRewardsService/src/transaction.csv";
     private static final String HEADER = "TransactionId,MemberId,PointsEarned,EarnedDate,ExpiryDate";

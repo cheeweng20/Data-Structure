@@ -2,6 +2,8 @@ package LoyaltyAndRewardsService.entity;
 
 /**
  * A reward that a member may redeem using loyalty points.
+ *
+ * @author Chee Weng
  */
 public class Reward {
     private String rewardId;

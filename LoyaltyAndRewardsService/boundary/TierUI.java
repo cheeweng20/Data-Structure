@@ -7,6 +7,9 @@ import LoyaltyAndRewardsService.dao.TierDao;
 import LoyaltyAndRewardsService.entity.Tier;
 import common.src.*;
 
+/**
+ * @author Chee Weng
+ */
 public class TierUI {
     public static void tierOperator(Scanner scanner, TierControl tierLinkedList) {
         boolean exit = false;

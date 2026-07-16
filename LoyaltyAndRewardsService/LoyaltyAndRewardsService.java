@@ -7,6 +7,9 @@ import LoyaltyAndRewardsService.control.*;
 import LoyaltyAndRewardsService.dao.*;
 import common.src.Logo;
 
+/**
+ * @author Chee Weng
+ */
 public class LoyaltyAndRewardsService {
 
     public static void displayMenu(Scanner scanner) {

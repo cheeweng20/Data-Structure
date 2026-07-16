@@ -12,6 +12,9 @@ import LoyaltyAndRewardsService.entity.Reward;
 import common.src.*;
 
 
+/**
+ * @author Chee Weng
+ */
 public class RequestUI {
 
     public static void requestOperator(Scanner scanner, RequestControl requestControl, MemberControl memberControl,

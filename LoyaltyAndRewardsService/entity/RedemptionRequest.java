@@ -2,6 +2,9 @@ package LoyaltyAndRewardsService.entity;
 
 import java.time.LocalDate;
 
+/**
+ * @author Chee Weng
+ */
 public class RedemptionRequest {
     private String requestId;
     private String memberId;

@@ -13,6 +13,9 @@ import LoyaltyAndRewardsService.entity.Member;
 import common.src.InputHelper;
 import common.src.Logo;
 
+/**
+ * @author Chee Weng
+ */
 public class MemberUI {
     public static void memberOperator(Scanner scanner, MemberControl memberLinkedList,
             TierControl tierLinkedList, TransactionControl transactionList, RequestControl requestControl,

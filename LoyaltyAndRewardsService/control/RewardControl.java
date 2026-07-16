@@ -5,6 +5,8 @@ import adt.LinkedList;
 
 /**
  * Manages the rewards kept in memory during the program session.
+ *
+ * @author Chee Weng
  */
 public class RewardControl {
     private LinkedList<Reward> rewardList;

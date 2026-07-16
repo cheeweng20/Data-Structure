@@ -9,6 +9,9 @@ import java.util.Iterator;
 import LoyaltyAndRewardsService.entity.Member;
 import LoyaltyAndRewardsService.entity.RedemptionRequest;
 
+/**
+ * @author Chee Weng
+ */
 public class RequestControl {
     private LinkedQueue<RedemptionRequest> requestQueue;
     private MemberControl memberControl;

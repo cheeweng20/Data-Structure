@@ -10,6 +10,8 @@ import common.src.Logo;
 
 /**
  * Console interface for reward CRUD operations.
+ *
+ * @author Chee Weng
  */
 public class RewardUI {
     public static void rewardOperator(Scanner scanner, RewardControl rewardList) {

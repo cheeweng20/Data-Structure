@@ -9,6 +9,9 @@ import java.util.Scanner;
 import LoyaltyAndRewardsService.control.*;
 import LoyaltyAndRewardsService.entity.*;
 
+/**
+ * @author Chee Weng
+ */
 public class ReportUI {
 
     public static void reportOperator(Scanner scanner, MemberControl memberControl, TierControl tierControl) {

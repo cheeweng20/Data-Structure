@@ -10,6 +10,9 @@ import java.io.PrintWriter;
 import LoyaltyAndRewardsService.control.TierControl;
 import LoyaltyAndRewardsService.entity.Tier;
 
+/**
+ * @author Chee Weng
+ */
 public class TierDao {
     private static final String FILE_NAME = "LoyaltyAndRewardsService/src/tier.csv";
 

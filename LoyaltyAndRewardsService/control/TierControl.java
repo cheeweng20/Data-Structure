@@ -4,6 +4,9 @@ import adt.LinkedList;
 
 import LoyaltyAndRewardsService.entity.Tier;
 
+/**
+ * @author Chee Weng
+ */
 public class TierControl {
     private LinkedList<Tier> tierLinkedList;
 

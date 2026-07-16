@@ -12,6 +12,9 @@ import java.util.Iterator;
 import LoyaltyAndRewardsService.control.RequestControl;
 import LoyaltyAndRewardsService.entity.RedemptionRequest;
 
+/**
+ * @author Chee Weng
+ */
 public class RequestDao {
     private static final String FILE_NAME = "LoyaltyAndRewardsService/src/requests.csv";
 

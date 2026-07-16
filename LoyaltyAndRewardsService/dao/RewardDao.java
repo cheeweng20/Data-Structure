@@ -12,6 +12,8 @@ import LoyaltyAndRewardsService.entity.Reward;
 
 /**
  * Loads rewards from and saves rewards to the application's CSV data file.
+ *
+ * @author Chee Weng
  */
 public class RewardDao {
     private static final String FILE_NAME = "LoyaltyAndRewardsService/src/reward.csv";
