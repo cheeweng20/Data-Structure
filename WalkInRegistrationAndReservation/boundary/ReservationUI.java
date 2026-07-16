@@ -8,6 +8,7 @@ import WalkInRegistrationAndReservation.entity.ReservationStatus;
 import WalkInRegistrationAndReservation.entity.Room;
 import WalkInRegistrationAndReservation.utility.InputValidator;
 import adt.ListInterface;
+import adt.ArrayList;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
@@ -52,6 +53,9 @@ public class ReservationUI {
                 case "5":
                     displayReservations(reservationManager.getReservations());
                     break;
+                case "6":
+                    displayReportMenu();
+                    break;
                 case "0":
                     exit = true;
                     break;
@@ -68,11 +72,12 @@ public class ReservationUI {
         System.out.println("3. Search Reservation");
         System.out.println("4. Cancel Reservation");
         System.out.println("5. View All Reservations");
+        System.out.println("6. View Report");
         System.out.println("0. Back");
         System.out.print("Select an option: ");
     }
 
-    //check in (user booking before)
+    // check in (user booking before)
     private void checkInStandardReservation() {
         System.out.println("\n--- Check-In Standard Reservation ---");
         String searchValue = promptRequiredText("Enter reservation ID / IC / Passport / Guest Name: ");
@@ -83,23 +88,23 @@ public class ReservationUI {
             return;
         }
 
-        if (reservation.getBookingType() != BookingType.STANDARD) {  //check the book type 
+        if (reservation.getBookingType() != BookingType.STANDARD) { // check the book type
             System.out.println("This is not a standard reservation.");
             return;
         }
 
-        if (reservation.getStatus() != ReservationStatus.CONFIRMED) {  //check status
+        if (reservation.getStatus() != ReservationStatus.CONFIRMED) { // check status
             System.out.println("Only confirmed reservations can be checked in.");
             return;
         }
 
-        if (reservation.getCheckInDate().isAfter(LocalDate.now())) {  //check the booking date n checkin date
+        if (reservation.getCheckInDate().isAfter(LocalDate.now())) { // check the booking date n checkin date
             System.out.println("Check-in date is " + reservation.getCheckInDate()
                     + ". Guest cannot check in yet.");
             return;
         }
 
-        displayReservationDetails(reservation);  //make confirmation
+        displayReservationDetails(reservation); // make confirmation
 
         if (!confirmYes("Confirm guest check-in? (Y/N): ")) {
             System.out.println("Check-in cancelled.");
@@ -110,11 +115,11 @@ public class ReservationUI {
             System.out.println("Check-in successful.");
             displayReservationDetails(reservationManager.findReservation(searchValue));
         } else {
-            System.out.println("Check-in failed.");  //not found
+            System.out.println("Check-in failed."); // not found
         }
     }
 
-    //register for walk-in
+    // register for walk-in
     private void createWalkInRegistration() {
         System.out.println("\n--- Walk-In Registration ---");
         Guest guest = inputGuest();
@@ -286,7 +291,7 @@ public class ReservationUI {
         return confirmation.equalsIgnoreCase("Y");
     }
 
-    //search reserve
+    // search reserve
     private void searchReservation() {
         System.out.print("Enter reservation ID / IC / Passport / Guest Name: ");
         String searchValue = scanner.nextLine().trim();
@@ -299,7 +304,7 @@ public class ReservationUI {
         }
     }
 
-    //cancel reserve
+    // cancel reserve
     private void cancelReservation() {
         System.out.print("Enter confirmation number to cancel: ");
         String confirmationNumber = scanner.nextLine().trim();
@@ -326,6 +331,156 @@ public class ReservationUI {
             System.out.println("Reservation cancelled successfully.");
         } else {
             System.out.println("Reservation cancellation failed.");
+        }
+    }
+
+    // daily report print
+    private void displayDailyCheckInReport() {
+
+        LocalDate reportDate = promptDate("Enter report date (yyyy-mm-dd): ");
+        System.out.println("\n-- Daily Check In report:" + reportDate);
+
+        ListInterface<Reservation> reservations = reservationManager.getReservations(); // get all reservation records
+        ListInterface<Reservation> reportReservations = new ArrayList<>(); // store matched report records only
+        for (int i = 1; i <= reservations.getNumberOfEntries(); i++) {
+            Reservation reservation = reservations.getEntry(i); // get one reservation from the list
+            if (reservation.getStatus() == ReservationStatus.CHECKED_IN
+                    && reservation.getCheckInDate().equals(reportDate)) {
+                reportReservations.add(reservation);
+            }
+        }
+
+        sortReservationsByBookingDateTime(reportReservations); // sort report by booking date and time
+        printReportHeader();
+
+        for (int i = 1; i <= reportReservations.getNumberOfEntries(); i++) {
+            printReportLine(reportReservations.getEntry(i)); // display each sorted reservation
+        }
+        printReportBorder(); // print bottom table line
+
+        System.out.println("Total checked-in reservations for " + reportDate + ": "
+                + reportReservations.getNumberOfEntries());
+    }
+
+    private void displayRoomOccupancyReport() {
+        System.out.println("\n--- Room Occupancy Report ---");
+
+        ListInterface<Reservation> reservations = reservationManager.getReservations(); // get all reservation records
+        ListInterface<Reservation> reportReservations = new ArrayList<>(); // store assigned room records only
+        for (int i = 1; i <= reservations.getNumberOfEntries(); i++) {
+            Reservation reservation = reservations.getEntry(i); // get one reservation from the list
+            if (reservation.getAssignedRoom() != null && reservation.getStatus() != ReservationStatus.CANCELLED) {
+                reportReservations.add(reservation);
+
+            }
+        }
+
+        sortReservationsByRoomNumber(reportReservations); // sort report by room number
+        printReportHeader();
+
+        for (int i = 1; i <= reportReservations.getNumberOfEntries(); i++) {
+            printReportLine(reportReservations.getEntry(i));
+        }
+        printReportBorder(); // print bottom table line
+
+        System.out.println("\n Total occupied/assigned reservation:" + reportReservations.getNumberOfEntries()); // print
+                                                                                                            // total
+                                                                                                            // assigned
+                                                                                                            // records
+
+    }
+
+    // for opt 1 (checkin report)
+    private void sortReservationsByBookingDateTime(ListInterface<Reservation> reservations) {
+        for (int i = 1; i < reservations.getNumberOfEntries(); i++) {
+            for (int j = 1; j <= reservations.getNumberOfEntries() - i; j++) {
+                Reservation currentReservation = reservations.getEntry(j); // get current reservation
+                Reservation nextReservation = reservations.getEntry(j + 1); // get next reservation
+
+                if (currentReservation.getBookingDateTime().isAfter(nextReservation.getBookingDateTime())) {
+                    reservations.replace(j, nextReservation); // move earlier booking to front
+                    reservations.replace(j + 1, currentReservation);
+                }
+            }
+        }
+    }
+
+    // for opt2 (assignedroom)
+    private void sortReservationsByRoomNumber(ListInterface<Reservation> reservations) {
+        for (int i = 1; i < reservations.getNumberOfEntries(); i++) {
+            for (int j = 1; j <= reservations.getNumberOfEntries() - i; j++) {
+                Reservation currentReservation = reservations.getEntry(j); // get current reservation
+                Reservation nextReservation = reservations.getEntry(j + 1); // get next reservation
+
+                String currentRoomNumber = currentReservation.getAssignedRoom().getRoomNumber(); // get current room
+                                                                                                 // number
+                String nextRoomNumber = nextReservation.getAssignedRoom().getRoomNumber(); // get next room number
+
+                if (currentRoomNumber.compareToIgnoreCase(nextRoomNumber) > 0) {
+                    reservations.replace(j, nextReservation); // move smaller room number to front
+                    reservations.replace(j + 1, currentReservation);
+                }
+            }
+        }
+    }
+
+    private void printReportHeader() {
+        printReportBorder(); // print top table line
+        System.out.printf("| %-12s | %-18s | %-12s | %-15s | %-8s | %-12s | %-12s | %-12s |%n",
+                "Res ID", "Guest Name", "Room", "Room Type", "Guests",
+                "Check-In", "Check-Out", "Status"); 
+        printReportBorder(); 
+
+    }
+
+    private void printReportLine(Reservation reservation) {
+        Room room = reservation.getAssignedRoom(); // get assigned room
+        String roomNumber = room == null ? "-" : room.getRoomNumber(); // get room number
+        String roomType = room == null ? "-" : room.getRoomType(); // get room type
+
+        System.out.printf("| %-12s | %-18s | %-12s | %-15s | %-8d | %-12s | %-12s | %-12s |%n",
+                reservation.getConfirmationNumber(),
+                reservation.getGuest().getFullName(),
+                roomNumber,
+                roomType,
+                reservation.getNumberOfGuests(),
+                reservation.getCheckInDate(),
+                reservation.getCheckOutDate(),
+                reservation.getStatus()); // print one report record
+
+    }
+
+    private void printReportBorder() {
+        System.out.println("+--------------+--------------------+--------------+-----------------+----------+--------------+--------------+--------------+");
+    }
+
+    // ------------------------------------------------------------------------------------
+    // Display reservation report
+    private void displayReportMenu() {
+        boolean back = false;
+
+        while (!back) {
+            System.out.println("\n--- Reservation Reports ---");
+            System.out.println("1. Daily Check-In Report");
+            System.out.println("2. Room Occupancy Report");
+            System.out.println("0. Back");
+            System.out.print("Select an option: ");
+            String choice = scanner.nextLine().trim();
+
+            switch (choice) {
+
+                case "1":
+                    displayDailyCheckInReport();
+                    break;
+                case "2":
+                    displayRoomOccupancyReport();
+                    break;
+                case "0":
+                    back = true;
+                    break;
+                default:
+                    System.out.println("Invalid option. Please try again");
+            }
         }
     }
 
