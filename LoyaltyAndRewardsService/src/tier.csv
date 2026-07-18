@@ -1,5 +1,7 @@
 TierId,TierLevel,MinPoint,MaxPoint
 T001,GOLD,500,700
 T002,Sliver,200,499
-T003,Classic,0,199
-T004,Platinum,701,0
+T003,Classic,0,700
+T004,Platinum,701,999
+T005,Ultra,1000,1199
+T006,Super Ultra,1200,0

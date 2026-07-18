@@ -1,6 +1,7 @@
 package LoyaltyAndRewardsService.control;
 
 import LoyaltyAndRewardsService.entity.Reward;
+import LoyaltyAndRewardsService.utility.MessageUI;
 import adt.LinkedList;
 
 /**
@@ -67,12 +68,21 @@ public class RewardControl {
     }
 
     public void displayAllRewards() {
-        System.out.printf("%-12s %-30s %-15s%n", "Reward Id", "Reward Name", "Points Required");
+        if (rewardList.isEmpty()) {
+            MessageUI.displayInfo("No reward records found.");
+            return;
+        }
+
+        String border = "+------------+--------------------------------+-----------------+";
+        System.out.println(border);
+        System.out.printf("| %-10s | %-30s | %15s |%n", "Reward ID", "Reward Name", "Points Required");
+        System.out.println(border);
         for (int i = 1; i <= rewardList.size(); i++) {
             Reward reward = rewardList.getEntry(i);
-            System.out.printf("%-12s %-30s %-15d%n", reward.getRewardId(), reward.getRewardName(),
+            System.out.printf("| %-10.10s | %-30.30s | %15d |%n", reward.getRewardId(), reward.getRewardName(),
                     reward.getPointRequired());
         }
+        System.out.println(border);
     }
 
     public String generateRewardId() {

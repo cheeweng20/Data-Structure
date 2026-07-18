@@ -5,6 +5,7 @@ import adt.LinkedList;
 
 import LoyaltyAndRewardsService.entity.Member;
 import LoyaltyAndRewardsService.entity.Tier;
+import LoyaltyAndRewardsService.utility.MessageUI;
 
 /**
  * @author Chee Weng
@@ -83,6 +84,10 @@ public class MemberControl {
             return -1;
         }
 
+        if (pointRedeem < 0 || member.getPoint() < pointRedeem) {
+            return -1;
+        }
+
         int newPoint = member.getPoint() - pointRedeem;
         member.setPoint(newPoint);
 
@@ -93,13 +98,23 @@ public class MemberControl {
     }
 
     public void displayAllMember() {
-        System.out.printf("%-10s %-15s %-8s %-10s\n", "Member Id", "Name", "Point", "Tier Level");
+        if (memberList.isEmpty()) {
+            MessageUI.displayInfo("No member records found.");
+            return;
+        }
+
+        String border = "+------------+----------------------+----------+----------------+";
+        System.out.println(border);
+        System.out.printf("| %-10s | %-20s | %8s | %-14s |%n", "Member ID", "Name", "Points", "Tier");
+        System.out.println(border);
         for (int i = 1; i <= memberList.size(); i++) {
             Member member = memberList.getEntry(i);
             Tier tier = tierControl.getExistTierById(member.getTierId());
-            System.out.printf("%-10s %-15s %-8d %-10s\n", member.getMemberId(), member.getName(), member.getPoint(),
-                    tier.getTierLevel());
+            String tierName = tier == null ? "Unknown" : tier.getTierLevel();
+            System.out.printf("| %-10.10s | %-20.20s | %8d | %-14.14s |%n", member.getMemberId(), member.getName(),
+                    member.getPoint(), tierName);
         }
+        System.out.println(border);
     }
 
     // Helper Function

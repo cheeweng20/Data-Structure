@@ -5,8 +5,9 @@ import java.util.Scanner;
 import LoyaltyAndRewardsService.control.RewardControl;
 import LoyaltyAndRewardsService.dao.RewardDao;
 import LoyaltyAndRewardsService.entity.Reward;
+import LoyaltyAndRewardsService.utility.MessageUI;
+import LoyaltyAndRewardsService.utility.Verification;
 import common.src.InputHelper;
-import common.src.Logo;
 
 /**
  * Console interface for reward CRUD operations.
@@ -18,7 +19,6 @@ public class RewardUI {
         boolean exit = false;
 
         while (!exit) {
-            Logo.displayLoyaltyAndRewardsService();
             System.out.println("\r\n" +
                     ".-----.----------------------.\r\n" +
                     "| No. |       Function       |\r\n" +
@@ -52,7 +52,7 @@ public class RewardUI {
                     exit = true;
                     break;
                 default:
-                    System.out.println("Invalid option.");
+                    MessageUI.displayError("Invalid option.");
                     break;
             }
         }
@@ -60,17 +60,20 @@ public class RewardUI {
 
     private static void addReward(Scanner scanner, RewardControl rewardList) {
         String rewardName = InputHelper.inputString(scanner, "Enter reward name: ");
-        int pointRequired = inputNonNegativePoint(scanner, "Enter points required to redeem: ");
+        int pointRequired = InputHelper.inputInt(scanner, "Enter points required to redeem: ");
 
+        if (!Verification.verifyRewardName(rewardName) || !Verification.verifyRewardPoints(pointRequired)) {
+            return;
+        }
         String rewardId = rewardList.generateRewardId();
         rewardList.addReward(new Reward(rewardId, rewardName, pointRequired));
         RewardDao.saveToRewardFile(rewardList);
-        System.out.println("Reward " + rewardId + " added successfully.");
+        MessageUI.displaySuccess("Reward " + rewardId + " added successfully.");
     }
 
     private static void removeReward(Scanner scanner, RewardControl rewardList) {
         if (rewardList.isEmpty()) {
-            System.out.println("No reward record found.");
+            MessageUI.displayInfo("No reward records found.");
             return;
         }
 
@@ -79,41 +82,33 @@ public class RewardUI {
 
         if (rewardList.deleteRewardById(rewardId)) {
             RewardDao.saveToRewardFile(rewardList);
-            System.out.println("Reward deleted successfully.");
+            MessageUI.displaySuccess("Reward deleted successfully.");
         } else {
-            System.out.println("Reward not found.");
+            MessageUI.displayError("Reward not found.");
         }
     }
 
     private static void updateReward(Scanner scanner, RewardControl rewardList) {
         if (rewardList.isEmpty()) {
-            System.out.println("No reward record found.");
+            MessageUI.displayInfo("No reward records found.");
             return;
         }
 
         rewardList.displayAllRewards();
         String rewardId = InputHelper.inputString(scanner, "Enter reward ID to update: ");
         if (!rewardList.findReward(rewardId)) {
-            System.out.println("Reward not found.");
+            MessageUI.displayError("Reward not found.");
             return;
         }
 
         String rewardName = InputHelper.inputString(scanner, "Enter new reward name: ");
-        int pointRequired = inputNonNegativePoint(scanner, "Enter new points required to redeem: ");
+        int pointRequired = InputHelper.inputInt(scanner, "Enter new points required to redeem: ");
+        if (!Verification.verifyRewardName(rewardName) || !Verification.verifyRewardPoints(pointRequired)) {
+            return;
+        }
         rewardList.updateRewardById(rewardId, rewardName, pointRequired);
         RewardDao.saveToRewardFile(rewardList);
-        System.out.println("Reward updated successfully.");
+        MessageUI.displaySuccess("Reward updated successfully.");
     }
 
-    private static int inputNonNegativePoint(Scanner scanner, String prompt) {
-        int pointRequired;
-        do {
-            pointRequired = InputHelper.inputInt(scanner, prompt);
-            if (pointRequired < 0) {
-                System.out.println("Points required cannot be negative.");
-            }
-        } while (pointRequired < 0);
-        scanner.nextLine();
-        return pointRequired;
-    }
 }

@@ -10,8 +10,9 @@ import LoyaltyAndRewardsService.control.TransactionControl;
 import LoyaltyAndRewardsService.dao.MemberDao;
 import LoyaltyAndRewardsService.dao.PointTransactionDao;
 import LoyaltyAndRewardsService.entity.Member;
+import LoyaltyAndRewardsService.utility.MessageUI;
+import LoyaltyAndRewardsService.utility.Verification;
 import common.src.InputHelper;
-import common.src.Logo;
 
 /**
  * @author Chee Weng
@@ -23,7 +24,6 @@ public class MemberUI {
         boolean exit = false;
 
         while (!exit) {
-            Logo.displayLoyaltyAndRewardsService();
 
             System.out.println("\r\n" + //
                     ".-----.----------------------.\r\n" + //
@@ -55,6 +55,10 @@ public class MemberUI {
 
                     int point = InputHelper.inputInt(scanner, "Enter Current Member Point: ");
 
+                    if (!Verification.verifyMemberPoint(point) || !Verification.verifyMemberName(name, memberLinkedList)) {
+                        break;
+                    }
+
                     String newMemberId = memberLinkedList.generateMemberId();
                     scanner.nextLine();
 
@@ -62,14 +66,14 @@ public class MemberUI {
                     Member member = new Member(newMemberId, name, point, tierId);
                     memberLinkedList.addMember(member);
                     MemberDao.saveToMemberFile(memberLinkedList);
-                    System.out.println("Member Added Successful");
+                    MessageUI.displaySuccess("Member added successfully.");
 
                     break;
                 }
 
                 case 2: {
                     if (memberLinkedList.size() < 1) {
-                        System.out.println("Not Member Record");
+                        MessageUI.displayInfo("No member records found.");
                         break;
                     }
 
@@ -81,9 +85,9 @@ public class MemberUI {
                     if (memberLinkedList.findMember(memberId)) {
                         memberLinkedList.deleteMemberById(memberId);
                         MemberDao.saveToMemberFile(memberLinkedList);
-                        System.out.println("Delete member successfully");
+                        MessageUI.displaySuccess("Member deleted successfully.");
                     } else {
-                        System.out.println("Member Not Found");
+                        MessageUI.displayError("Member not found.");
                     }
                     break;
                 }
@@ -91,7 +95,7 @@ public class MemberUI {
                 case 3: {
                     scanner.nextLine();
                     if (memberLinkedList.size() < 1) {
-                        System.out.println("Not Member Record");
+                        MessageUI.displayInfo("No member records found.");
                         break;
                     }
 
@@ -105,12 +109,16 @@ public class MemberUI {
 
                         int newPoint = InputHelper.inputInt(scanner, "Enter Member New Point:");
 
+                        if (!Verification.verifyMemberPoint(newPoint) || !Verification.verifyMemberName(newName, memberLinkedList)) {
+                            break;
+                        }
+
                         memberLinkedList.updateMemberById(memberId, newName, newPoint);
                         MemberDao.saveToMemberFile(memberLinkedList);
-                        System.out.println("Member Updated Successful");
+                        MessageUI.displaySuccess("Member updated successfully.");
 
                     } else {
-                        System.out.print("Member Not Found");
+                        MessageUI.displayError("Member not found.");
                     }
 
                     break;
@@ -118,7 +126,7 @@ public class MemberUI {
 
                 case 4: {
                     if (memberLinkedList.size() < 1) {
-                        System.out.println("Not Member Record");
+                        MessageUI.displayInfo("No member records found.");
                         break;
                     }
                     scanner.nextLine();
@@ -127,28 +135,35 @@ public class MemberUI {
 
                     if (memberLinkedList.findMember(memberId)) {
                         int addPoint = InputHelper.inputInt(scanner, "Please Enter a Added Point: ");
+                        if (addPoint <= 0) {
+                            MessageUI.displayError("Points to add must be greater than zero.");
+                            break;
+                        }
 
+                        String previousTierId = memberLinkedList.getMemberById(memberId).getTierId();
                         int newPoint = memberLinkedList.addMemberPoint(memberId, addPoint);
-                        transactionList.addTransaction(memberId, newPoint);
+                        transactionList.addTransaction(memberId, addPoint);
                         MemberDao.saveToMemberFile(memberLinkedList);
                         PointTransactionDao.saveToTransactionFile(transactionList);
 
-                        System.out.println("New point " + Integer.toString(addPoint) + " added successful");
-                        System.out.println("Current point : " + Integer.toString(newPoint));
+                        MessageUI.displaySuccess(addPoint + " points added successfully.");
+                        MessageUI.displayInfo("Current points: " + newPoint);
+                        displayTierChange(memberLinkedList, tierLinkedList, memberId, previousTierId);
                     } else {
-                        System.out.println("Member Not Found");
+                        MessageUI.displayError("Member not found.");
                     }
                     break;
                 }
 
                 case 5: {
                     if (memberLinkedList.size() < 1) {
-                        System.out.println("Not Member Record");
+                        MessageUI.displayInfo("No member records found.");
                         break;
                     }
                     scanner.nextLine();
 
-                    RequestUI.requestOperator(scanner, requestControl, memberLinkedList, rewardControl);
+                    RequestUI.requestOperator(scanner, requestControl, memberLinkedList, rewardControl,
+                            tierLinkedList);
 
                     break;
                 }
@@ -164,9 +179,9 @@ public class MemberUI {
 
                     if (memberLinkedList.findMember(memberId)) {
                         String promotion = memberLinkedList.generatePersonalizedPromotion(memberId);
-                        System.out.println(promotion);
+                        MessageUI.displayInfo(promotion);
                     } else {
-                        System.out.println("Member Not Found");
+                        MessageUI.displayError("Member not found.");
                     }
                     break;
                 }
@@ -175,8 +190,18 @@ public class MemberUI {
                     exit = true;
                     break;
                 default:
+                    MessageUI.displayError("Invalid option.");
                     break;
             }
+        }
+    }
+
+    private static void displayTierChange(MemberControl memberControl, TierControl tierControl, String memberId,
+            String previousTierId) {
+        String newTierId = memberControl.getMemberById(memberId).getTierId();
+        if (previousTierId != null && !previousTierId.equalsIgnoreCase(newTierId)) {
+            MessageUI.displayInfo("Tier changed: " + tierControl.getTierNameById(previousTierId)
+                    + " -> " + tierControl.getTierNameById(newTierId));
         }
     }
 }

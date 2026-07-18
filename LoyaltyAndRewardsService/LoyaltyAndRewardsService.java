@@ -65,7 +65,7 @@ public class LoyaltyAndRewardsService {
                     RewardUI.rewardOperator(input, rewardList);
                     break;
                 case 4:
-                    ReportUI.reportOperator(input, memberList, tierLevelList);
+                    ReportUI.reportOperator(input, memberList, tierLevelList, transactionList, requestControl);
                     break;
                 case 0:
                     exit = true;

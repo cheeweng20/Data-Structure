@@ -5,6 +5,8 @@ import java.util.Scanner;
 import LoyaltyAndRewardsService.control.TierControl;
 import LoyaltyAndRewardsService.dao.TierDao;
 import LoyaltyAndRewardsService.entity.Tier;
+import LoyaltyAndRewardsService.utility.MessageUI;
+import LoyaltyAndRewardsService.utility.Verification;
 import common.src.*;
 
 /**
@@ -15,7 +17,6 @@ public class TierUI {
         boolean exit = false;
 
         while (!exit) {
-            Logo.displayLoyaltyAndRewardsService();
 
             System.out.println("\r\n" + //
                     ".-----.------------------------.\r\n" + //
@@ -41,17 +42,20 @@ public class TierUI {
                     int minPoint = InputHelper.inputInt(scanner, "Min Point: ");
                     int maxPoint = InputHelper.inputInt(scanner, "Max Point(Enter 0 for highest level): ");
 
+                    if (!Verification.verifyTierName(tierLevel, tierLinkedList) || !Verification.verifyTierPoints(minPoint, maxPoint)) {
+                        break;
+                    }
                     String tierId = tierLinkedList.generateTierId();
                     Tier tier = new Tier(tierId, tierLevel, minPoint, maxPoint);
                     tierLinkedList.addTierLevel(tier);
                     TierDao.saveToTierFile(tierLinkedList);
-                    System.out.println("New Tier Level Added Successful");
+                    MessageUI.displaySuccess("Tier level added successfully.");
                     break;
                 }
                 case 2: {
                     scanner.nextLine();
                     if (tierLinkedList.size() < 1) {
-                        System.out.println("Not Tier Record");
+                        MessageUI.displayInfo("No tier records found.");
                         break;
                     }
 
@@ -62,16 +66,16 @@ public class TierUI {
                     if (tierLinkedList.findTier(tierId)) {
                         tierLinkedList.removeTierLevel(tierId);
                         TierDao.saveToTierFile(tierLinkedList);
-                        System.out.println("Delete Tier Level successfully");
+                        MessageUI.displaySuccess("Tier level deleted successfully.");
                     } else {
-                        System.out.println("Tier Level Not Found");
+                        MessageUI.displayError("Tier level not found.");
                     }
                     break;
                 }
                 case 3: {
                     scanner.nextLine();
                     if (tierLinkedList.size() < 1) {
-                        System.out.println("Not Tier Record");
+                        MessageUI.displayInfo("No tier records found.");
                         break;
                     }
 
@@ -84,12 +88,16 @@ public class TierUI {
                         int minPoint = InputHelper.inputInt(scanner, "Enter New Min Point:");
                         int maxPoint = InputHelper.inputInt(scanner, "Enter New Max Point:");
 
+                        if (!Verification.verifyTierPoints(minPoint, maxPoint) || !Verification.verifyTierName(newName, tierLinkedList)) {
+                            break;
+                        }
+
                         tierLinkedList.updateTierLevelById(tierId, newName, minPoint, maxPoint);
                         TierDao.saveToTierFile(tierLinkedList);
-                        System.out.println("Update Tier Level Successful");
+                        MessageUI.displaySuccess("Tier level updated successfully.");
 
                     } else {
-                        System.out.print("Tier Level Not Found");
+                        MessageUI.displayError("Tier level not found.");
                     }
 
                     break;
@@ -102,6 +110,7 @@ public class TierUI {
                     exit = true;
                     break;
                 default:
+                    MessageUI.displayError("Invalid option.");
                     break;
             }
         }
