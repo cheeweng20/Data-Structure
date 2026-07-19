@@ -1,6 +1,9 @@
 package WalkInRegistrationAndReservation.utility;
 
 // Displays messages shared by the reservation boundary classes.
+/**
+ * @author Wan Yin
+ */
 public final class MessageUI {
 
     private MessageUI() {

@@ -4,6 +4,9 @@ import java.io.Serializable;
 import java.util.Objects;
 
 // Stores room details used during reservation and room assignment.
+/**
+ * @author Wan Yin
+ */
 public class Room implements Serializable {
 
     private static final long serialVersionUID = 1L;

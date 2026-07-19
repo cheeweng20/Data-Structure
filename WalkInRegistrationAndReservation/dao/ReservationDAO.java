@@ -19,6 +19,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 // Loads and saves reservation records using CSV files.
+/**
+ * @author Wan Yin
+ */
 public class ReservationDAO {
 
     private static final int INITIAL_CAPACITY = 100;
@@ -114,13 +117,16 @@ public class ReservationDAO {
 
         boolean hasCapacityColumn = fields.length >= 19;
         int capacity = hasCapacityColumn && !fields[8].isEmpty()
-                ? Integer.parseInt(fields[8]) : 0;
+                ? Integer.parseInt(fields[8])
+                : 0;
         int priceIndex = hasCapacityColumn ? 9 : 8;
         int statusIndex = hasCapacityColumn ? 10 : 9;
         double price = fields[priceIndex].isEmpty()
-                ? 0.00 : Double.parseDouble(fields[priceIndex]);
+                ? 0.00
+                : Double.parseDouble(fields[priceIndex]);
         RoomStatus roomStatus = fields[statusIndex].isEmpty()
-                ? RoomStatus.RESERVED : RoomStatus.valueOf(fields[statusIndex]);
+                ? RoomStatus.RESERVED
+                : RoomStatus.valueOf(fields[statusIndex]);
 
         return new Room(fields[6], fields[7], capacity, price, roomStatus);
     }

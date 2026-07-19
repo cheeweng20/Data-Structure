@@ -15,6 +15,7 @@ import java.time.LocalDate;
 /**
  * Coordinates reservation check-in, walk-in registration and room assignment.
  *
+ * @author Wan Yin
  */
 public class ReservationManager {
 
@@ -51,7 +52,7 @@ public class ReservationManager {
         return reservation;
     }
 
-    //create register(walk-in)
+    // create register(walk-in)
     public Reservation createWalkInRegistration(Guest guest, LocalDate checkOutDate, int numberOfGuests,
             String paymentMethod) {
         Room room = findAvailableRoomForGuests(numberOfGuests);
@@ -75,9 +76,9 @@ public class ReservationManager {
         return reservation;
     }
 
-    //help check in (client already book before)
-    public boolean checkInStandardReservation(String searchValue) { 
-        Reservation reservation = findReservation(searchValue);   // find reservation first
+    // help check in (client already book before)
+    public boolean checkInStandardReservation(String searchValue) {
+        Reservation reservation = findReservation(searchValue); // find reservation first
 
         if (reservation == null
                 || reservation.getBookingType() != BookingType.STANDARD
@@ -101,7 +102,7 @@ public class ReservationManager {
         }
 
         reservation.setStatus(ReservationStatus.CHECKED_IN);
-        reservation.setPaymentStatus("PAID");  //duble confirm 
+        reservation.setPaymentStatus("PAID"); // duble confirm
         saveData();
         return true;
     }
@@ -161,13 +162,14 @@ public class ReservationManager {
         if (reservation == null || reservation.getStatus() == ReservationStatus.CHECKED_IN) {
             return false;
         } else {
-            reservation.setStatus(ReservationStatus.CANCELLED);  //here can cancel
+            reservation.setStatus(ReservationStatus.CANCELLED); // here can cancel
 
             Room assignedRoom = reservation.getAssignedRoom();
             if (assignedRoom != null) {
                 Room savedRoom = findRoomByNumber(assignedRoom.getRoomNumber());
                 if (savedRoom != null) {
-                    savedRoom.setStatus(RoomStatus.AVAILABLE);  //same as the upate occcupied (update the assiged and room list)
+                    savedRoom.setStatus(RoomStatus.AVAILABLE); // same as the upate occcupied (update the assiged and
+                                                               // room list)
                     reservation.setAssignedRoom(savedRoom);
                 } else {
                     assignedRoom.setStatus(RoomStatus.AVAILABLE);

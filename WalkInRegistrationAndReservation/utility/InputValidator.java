@@ -2,6 +2,9 @@ package WalkInRegistrationAndReservation.utility;
 
 import java.time.LocalDate;
 
+/**
+ * @author Wan Yin
+ */
 
 public final class InputValidator {
 

@@ -3,6 +3,9 @@ package WalkInRegistrationAndReservation.utility;
 import java.security.SecureRandom;
 
 //Generates eight-digit reservation confirmation numbers.
+/**
+ * @author Wan Yin
+ */
 
 public final class ConfirmationNumberGenerator {
 

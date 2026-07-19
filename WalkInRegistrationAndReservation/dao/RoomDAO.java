@@ -13,6 +13,9 @@ import java.io.IOException;
 import java.io.PrintWriter;
 
 // Loads and saves room records using CSV files.
+/**
+ * @author Wan Yin
+ */
 public class RoomDAO {
 
     private static final int INITIAL_CAPACITY = 100;

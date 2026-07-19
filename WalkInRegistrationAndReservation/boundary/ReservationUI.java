@@ -14,6 +14,9 @@ import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.Scanner;
 
+/**
+ * @author Wan Yin
+ */
 public class ReservationUI {
 
     private static final int MAX_GUESTS_PER_ROOM = 6;
@@ -384,9 +387,9 @@ public class ReservationUI {
         printReportBorder(); // print bottom table line
 
         System.out.println("\n Total occupied/assigned reservation:" + reportReservations.getNumberOfEntries()); // print
-                                                                                                            // total
-                                                                                                            // assigned
-                                                                                                            // records
+        // total
+        // assigned
+        // records
 
     }
 
@@ -428,8 +431,8 @@ public class ReservationUI {
         printReportBorder(); // print top table line
         System.out.printf("| %-12s | %-18s | %-12s | %-15s | %-8s | %-12s | %-12s | %-12s |%n",
                 "Res ID", "Guest Name", "Room", "Room Type", "Guests",
-                "Check-In", "Check-Out", "Status"); 
-        printReportBorder(); 
+                "Check-In", "Check-Out", "Status");
+        printReportBorder();
 
     }
 
@@ -451,7 +454,8 @@ public class ReservationUI {
     }
 
     private void printReportBorder() {
-        System.out.println("+--------------+--------------------+--------------+-----------------+----------+--------------+--------------+--------------+");
+        System.out.println(
+                "+--------------+--------------------+--------------+-----------------+----------+--------------+--------------+--------------+");
     }
 
     // ------------------------------------------------------------------------------------

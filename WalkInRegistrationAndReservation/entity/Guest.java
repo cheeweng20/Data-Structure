@@ -4,6 +4,9 @@ import java.io.Serializable;
 import java.util.Objects;
 
 // store personal data of the guest who made the reservation
+/**
+ * @author Wan Yin
+ */
 
 public class Guest implements Serializable {
 
@@ -69,7 +72,7 @@ public class Guest implements Serializable {
     }
 
     @Override
-    public int hashCode() {  // hash: number use to compare the object
+    public int hashCode() { // hash: number use to compare the object
         return Objects.hash(guestId);
     }
 

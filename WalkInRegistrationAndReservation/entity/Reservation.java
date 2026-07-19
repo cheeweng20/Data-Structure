@@ -6,6 +6,9 @@ import java.time.LocalDateTime;
 import java.util.Objects;
 
 //Stores standard or walk-in reservation and its room assignment.
+/**
+ * @author Wan Yin
+ */
 public class Reservation implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -28,14 +31,16 @@ public class Reservation implements Serializable {
         status = ReservationStatus.PENDING;
     }
 
-    public Reservation(String confirmationNumber, Guest guest,String requestedRoomType, LocalDate checkInDate, LocalDate checkOutDate, int numberOfGuests, BookingType bookingType) {
+    public Reservation(String confirmationNumber, Guest guest, String requestedRoomType, LocalDate checkInDate,
+            LocalDate checkOutDate, int numberOfGuests, BookingType bookingType) {
         this(confirmationNumber, guest, requestedRoomType, null, checkInDate,
                 checkOutDate, LocalDateTime.now(), numberOfGuests, bookingType,
                 "", "UNPAID", ReservationStatus.PENDING);
     }
 
-    public Reservation(String confirmationNumber, Guest guest, String requestedRoomType, Room assignedRoom, LocalDate checkInDate,LocalDate checkOutDate, 
-        LocalDateTime bookingDateTime, int numberOfGuests, BookingType bookingType,ReservationStatus status) {
+    public Reservation(String confirmationNumber, Guest guest, String requestedRoomType, Room assignedRoom,
+            LocalDate checkInDate, LocalDate checkOutDate,
+            LocalDateTime bookingDateTime, int numberOfGuests, BookingType bookingType, ReservationStatus status) {
         this(confirmationNumber, guest, requestedRoomType, assignedRoom,
                 checkInDate, checkOutDate, bookingDateTime, numberOfGuests,
                 bookingType, "", "UNPAID", status);
@@ -176,12 +181,13 @@ public class Reservation implements Serializable {
     @Override
     public String toString() {
         String roomNumber = assignedRoom == null
-                ? "Not assigned" : assignedRoom.getRoomNumber();
+                ? "Not assigned"
+                : assignedRoom.getRoomNumber();
         String guestName = guest == null ? "Unknown" : guest.getFullName();
 
         return String.format(
                 "Confirmation: %s | Guest: %s | Room type: %s | Room: %s | "
-                + "Check-in: %s | Check-out: %s | Type: %s | Payment: %s | Status: %s",
+                        + "Check-in: %s | Check-out: %s | Type: %s | Payment: %s | Status: %s",
                 confirmationNumber, guestName, requestedRoomType, roomNumber,
                 checkInDate, checkOutDate, bookingType, paymentStatus, status);
     }
