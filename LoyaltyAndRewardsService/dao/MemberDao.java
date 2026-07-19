@@ -10,6 +10,9 @@ import java.io.PrintWriter;
 import LoyaltyAndRewardsService.control.MemberControl;
 import LoyaltyAndRewardsService.entity.Member;
 
+/**
+ * @author Chee Weng
+ */
 public class MemberDao {
     private static final String FILE_NAME = "LoyaltyAndRewardsService/src/member.csv";
 

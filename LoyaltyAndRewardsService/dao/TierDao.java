@@ -10,6 +10,9 @@ import java.io.PrintWriter;
 import LoyaltyAndRewardsService.control.TierControl;
 import LoyaltyAndRewardsService.entity.Tier;
 
+/**
+ * @author Chee Weng
+ */
 public class TierDao {
     private static final String FILE_NAME = "LoyaltyAndRewardsService/src/tier.csv";
 
@@ -23,10 +26,10 @@ public class TierDao {
 
                 String tierId = fields[0];
                 String tierLevel = fields[1];
-                int maxPoint = Integer.parseInt(fields[2]);
-                int minPoint = Integer.parseInt(fields[3]);
+                int minPoint = Integer.parseInt(fields[2]);
+                int maxPoint = Integer.parseInt(fields[3]);
 
-                tierLinkedList.addTierLevel(new Tier(tierId, tierLevel, maxPoint, minPoint));
+                tierLinkedList.addTierLevel(new Tier(tierId, tierLevel, minPoint, maxPoint));
             }
         } catch (FileNotFoundException e) {
             System.out.println("No existing tier data found, starting fresh.");

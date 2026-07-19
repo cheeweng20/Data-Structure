@@ -2,6 +2,9 @@ package LoyaltyAndRewardsService.entity;
 
 import java.time.LocalDate;
 
+/**
+ * @author Chee Weng
+ */
 public class PointTransaction {
     private String transactionId;
     private String memberId;

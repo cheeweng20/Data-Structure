@@ -4,18 +4,26 @@ import java.util.Scanner;
 
 import LoyaltyAndRewardsService.control.MemberControl;
 import LoyaltyAndRewardsService.control.RequestControl;
+import LoyaltyAndRewardsService.control.RewardControl;
+import LoyaltyAndRewardsService.control.TierControl;
 import LoyaltyAndRewardsService.dao.RequestDao;
+import LoyaltyAndRewardsService.dao.MemberDao;
 import LoyaltyAndRewardsService.entity.RedemptionRequest;
+import LoyaltyAndRewardsService.entity.Reward;
+import LoyaltyAndRewardsService.utility.MessageUI;
 import common.src.*;
 
 
+/**
+ * @author Chee Weng
+ */
 public class RequestUI {
 
-    public static void requestOperator(Scanner scanner, RequestControl requestControl, MemberControl memberControl) {
+    public static void requestOperator(Scanner scanner, RequestControl requestControl, MemberControl memberControl,
+            RewardControl rewardControl, TierControl tierControl) {
         boolean exit = false;
 
         while (!exit) {
-            Logo.displayLoyaltyAndRewardsService();
             System.out.println("\r\n" + //
                     ".-----.---------------------------.\r\n" + //
                     "| No. |         Function          |\r\n" + //
@@ -32,42 +40,61 @@ public class RequestUI {
 
             switch (userEntry) {
                 case 1: {
-                    String memberId = InputHelper.inputString(scanner, "Enter Member ID: ");
-
-                    if (!memberControl.findMember(memberId)) {
-                        System.out.println("Member Not Found");
+                    if (rewardControl.isEmpty()) {
+                        MessageUI.displayInfo("No reward records found. Please create a reward first.");
                         break;
                     }
 
-                    int points = InputHelper.inputInt(scanner, "Enter Points to Redeem: ");
-                    scanner.nextLine();
+                    rewardControl.displayAllRewards();
+                    String rewardId = InputHelper.inputString(scanner, "Enter Reward ID: ");
+                    Reward reward = rewardControl.getRewardById(rewardId);
+                    if (reward == null) {
+                        MessageUI.displayError("Reward not found.");
+                        break;
+                    }
 
-                    boolean success = requestControl.submitRequest(memberId, points);
+                    String memberId = InputHelper.inputString(scanner, "Enter Member ID: ");
+
+                    if (!memberControl.findMember(memberId)) {
+                        MessageUI.displayError("Member not found.");
+                        break;
+                    }
+
+                    boolean success = requestControl.submitRequest(memberId, reward.getPointRequired());
                     if (success) {
                         RequestDao.saveToRequestFile(requestControl);
-                        System.out.println("Request submitted, waiting to be processed.");
+                        MessageUI.displaySuccess("Request for " + reward.getRewardName()
+                                + " submitted and is waiting to be processed.");
                     } else {
-                        System.out.println("Insufficient points, request not accepted.");
+                        MessageUI.displayError("Insufficient available points; request not accepted.");
                     }
                     break;
                 }
 
                 case 2: {
                     if (requestControl.isEmpty()) {
-                        System.out.println("No pending requests.");
+                        MessageUI.displayInfo("No pending requests.");
                         break;
                     }
 
                     RedemptionRequest next = requestControl.peekNextRequest();
-                    System.out.println("Next Request -> Member: " + next.getMemberId()
-                            + ", Points: " + next.getPointsRequested());
+                    displayPendingRequest(next);
 
                     String decision = InputHelper.inputString(scanner, "Approve this request? (Y/N): ");
                     boolean approve = decision.equalsIgnoreCase("Y");
+                    String previousTierId = memberControl.getMemberById(next.getMemberId()).getTierId();
 
                     RedemptionRequest processed = requestControl.processNextRequest(approve);
                     RequestDao.saveToRequestFile(requestControl);
-                    System.out.println("Request " + processed.getStatus());
+                    if (approve) {
+                        MemberDao.saveToMemberFile(memberControl);
+                    }
+                    if ("Approved".equalsIgnoreCase(processed.getStatus())) {
+                        MessageUI.displaySuccess("Request approved.");
+                    } else {
+                        MessageUI.displayInfo("Request " + processed.getStatus() + ".");
+                    }
+                    displayTierChange(memberControl, tierControl, processed, previousTierId);
                     break;
                 }
 
@@ -75,9 +102,33 @@ public class RequestUI {
                     exit = true;
                     break;
                 default:
+                    MessageUI.displayError("Invalid option.");
                     break;
             }
         }
+    }
+
+    private static void displayTierChange(MemberControl memberControl, TierControl tierControl,
+            RedemptionRequest request, String previousTierId) {
+        if (!"Approved".equalsIgnoreCase(request.getStatus())) {
+            return;
+        }
+
+        String newTierId = memberControl.getMemberById(request.getMemberId()).getTierId();
+        if (previousTierId != null && !previousTierId.equalsIgnoreCase(newTierId)) {
+            MessageUI.displayInfo("Tier changed: " + tierControl.getTierNameById(previousTierId)
+                    + " -> " + tierControl.getTierNameById(newTierId));
+        }
+    }
+
+    private static void displayPendingRequest(RedemptionRequest request) {
+        String border = "+------------+------------+------------------+------------+";
+        System.out.println(border);
+        System.out.printf("| %-10s | %-10s | %16s | %-10s |%n", "Request ID", "Member ID", "Points Requested", "Status");
+        System.out.println(border);
+        System.out.printf("| %-10.10s | %-10.10s | %16d | %-10.10s |%n", request.getRequestId(), request.getMemberId(),
+                request.getPointsRequested(), request.getStatus());
+        System.out.println(border);
     }
 
 }

@@ -9,6 +9,9 @@ import java.util.Iterator;
 import LoyaltyAndRewardsService.entity.Member;
 import LoyaltyAndRewardsService.entity.RedemptionRequest;
 
+/**
+ * @author Chee Weng
+ */
 public class RequestControl {
     private LinkedQueue<RedemptionRequest> requestQueue;
     private MemberControl memberControl;
@@ -22,7 +25,12 @@ public class RequestControl {
 
     public boolean submitRequest(String memberId, int pointsRequested) {
         Member currentMember = memberControl.getMemberById(memberId);
-        boolean hasEnoughPoints =  currentMember.getPoint() >= pointsRequested;
+        if (currentMember == null || pointsRequested <= 0) {
+            return false;
+        }
+
+        int availablePoints = currentMember.getPoint() - getPendingPointsForMember(memberId);
+        boolean hasEnoughPoints = availablePoints >= pointsRequested;
 
         if (!hasEnoughPoints) {
             return false;
@@ -44,8 +52,12 @@ public class RequestControl {
         if (request == null) return null;
 
         if (approve) {
-            memberControl.redeemPoint(request.getMemberId(), request.getPointsRequested());
-            request.setStatus("Approved");
+            int newPoint = memberControl.redeemPoint(request.getMemberId(), request.getPointsRequested());
+            if (newPoint >= 0) {
+                request.setStatus("Approved");
+            } else {
+                request.setStatus("Rejected - insufficient points");
+            }
         } else {
             request.setStatus("Rejected");
         }
@@ -63,6 +75,19 @@ public class RequestControl {
 
     public Iterator<RedemptionRequest> getRequestIterator() {
         return requestQueue.getIterator();
+    }
+
+    private int getPendingPointsForMember(String memberId) {
+        int pendingPoints = 0;
+        Iterator<RedemptionRequest> iterator = requestQueue.getIterator();
+        while (iterator.hasNext()) {
+            RedemptionRequest request = iterator.next();
+            if (request.getMemberId().equalsIgnoreCase(memberId)
+                    && "Pending".equalsIgnoreCase(request.getStatus())) {
+                pendingPoints += request.getPointsRequested();
+            }
+        }
+        return pendingPoints;
     }
 
     private String generateRequestId() {

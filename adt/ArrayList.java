@@ -27,6 +27,7 @@ public class ArrayList<T> implements ListInterface<T>, Serializable {
 
   @Override
   public boolean add(T newEntry) {
+    ensureCapacity();
     array[numberOfEntries] = newEntry;
     numberOfEntries++;
     return true;
@@ -37,6 +38,7 @@ public class ArrayList<T> implements ListInterface<T>, Serializable {
     boolean isSuccessful = true;
 
     if ((newPosition >= 1) && (newPosition <= numberOfEntries + 1)) {
+        ensureCapacity();
         makeRoom(newPosition);
         array[newPosition - 1] = newEntry;
         numberOfEntries++;
@@ -117,6 +119,17 @@ public class ArrayList<T> implements ListInterface<T>, Serializable {
   @Override
   public boolean isFull() {
     return numberOfEntries == array.length;
+  }
+
+  private void ensureCapacity() {
+    if (isFull()) {
+      T[] oldArray = array;
+      array = (T[]) new Object[oldArray.length * 2];
+
+      for (int i = 0; i < oldArray.length; i++) {
+        array[i] = oldArray[i];
+      }
+    }
   }
 
   @Override

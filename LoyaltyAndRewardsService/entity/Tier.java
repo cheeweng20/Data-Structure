@@ -1,6 +1,9 @@
 package LoyaltyAndRewardsService.entity;
 
 
+/**
+ * @author Chee Weng
+ */
 public class Tier {
     private String tierId;
     private String tierLevel;

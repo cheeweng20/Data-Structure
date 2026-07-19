@@ -6,6 +6,9 @@ import LoyaltyAndRewardsService.entity.PointTransaction;
 import adt.ArrayList;
 import adt.LinkedList;
 
+/**
+ * @author Chee Weng
+ */
 public class TransactionControl {
     private LinkedList<PointTransaction> transactionList;
 
