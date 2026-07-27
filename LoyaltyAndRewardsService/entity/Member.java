@@ -3,7 +3,7 @@ package LoyaltyAndRewardsService.entity;
 /**
  * @author Chee Weng
  */
-public class Member {
+public class Member implements Comparable<Member> {
     private String memberId;
     private String name;
     private int point;
@@ -46,6 +46,11 @@ public class Member {
 
     public void setTierId(String tierId) {
         this.tierId = tierId;
+    }
+
+    @Override
+    public int compareTo(Member other) {
+        return Integer.compare(point, other.point);
     }
 
     public String toCsvLine(){

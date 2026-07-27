@@ -1,7 +1,9 @@
 package LoyaltyAndRewardsService.control;
 
 import java.time.LocalDate;
+import java.util.Iterator;
 
+import LoyaltyAndRewardsService.dao.PointTransactionDao;
 import LoyaltyAndRewardsService.entity.PointTransaction;
 import adt.ArrayList;
 import adt.LinkedList;
@@ -22,6 +24,10 @@ public class TransactionControl {
 
     public int size() {
         return transactionList.size();
+    }
+
+    public Iterator<PointTransaction> getTransactionIterator() {
+        return transactionList.iterator();
     }
 
     public boolean findTransaction(String transactionId) {
@@ -46,10 +52,12 @@ public class TransactionControl {
         LocalDate today = LocalDate.now();
         LocalDate cutoff = today.plusDays(withinDays);
 
-        for (int i = 1; i <= transactionList.size(); i++) {
-            PointTransaction current = transactionList.getEntry(i);
+        Iterator<PointTransaction> iterator = transactionList.iterator();
+        while (iterator.hasNext()) {
+            PointTransaction current = iterator.next();
 
-            boolean matchesCriteria = !current.getExpiryDate().isBefore(today)
+            boolean matchesCriteria = current.getPointsRemaining() > 0
+                    && !current.getExpiryDate().isBefore(today)
                     && !current.getExpiryDate().isAfter(cutoff);
 
             if (matchesCriteria) {
@@ -59,6 +67,40 @@ public class TransactionControl {
 
         selectionSortByExpiryDate(filteredResult);
         return filteredResult;
+    }
+
+    public int redeemPointsFromOldestTransactions(String memberId, int pointsToRedeem) {
+        int remainingToRedeem = pointsToRedeem;
+
+        while (remainingToRedeem > 0) {
+            PointTransaction oldest = findOldestAvailableTransaction(memberId);
+            if (oldest == null) {
+                break;
+            }
+
+            int deducted = Math.min(oldest.getPointsRemaining(), remainingToRedeem);
+            oldest.setPointsRemaining(oldest.getPointsRemaining() - deducted);
+            remainingToRedeem -= deducted;
+        }
+
+        return pointsToRedeem - remainingToRedeem;
+    }
+
+    public int getExpiringTransactionCount(int withinDays) {
+        return generateExpiringReport(withinDays).getNumberOfEntries();
+    }
+
+    public int getExpiringPointTotal(int withinDays) {
+        int total = 0;
+        Iterator<PointTransaction> iterator = generateExpiringReport(withinDays).iterator();
+        while (iterator.hasNext()) {
+            total += iterator.next().getPointsRemaining();
+        }
+        return total;
+    }
+
+    public void saveTransactions() {
+        PointTransactionDao.saveToTransactionFile(this);
     }
 
     public String generateTransactionId() {
@@ -90,6 +132,22 @@ public class TransactionControl {
         return null;
     }
 
+    private PointTransaction findOldestAvailableTransaction(String memberId) {
+        PointTransaction oldest = null;
+        Iterator<PointTransaction> iterator = transactionList.iterator();
+
+        while (iterator.hasNext()) {
+            PointTransaction current = iterator.next();
+            boolean belongsToMember = current.getMemberId().equalsIgnoreCase(memberId);
+            if (belongsToMember && current.getPointsRemaining() > 0
+                    && (oldest == null || current.compareTo(oldest) < 0)) {
+                oldest = current;
+            }
+        }
+
+        return oldest;
+    }
+
     private void selectionSortByExpiryDate(ArrayList<PointTransaction> list) { 
         for (int i = 1; i <= list.getNumberOfEntries() - 1; i++) {
             int targetPosition = i;
@@ -97,16 +155,17 @@ public class TransactionControl {
 
             for (int j = i + 1; j <= list.getNumberOfEntries(); j++) {
                 PointTransaction current = list.getEntry(j);
-                if (current.getExpiryDate().isBefore(targetValue.getExpiryDate())) {
+                if (current.compareTo(targetValue) < 0) {
                     targetValue = current;
                     targetPosition = j;
                 }
             }
 
             if (targetPosition != i) {
-                PointTransaction temp = list.getEntry(i);
+                for (int position = targetPosition; position > i; position--) {
+                    list.replace(position, list.getEntry(position - 1));
+                }
                 list.replace(i, targetValue);
-                list.replace(targetPosition, temp);
             }
         }
     }

@@ -20,7 +20,7 @@ public class RequestDao {
 
     public static void saveToRequestFile(RequestControl requestControl) {
         try (PrintWriter writer = new PrintWriter(new FileWriter(FILE_NAME))) {
-            writer.println("RequestId,MemberId,PointsRequested,RequestDate,Status");
+            writer.println("RequestId,MemberId,RewardId,PointsRequested,RequestDate,Status");
 
             Iterator<RedemptionRequest> it = requestControl.getRequestIterator();
             while (it.hasNext()) {
@@ -46,14 +46,16 @@ public class RequestDao {
                     continue;
                 }
 
+                boolean hasRewardId = fields.length >= 6;
                 String requestId = fields[0];
                 String memberId = fields[1];
-                int pointsRequested = Integer.parseInt(fields[2]);
-                LocalDate requestDate = LocalDate.parse(fields[3]);
-                String status = fields[4];
+                String rewardId = hasRewardId ? fields[2] : "";
+                int pointsRequested = Integer.parseInt(fields[hasRewardId ? 3 : 2]);
+                LocalDate requestDate = LocalDate.parse(fields[hasRewardId ? 4 : 3]);
+                String status = fields[hasRewardId ? 5 : 4];
 
                 RedemptionRequest request = new RedemptionRequest(
-                        requestId, memberId, pointsRequested, requestDate, status);
+                        requestId, memberId, rewardId, pointsRequested, requestDate, status);
                 requestControl.addRequest(request);
             }
         } catch (FileNotFoundException e) {

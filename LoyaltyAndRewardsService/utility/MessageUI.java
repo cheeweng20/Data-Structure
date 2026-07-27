@@ -2,6 +2,8 @@ package LoyaltyAndRewardsService.utility;
 
 /**
  * Displays consistent user-facing messages for the Loyalty and Rewards UI.
+ *
+ * @author Chee Weng
  */
 public final class MessageUI {
 

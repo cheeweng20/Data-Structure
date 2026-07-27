@@ -3,8 +3,7 @@ package LoyaltyAndRewardsService;
 import java.util.Scanner;
 
 import LoyaltyAndRewardsService.boundary.*;
-import LoyaltyAndRewardsService.control.*;
-import LoyaltyAndRewardsService.dao.*;
+import LoyaltyAndRewardsService.control.LoyaltyServiceControl;
 import common.src.Logo;
 
 /**
@@ -35,37 +34,31 @@ public class LoyaltyAndRewardsService {
     public static void LoyaltyAndRewardsServiceMain(Scanner input) {
         boolean exit = false;
 
-        TierControl tierLevelList = new TierControl();
-        TierDao.loadFromTierFile(tierLevelList);
+        LoyaltyServiceControl serviceControl = new LoyaltyServiceControl();
 
-        MemberControl memberList = new MemberControl(tierLevelList);
-        MemberDao.loadFromMemberFile(memberList);
+        NotificationUI.displayStartupNotifications(
+                serviceControl.getTransactionControl(), serviceControl.getRequestControl());
 
-        TransactionControl transactionList = new TransactionControl();
-        PointTransactionDao.loadFromTransactionFile(transactionList);
-
-        RequestControl requestControl = new RequestControl(memberList);
-
-        RequestDao.loadFromRequestFile(requestControl);
-
-        RewardControl rewardList = new RewardControl();
-        RewardDao.loadFromRewardFile(rewardList);
         while (!exit) {
             displayMenu(input);
             int menuSelected = input.nextInt();
             switch (menuSelected) {
                 case 1:
-                    MemberUI.memberOperator(input, memberList, tierLevelList, transactionList, requestControl,
-                            rewardList);
+                    MemberUI.memberOperator(input,
+                            serviceControl.getMemberControl(),
+                            serviceControl.getTransactionControl(),
+                            serviceControl.getRequestControl(),
+                            serviceControl.getRewardControl());
                     break;
                 case 2:
-                    TierUI.tierOperator(input, tierLevelList);
+                    TierUI.tierOperator(input,
+                            serviceControl.getTierControl(), serviceControl.getMemberControl());
                     break;
                 case 3:
-                    RewardUI.rewardOperator(input, rewardList);
+                    RewardUI.rewardOperator(input, serviceControl.getRewardControl());
                     break;
                 case 4:
-                    ReportUI.reportOperator(input, memberList, tierLevelList, transactionList, requestControl);
+                    ReportUI.reportOperator(input, serviceControl.getReportControl());
                     break;
                 case 0:
                     exit = true;
@@ -75,11 +68,7 @@ public class LoyaltyAndRewardsService {
             }
         }
 
-        MemberDao.saveToMemberFile(memberList);
-        TierDao.saveToTierFile(tierLevelList);
-        PointTransactionDao.saveToTransactionFile(transactionList);
-        RequestDao.saveToRequestFile(requestControl);
-        RewardDao.saveToRewardFile(rewardList);
+        serviceControl.saveAll();
 
         return;
     }

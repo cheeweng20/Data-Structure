@@ -1,7 +1,7 @@
 package LoyaltyAndRewardsService.control;
 
+import LoyaltyAndRewardsService.dao.RewardDao;
 import LoyaltyAndRewardsService.entity.Reward;
-import LoyaltyAndRewardsService.utility.MessageUI;
 import adt.LinkedList;
 
 /**
@@ -28,6 +28,13 @@ public class RewardControl {
         rewardList.add(reward);
     }
 
+    public String createReward(String rewardName, int pointRequired) {
+        String rewardId = generateRewardId();
+        addReward(new Reward(rewardId, rewardName, pointRequired));
+        saveRewards();
+        return rewardId;
+    }
+
     public Reward getEntry(int position) {
         return rewardList.getEntry(position);
     }
@@ -46,6 +53,14 @@ public class RewardControl {
         return false;
     }
 
+    public boolean removeReward(String rewardId) {
+        boolean removed = deleteRewardById(rewardId);
+        if (removed) {
+            saveRewards();
+        }
+        return removed;
+    }
+
     public boolean updateRewardById(String rewardId, String rewardName, int pointRequired) {
         Reward reward = getRewardById(rewardId);
         if (reward == null) {
@@ -55,6 +70,14 @@ public class RewardControl {
         reward.setRewardName(rewardName);
         reward.setPointRequired(pointRequired);
         return true;
+    }
+
+    public boolean updateReward(String rewardId, String rewardName, int pointRequired) {
+        boolean updated = updateRewardById(rewardId, rewardName, pointRequired);
+        if (updated) {
+            saveRewards();
+        }
+        return updated;
     }
 
     public Reward getRewardById(String rewardId) {
@@ -67,22 +90,24 @@ public class RewardControl {
         return null;
     }
 
-    public void displayAllRewards() {
+    public String getRewardTable() {
         if (rewardList.isEmpty()) {
-            MessageUI.displayInfo("No reward records found.");
-            return;
+            return "";
         }
 
+        StringBuilder output = new StringBuilder();
         String border = "+------------+--------------------------------+-----------------+";
-        System.out.println(border);
-        System.out.printf("| %-10s | %-30s | %15s |%n", "Reward ID", "Reward Name", "Points Required");
-        System.out.println(border);
+        output.append(border).append(System.lineSeparator());
+        output.append(String.format("| %-10s | %-30s | %15s |%n",
+                "Reward ID", "Reward Name", "Points Required"));
+        output.append(border).append(System.lineSeparator());
         for (int i = 1; i <= rewardList.size(); i++) {
             Reward reward = rewardList.getEntry(i);
-            System.out.printf("| %-10.10s | %-30.30s | %15d |%n", reward.getRewardId(), reward.getRewardName(),
-                    reward.getPointRequired());
+            output.append(String.format("| %-10.10s | %-30.30s | %15d |%n",
+                    reward.getRewardId(), reward.getRewardName(), reward.getPointRequired()));
         }
-        System.out.println(border);
+        output.append(border);
+        return output.toString();
     }
 
     public String generateRewardId() {
@@ -100,5 +125,19 @@ public class RewardControl {
         }
 
         return String.format("R%03d", highestNumber + 1);
+    }
+
+    public int getRewardPointRequired(String rewardId) {
+        Reward reward = getRewardById(rewardId);
+        return reward == null ? -1 : reward.getPointRequired();
+    }
+
+    public String getRewardName(String rewardId) {
+        Reward reward = getRewardById(rewardId);
+        return reward == null ? null : reward.getRewardName();
+    }
+
+    public void saveRewards() {
+        RewardDao.saveToRewardFile(this);
     }
 }
