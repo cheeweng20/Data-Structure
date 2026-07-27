@@ -1,5 +1,8 @@
 package adt;
 
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+
 /**
  * LinkedList.java A class that implements the ADT List using a chain of nodes,
  * with the node implemented as an inner class.
@@ -155,6 +158,35 @@ public class LinkedList<T> implements ListInterface<T> {
   @Override
   public boolean isFull() {
     return false;
+  }
+
+  @Override
+  public Iterator<T> iterator() {
+    return new LinkedListIterator();
+  }
+
+  private class LinkedListIterator implements Iterator<T> {
+    private Node currentNode;
+
+    private LinkedListIterator() {
+      currentNode = firstNode;
+    }
+
+    @Override
+    public boolean hasNext() {
+      return currentNode != null;
+    }
+
+    @Override
+    public T next() {
+      if (!hasNext()) {
+        throw new NoSuchElementException("No more entries in the list.");
+      }
+
+      T result = currentNode.data;
+      currentNode = currentNode.next;
+      return result;
+    }
   }
 
   @Override

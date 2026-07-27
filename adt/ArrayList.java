@@ -1,6 +1,8 @@
 package adt;
 
 import java.io.Serializable;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 /**
  * ArrayList.java A class that implements the ADT List using an array.
@@ -119,6 +121,33 @@ public class ArrayList<T> implements ListInterface<T>, Serializable {
   @Override
   public boolean isFull() {
     return numberOfEntries == array.length;
+  }
+
+  @Override
+  public Iterator<T> iterator() {
+    return new ArrayListIterator();
+  }
+
+  private class ArrayListIterator implements Iterator<T> {
+    private int currentIndex;
+
+    private ArrayListIterator() {
+      currentIndex = 0;
+    }
+
+    @Override
+    public boolean hasNext() {
+      return currentIndex < numberOfEntries;
+    }
+
+    @Override
+    public T next() {
+      if (!hasNext()) {
+        throw new NoSuchElementException("No more entries in the list.");
+      }
+
+      return array[currentIndex++];
+    }
   }
 
   private void ensureCapacity() {

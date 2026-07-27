@@ -16,7 +16,8 @@ import LoyaltyAndRewardsService.entity.PointTransaction;
  */
 public class PointTransactionDao {
     private static final String FILE_NAME = "LoyaltyAndRewardsService/src/transaction.csv";
-    private static final String HEADER = "TransactionId,MemberId,PointsEarned,EarnedDate,ExpiryDate";
+    private static final String HEADER =
+            "TransactionId,MemberId,PointsEarned,PointsRemaining,EarnedDate,ExpiryDate";
 
     public static void loadFromTransactionFile(TransactionControl transactionList) {
         try (BufferedReader reader = new BufferedReader(new FileReader(FILE_NAME))) {
@@ -35,11 +36,14 @@ public class PointTransactionDao {
                 String transactionId = fields[0];
                 String memberId = fields[1];
                 int pointsEarned = Integer.parseInt(fields[2]);
-                LocalDate earnedDate = LocalDate.parse(fields[3]);
-                LocalDate expiryDate = LocalDate.parse(fields[4]);
+                boolean hasRemainingPoints = fields.length >= 6;
+                int pointsRemaining = hasRemainingPoints ? Integer.parseInt(fields[3]) : pointsEarned;
+                LocalDate earnedDate = LocalDate.parse(fields[hasRemainingPoints ? 4 : 3]);
+                LocalDate expiryDate = LocalDate.parse(fields[hasRemainingPoints ? 5 : 4]);
 
                 transactionList.addTransaction(
-                        new PointTransaction(transactionId, memberId, pointsEarned, earnedDate, expiryDate));
+                        new PointTransaction(transactionId, memberId, pointsEarned, pointsRemaining,
+                                earnedDate, expiryDate));
             }
         } catch (FileNotFoundException e) {
             System.out.println("No existing transaction data found, starting fresh.");

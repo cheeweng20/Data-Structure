@@ -5,6 +5,11 @@ import LoyaltyAndRewardsService.control.TierControl;
 import LoyaltyAndRewardsService.entity.Member;
 import LoyaltyAndRewardsService.entity.Tier;
 
+/**
+ * Provides reusable validation for loyalty and rewards input.
+ *
+ * @author Chee Weng
+ */
 public class Verification {
     public static boolean verifyMemberPoint(int point) {
         if (point < 0) {
@@ -27,13 +32,19 @@ public class Verification {
     }
 
     public static boolean verifyTierName(String tierName, TierControl tierLinkedList) {
+        return verifyTierName(tierName, null, tierLinkedList);
+    }
+
+    public static boolean verifyTierName(String tierName, String excludedTierId, TierControl tierLinkedList) {
         if (tierName == null || tierName.trim().isEmpty()) {
             MessageUI.displayError("Tier name cannot be empty. Please enter a valid tier name.");
             return false;
         }
         for (int i = 1; i <= tierLinkedList.size(); i++) {
             Tier tier = tierLinkedList.getEntry(i);
-            if (tier != null && tierName.equals(tier.getTierLevel())) {
+            boolean isExcludedTier = excludedTierId != null
+                    && tier.getTierId().equalsIgnoreCase(excludedTierId);
+            if (tier != null && !isExcludedTier && tierName.equalsIgnoreCase(tier.getTierLevel())) {
                 MessageUI.displayError("Tier name already exists. Please enter a different tier name.");
                 return false;
             }
@@ -47,13 +58,20 @@ public class Verification {
     }
 
     public static boolean verifyMemberName(String memberName, MemberControl memberLinkedList) {
+        return verifyMemberName(memberName, null, memberLinkedList);
+    }
+
+    public static boolean verifyMemberName(String memberName, String excludedMemberId,
+            MemberControl memberLinkedList) {
         if (memberName == null || memberName.trim().isEmpty()) {
             MessageUI.displayError("Member name cannot be empty. Please enter a valid member name.");
             return false;
         }
         for (int i = 1; i <= memberLinkedList.size(); i++) {
             Member member = memberLinkedList.getEntry(i);
-            if (member != null && memberName.equals(member.getName())) {
+            boolean isExcludedMember = excludedMemberId != null
+                    && member.getMemberId().equalsIgnoreCase(excludedMemberId);
+            if (member != null && !isExcludedMember && memberName.equalsIgnoreCase(member.getName())) {
                 MessageUI.displayError("Member name already exists. Please enter a different member name.");
                 return false;
             }
@@ -68,8 +86,8 @@ public class Verification {
     }
 
     public static boolean verifyRewardPoints(int points) {
-        if (points < 0) {
-            MessageUI.displayError("Reward points cannot be negative. Please enter a valid point value.");
+        if (points <= 0) {
+            MessageUI.displayError("Reward points must be greater than zero.");
             return false;
         }
         return true;

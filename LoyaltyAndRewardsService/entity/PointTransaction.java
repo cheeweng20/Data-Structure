@@ -5,18 +5,25 @@ import java.time.LocalDate;
 /**
  * @author Chee Weng
  */
-public class PointTransaction {
+public class PointTransaction implements Comparable<PointTransaction> {
     private String transactionId;
     private String memberId;
     private int pointsEarned;
+    private int pointsRemaining;
     private LocalDate earnedDate;
     private LocalDate expiryDate;
 
     public PointTransaction(String transactionId, String memberId, int pointsEarned, LocalDate earnedDate,
             LocalDate expiryDate) {
+        this(transactionId, memberId, pointsEarned, pointsEarned, earnedDate, expiryDate);
+    }
+
+    public PointTransaction(String transactionId, String memberId, int pointsEarned, int pointsRemaining,
+            LocalDate earnedDate, LocalDate expiryDate) {
         this.transactionId = transactionId;
         this.memberId = memberId;
         this.pointsEarned = pointsEarned;
+        this.pointsRemaining = pointsRemaining;
         this.earnedDate = earnedDate;
         this.expiryDate = expiryDate;
     }
@@ -45,6 +52,14 @@ public class PointTransaction {
         this.pointsEarned = pointsEarned;
     }
 
+    public int getPointsRemaining() {
+        return pointsRemaining;
+    }
+
+    public void setPointsRemaining(int pointsRemaining) {
+        this.pointsRemaining = Math.max(pointsRemaining, 0);
+    }
+
     public LocalDate getEarnedDate() {
         return earnedDate;
     }
@@ -61,8 +76,13 @@ public class PointTransaction {
         this.expiryDate = expiryDate;
     }
 
+    @Override
+    public int compareTo(PointTransaction other) {
+        return expiryDate.compareTo(other.expiryDate);
+    }
+
     public String toCsvLine() {
-        return transactionId + "," + memberId + "," + pointsEarned +
+        return transactionId + "," + memberId + "," + pointsEarned + "," + pointsRemaining +
                 "," + earnedDate + "," + expiryDate;
     }
 }

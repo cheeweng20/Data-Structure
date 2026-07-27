@@ -1,5 +1,7 @@
 package adt;
 
+import java.util.Iterator;
+
 /**
  * ListInterface.java An interface for the ADT List. Entries in the list have
  * positions that begin with 1.
@@ -7,7 +9,15 @@ package adt;
  * @author Frank M. Carrano
  * @version 2.0
  */
-public interface ListInterface<T> {
+public interface ListInterface<T> extends Iterable<T> {
+
+  /**
+   * Returns an iterator over the entries in their current list order.
+   *
+   * @return an iterator for this list
+   */
+  @Override
+  public Iterator<T> iterator();
 
   /**
    * Task: Adds a new entry to the end of the list. Entries currently in the
