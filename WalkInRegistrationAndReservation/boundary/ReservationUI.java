@@ -163,11 +163,39 @@ public class ReservationUI {
     }
 
     private Guest inputGuest() {
-        String guestId = promptRequiredText("Guest ID / IC / Passport: ");
-        String fullName = promptRequiredText("Full name: ");
+        String guestId = promptIcOrPassport();
+        String fullName = promptFullName();
         String phoneNumber = promptPhoneNumber();
         String email = promptEmail();
         return new Guest(guestId, fullName, phoneNumber, email);
+    }
+
+    private String promptIcOrPassport() {
+        while (true) {
+            System.out.print("IC / Passport: ");
+            String value = scanner.nextLine().trim();
+
+            if (InputValidator.isValidIcOrPassport(value)) {
+                return value;
+            }
+
+            System.out.println("Invalid IC / Passport.");
+            System.out.println("IC format: 12 digits or xxxxxx-xx-xxxx.");
+            System.out.println("Passport format: 5-20 letters/numbers.");
+        }
+    }
+
+    private String promptFullName() {
+        while (true) {
+            System.out.print("Full name: ");
+            String fullName = scanner.nextLine().trim();
+
+            if (InputValidator.isValidName(fullName)) {
+                return fullName;
+            }
+
+            System.out.println("Invalid name. Use 2-50 letters only; spaces, apostrophe, hyphen, and dot are allowed.");
+        }
     }
 
     private String promptRequiredText(String prompt) {
