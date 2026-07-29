@@ -11,6 +11,7 @@ import WalkInRegistrationAndReservation.entity.Room.RoomStatus;
 import WalkInRegistrationAndReservation.utility.ConfirmationNumberGenerator;
 import adt.ListInterface;
 import java.time.LocalDate;
+import java.util.Iterator;
 
 /**
  * Coordinates reservation check-in, walk-in registration and room assignment.
@@ -109,10 +110,10 @@ public class ReservationManager {
 
     // find reservation by confirmation no/guestname/guest ic
     public Reservation findReservation(String searchValue) {
-        for (int i = 1; i <= reservations.getNumberOfEntries(); i++) {
-            Reservation reservation = reservations.getEntry(i);
+        Iterator<Reservation> iterator = reservations.iterator();
+        while (iterator.hasNext()) {
+            Reservation reservation = iterator.next();
             Guest guest = reservation.getGuest();
-
             if (reservation.getConfirmationNumber().equalsIgnoreCase(searchValue)) { // reserve no
                 return reservation;
             } else if (guest != null && guest.getGuestId().equalsIgnoreCase(searchValue)) { // ic/passport
@@ -125,8 +126,10 @@ public class ReservationManager {
     }
 
     public Reservation findByConfirmationOrGuestId(String searchValue) {
-        for (int i = 1; i <= reservations.getNumberOfEntries(); i++) {
-            Reservation reservation = reservations.getEntry(i);
+        Iterator<Reservation> iterator = reservations.iterator();
+        while (iterator.hasNext()) {
+
+            Reservation reservation = iterator.next();
             Guest guest = reservation.getGuest();
 
             if (reservation.getConfirmationNumber().equalsIgnoreCase(searchValue)
@@ -183,8 +186,10 @@ public class ReservationManager {
 
     // assign room
     public boolean assignAvailableRoom(Reservation reservation) {
-        for (int i = 1; i <= rooms.getNumberOfEntries(); i++) {
-            Room room = rooms.getEntry(i);
+        Iterator<Room> iterator = rooms.iterator();
+
+        while (iterator.hasNext()) {
+            Room room = iterator.next();
 
             if (room.getRoomType().equalsIgnoreCase(reservation.getRequestedRoomType())
                     && room.getStatus() == RoomStatus.AVAILABLE) {
@@ -193,9 +198,9 @@ public class ReservationManager {
                 room.setStatus(RoomStatus.RESERVED);
 
                 return true;
-
             }
         }
+
         reservation.setStatus(ReservationStatus.PENDING);
         return false;
     }
@@ -203,9 +208,10 @@ public class ReservationManager {
     // check the available room, capacity of room > num of guest
     public Room findAvailableRoomForGuests(int numberOfGuests) {
         Room bestRoom = null;
+        Iterator<Room> iterator = rooms.iterator();
 
-        for (int i = 1; i <= rooms.getNumberOfEntries(); i++) {
-            Room room = rooms.getEntry(i);
+        while (iterator.hasNext()) {
+            Room room = iterator.next();
 
             if (room.getStatus() == RoomStatus.AVAILABLE && room.getCapacity() >= numberOfGuests
                     && (bestRoom == null || room.getCapacity() < bestRoom.getCapacity())) {
@@ -217,8 +223,10 @@ public class ReservationManager {
     }
 
     public Room findRoomByNumber(String roomNumber) {
-        for (int i = 1; i <= rooms.getNumberOfEntries(); i++) {
-            Room room = rooms.getEntry(i);
+        Iterator<Room> iterator = rooms.iterator();
+
+        while (iterator.hasNext()) {
+            Room room = iterator.next();
 
             if (room.getRoomNumber().equalsIgnoreCase(roomNumber)) {
                 return room;

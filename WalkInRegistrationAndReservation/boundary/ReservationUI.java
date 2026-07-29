@@ -13,6 +13,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.Scanner;
+import java.util.Iterator;
 
 /**
  * @author Wan Yin
@@ -162,11 +163,39 @@ public class ReservationUI {
     }
 
     private Guest inputGuest() {
-        String guestId = promptRequiredText("Guest ID / IC / Passport: ");
-        String fullName = promptRequiredText("Full name: ");
+        String guestId = promptIcOrPassport();
+        String fullName = promptFullName();
         String phoneNumber = promptPhoneNumber();
         String email = promptEmail();
         return new Guest(guestId, fullName, phoneNumber, email);
+    }
+
+    private String promptIcOrPassport() {
+        while (true) {
+            System.out.print("IC / Passport: ");
+            String value = scanner.nextLine().trim();
+
+            if (InputValidator.isValidIcOrPassport(value)) {
+                return value;
+            }
+
+            System.out.println("Invalid IC / Passport.");
+            System.out.println("IC format: 12 digits or xxxxxx-xx-xxxx.");
+            System.out.println("Passport format: 5-20 letters/numbers.");
+        }
+    }
+
+    private String promptFullName() {
+        while (true) {
+            System.out.print("Full name: ");
+            String fullName = scanner.nextLine().trim();
+
+            if (InputValidator.isValidName(fullName)) {
+                return fullName;
+            }
+
+            System.out.println("Invalid name. Use 2-50 letters only; spaces, apostrophe, hyphen, and dot are allowed.");
+        }
     }
 
     private String promptRequiredText(String prompt) {
@@ -345,8 +374,11 @@ public class ReservationUI {
 
         ListInterface<Reservation> reservations = reservationManager.getReservations(); // get all reservation records
         ListInterface<Reservation> reportReservations = new ArrayList<>(); // store matched report records only
-        for (int i = 1; i <= reservations.getNumberOfEntries(); i++) {
-            Reservation reservation = reservations.getEntry(i); // get one reservation from the list
+        Iterator<Reservation> iterator = reservations.iterator();
+
+        while (iterator.hasNext()) {
+            Reservation reservation = iterator.next(); // get one reservation from the list
+
             if (reservation.getStatus() == ReservationStatus.CHECKED_IN
                     && reservation.getCheckInDate().equals(reportDate)) {
                 reportReservations.add(reservation);
@@ -370,11 +402,13 @@ public class ReservationUI {
 
         ListInterface<Reservation> reservations = reservationManager.getReservations(); // get all reservation records
         ListInterface<Reservation> reportReservations = new ArrayList<>(); // store assigned room records only
-        for (int i = 1; i <= reservations.getNumberOfEntries(); i++) {
-            Reservation reservation = reservations.getEntry(i); // get one reservation from the list
+        Iterator<Reservation> iterator = reservations.iterator();
+
+        while (iterator.hasNext()) {
+            Reservation reservation = iterator.next(); // get one reservation from the list
+
             if (reservation.getAssignedRoom() != null && reservation.getStatus() != ReservationStatus.CANCELLED) {
                 reportReservations.add(reservation);
-
             }
         }
 
@@ -400,7 +434,8 @@ public class ReservationUI {
                 Reservation currentReservation = reservations.getEntry(j); // get current reservation
                 Reservation nextReservation = reservations.getEntry(j + 1); // get next reservation
 
-                if (currentReservation.getBookingDateTime().isAfter(nextReservation.getBookingDateTime())) {
+                if (currentReservation.compareTo(nextReservation) > 0) { // if the current late that next, then swap
+                                                                         // them
                     reservations.replace(j, nextReservation); // move earlier booking to front
                     reservations.replace(j + 1, currentReservation);
                 }
@@ -494,8 +529,10 @@ public class ReservationUI {
             return;
         }
 
-        for (int position = 1; position <= reservations.getNumberOfEntries(); position++) {
-            displayReservationDetails(reservations.getEntry(position));
+        Iterator<Reservation> iterator = reservations.iterator();
+
+        while (iterator.hasNext()) {
+            displayReservationDetails(iterator.next());
         }
     }
 
