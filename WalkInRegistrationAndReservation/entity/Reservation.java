@@ -9,7 +9,7 @@ import java.util.Objects;
 /**
  * @author Wan Yin
  */
-public class Reservation implements Serializable {
+public class Reservation implements Serializable, Comparable<Reservation> {
 
     private static final long serialVersionUID = 1L;
 
@@ -176,6 +176,17 @@ public class Reservation implements Serializable {
     @Override
     public int hashCode() {
         return Objects.hash(confirmationNumber);
+    }
+
+    @Override
+    // COMPARE via the booking time
+    public int compareTo(Reservation other) {
+        int bookingDateTimeCompare = bookingDateTime.compareTo(other.bookingDateTime);
+        if (bookingDateTimeCompare != 0) {
+            return bookingDateTimeCompare;
+        }
+        //if both same then just use the confirmation no 
+        return confirmationNumber.compareToIgnoreCase(other.confirmationNumber);
     }
 
     @Override
