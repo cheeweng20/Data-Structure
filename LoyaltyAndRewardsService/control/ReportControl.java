@@ -170,16 +170,16 @@ public class ReportControl {
         output.append("Total points earned in cycle: ")
                 .append(totalPointsEarned).append(System.lineSeparator());
 
-        String border = "+--------------+------------+----------------+------------+";
+        String border = "+----------------+------------+----------------+-------------+";
         output.append(border).append(System.lineSeparator());
-        output.append(String.format("| %-12s | %-10s | %-14s | %-10s |%n",
+        output.append(String.format("| %-14s | %-10s | %-14s | %-11s |%n",
                 "Transaction ID", "Member ID", "Points Earned", "Earned Date"));
         output.append(border).append(System.lineSeparator());
 
         Iterator<PointTransaction> iterator = transactions.iterator();
         while (iterator.hasNext()) {
             PointTransaction transaction = iterator.next();
-            output.append(String.format("| %-12.12s | %-10.10s | %14d | %-10s |%n",
+            output.append(String.format("| %-14.14s | %-10.10s | %14d | %-11s |%n",
                     transaction.getTransactionId(), transaction.getMemberId(),
                     transaction.getPointsEarned(), transaction.getEarnedDate()));
         }
@@ -214,9 +214,9 @@ public class ReportControl {
                 .append(System.lineSeparator());
 
         String border =
-                "+------------+------------+------------+----------------+--------------------+--------------------------------+";
+                "+------------+------------+------------+------------------+--------------------+--------------------------------+";
         output.append(border).append(System.lineSeparator());
-        output.append(String.format("| %-10s | %-10s | %-10s | %-14s | %-18s | %-30s |%n",
+        output.append(String.format("| %-10s | %-10s | %-10s | %-16s | %-18s | %-30s |%n",
                 "Request ID", "Member ID", "Reward ID", "Points Requested",
                 "Request Date", "Status"));
         output.append(border).append(System.lineSeparator());
@@ -228,7 +228,7 @@ public class ReportControl {
                     ? "Legacy"
                     : request.getRewardId();
             output.append(String.format(
-                    "| %-10.10s | %-10.10s | %-10.10s | %14d | %-18s | %-30.30s |%n",
+                    "| %-10.10s | %-10.10s | %-10.10s | %16d | %-18s | %-30.30s |%n",
                     request.getRequestId(), request.getMemberId(), rewardId,
                     request.getPointsRequested(), request.getRequestDate(), request.getStatus()));
         }
