@@ -157,7 +157,7 @@ public class HousekeepingUI {
             System.out.println("\n--- Housekeeping Reports ---");
             System.out.println("1. Task Status Summary");
             System.out.println("2. Overdue Cleaning Tasks");
-            System.out.println("3. Ready Rooms by Expected Ready Time");
+            System.out.println("3. List All Tasks");
             System.out.println("0. Back");
             System.out.print("Select an option: ");
             String choice = scanner.nextLine().trim();
@@ -170,7 +170,7 @@ public class HousekeepingUI {
                     displayTasks(housekeepingControl.getOverdueTasks());
                     break;
                 case "3":
-                    displayReadyRoomsReport();
+                    displayTasks(housekeepingControl.getTasks());
                     break;
                 case "0":
                     back = true;
@@ -189,21 +189,6 @@ public class HousekeepingUI {
         for (TaskStatus status : TaskStatus.values()) {
             System.out.printf("%-25s %8d%n", status, housekeepingControl.countByStatus(status));
         }
-    }
-
-    private void displayReadyRoomsReport() {
-        ListInterface<HousekeepingTask> sortedTasks = housekeepingControl.getTasksSortedByExpectedReadyTime();
-        ListInterface<HousekeepingTask> readyTasks = new adt.ArrayList<>();
-
-        for (int i = 1; i <= sortedTasks.getNumberOfEntries(); i++) {
-            HousekeepingTask task = sortedTasks.getEntry(i);
-
-            if (task.getStatus() == TaskStatus.READY_FOR_CHECK_IN) {
-                readyTasks.add(task);
-            }
-        }
-
-        displayTasks(readyTasks);
     }
 
     private String promptRoomNumber() {

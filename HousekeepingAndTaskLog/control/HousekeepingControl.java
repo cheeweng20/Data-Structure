@@ -124,24 +124,6 @@ public class HousekeepingControl {
         return result;
     }
 
-    public ListInterface<HousekeepingTask> getTasksSortedByExpectedReadyTime() {
-        ListInterface<HousekeepingTask> sortedTasks = copyTasks();
-
-        for (int i = 1; i < sortedTasks.getNumberOfEntries(); i++) {
-            for (int j = 1; j <= sortedTasks.getNumberOfEntries() - i; j++) {
-                HousekeepingTask current = sortedTasks.getEntry(j);
-                HousekeepingTask next = sortedTasks.getEntry(j + 1);
-
-                if (current.getExpectedReadyAt().isAfter(next.getExpectedReadyAt())) {
-                    sortedTasks.replace(j, next);
-                    sortedTasks.replace(j + 1, current);
-                }
-            }
-        }
-
-        return sortedTasks;
-    }
-
     public int countByStatus(TaskStatus status) {
         return filterByStatus(status).getNumberOfEntries();
     }
@@ -169,17 +151,6 @@ public class HousekeepingControl {
 
     public void saveData() {
         housekeepingTaskDAO.saveToFile(tasks);
-    }
-
-    private ListInterface<HousekeepingTask> copyTasks() {
-        ListInterface<HousekeepingTask> copiedTasks = new ArrayList<>();
-        Iterator<HousekeepingTask> iterator = tasks.iterator();
-
-        while (iterator.hasNext()) {
-            copiedTasks.add(iterator.next());
-        }
-
-        return copiedTasks;
     }
 
     private String generateTaskId() {

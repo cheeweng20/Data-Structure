@@ -2,6 +2,7 @@ package HousekeepingAndTaskLog.entity;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 public class HousekeepingTask implements Serializable {
 
@@ -51,8 +52,8 @@ public class HousekeepingTask implements Serializable {
         this.status = status;
     }
 
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
+    public String getCreatedAt() {
+        return createdAt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd' 'HH:mm:ss"));
     }
 
     public LocalDateTime getExpectedReadyAt() {
