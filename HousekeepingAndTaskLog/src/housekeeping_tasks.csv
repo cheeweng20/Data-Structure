@@ -1,2 +1,3 @@
-TaskId,RoomNumber,AssignedStaff,Status,CreatedAt,ExpectedReadyAt,Priority,Remarks
-HK1001,C101,cw,DIRTY,2026-07-31T14:22:49.330484200,2026-08-10T14:00,1,clean this first
+TaskId,RoomNumber,AssignedStaff,Status,CreatedAt,ExpectedReadyAt,Remarks
+HK1001,C1001,zs,BLOCKED,2026-07-31T18:05:35.980083100,2026-11-10T15:00,taktahu
+HK1002,D1001,yr,READY_FOR_CHECK_IN,2026-07-31T18:16:12.861654200,2026-11-10T01:00,-

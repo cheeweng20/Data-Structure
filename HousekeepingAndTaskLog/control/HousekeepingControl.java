@@ -5,30 +5,29 @@ import HousekeepingAndTaskLog.entity.HousekeepingTask;
 import HousekeepingAndTaskLog.entity.StatusChange;
 import HousekeepingAndTaskLog.entity.TaskStatus;
 import adt.ArrayList;
+import adt.ArrayStack;
 import adt.ListInterface;
+import adt.StackInterface;
 import java.time.LocalDateTime;
 import java.util.Iterator;
 
-/**
- * @author Your Name
- */
 public class HousekeepingControl {
 
     private final HousekeepingTaskDAO housekeepingTaskDAO;
     private final ListInterface<HousekeepingTask> tasks;
-    private final ListInterface<StatusChange> rollbackLog;
+    private final StackInterface<StatusChange> rollbackLog;
 
     public HousekeepingControl() {
         housekeepingTaskDAO = new HousekeepingTaskDAO();
         tasks = housekeepingTaskDAO.retrieveFromFile();
-        rollbackLog = new ArrayList<>();
+        rollbackLog = new ArrayStack<>();
     }
 
     public HousekeepingTask addTask(String roomNumber, String assignedStaff,
-            LocalDateTime expectedReadyAt, int priority, String remarks) {
+            LocalDateTime expectedReadyAt, String remarks) {
         HousekeepingTask task = new HousekeepingTask(generateTaskId(), roomNumber,
                 assignedStaff, TaskStatus.DIRTY, LocalDateTime.now(), expectedReadyAt,
-                priority, remarks);
+                remarks);
         tasks.add(task);
         saveData();
         return task;
@@ -41,7 +40,7 @@ public class HousekeepingControl {
             return false;
         }
 
-        rollbackLog.add(new StatusChange(taskId, task.getStatus(), newStatus,
+        rollbackLog.push(new StatusChange(taskId, task.getStatus(), newStatus,
                 task.getExpectedReadyAt(), LocalDateTime.now(), reason));
         task.setStatus(newStatus);
         saveData();
@@ -55,7 +54,7 @@ public class HousekeepingControl {
             return false;
         }
 
-        rollbackLog.add(new StatusChange(taskId, task.getStatus(), TaskStatus.BLOCKED,
+        rollbackLog.push(new StatusChange(taskId, task.getStatus(), TaskStatus.BLOCKED,
                 task.getExpectedReadyAt(), LocalDateTime.now(), reason));
         task.setStatus(TaskStatus.BLOCKED);
         task.setExpectedReadyAt(newExpectedReadyAt);
@@ -69,7 +68,7 @@ public class HousekeepingControl {
             return null;
         }
 
-        StatusChange lastChange = rollbackLog.remove(rollbackLog.getNumberOfEntries());
+        StatusChange lastChange = rollbackLog.pop();
         HousekeepingTask task = findTaskById(lastChange.getTaskId());
 
         if (task != null) {
@@ -123,24 +122,6 @@ public class HousekeepingControl {
         }
 
         return result;
-    }
-
-    public ListInterface<HousekeepingTask> getTasksSortedByPriority() {
-        ListInterface<HousekeepingTask> sortedTasks = copyTasks();
-
-        for (int i = 1; i < sortedTasks.getNumberOfEntries(); i++) {
-            for (int j = 1; j <= sortedTasks.getNumberOfEntries() - i; j++) {
-                HousekeepingTask current = sortedTasks.getEntry(j);
-                HousekeepingTask next = sortedTasks.getEntry(j + 1);
-
-                if (current.getPriority() > next.getPriority()) {
-                    sortedTasks.replace(j, next);
-                    sortedTasks.replace(j + 1, current);
-                }
-            }
-        }
-
-        return sortedTasks;
     }
 
     public ListInterface<HousekeepingTask> getTasksSortedByExpectedReadyTime() {

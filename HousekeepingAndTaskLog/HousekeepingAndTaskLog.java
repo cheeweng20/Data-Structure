@@ -4,9 +4,6 @@ import java.util.Scanner;
 
 import HousekeepingAndTaskLog.boundary.HousekeepingUI;
 
-/**
- * @author Your Name
- */
 public class HousekeepingAndTaskLog {
 
     public static void HousekeepingAndTaskLogMain(Scanner input) {

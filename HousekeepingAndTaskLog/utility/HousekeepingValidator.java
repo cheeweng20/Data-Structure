@@ -2,9 +2,6 @@ package HousekeepingAndTaskLog.utility;
 
 import java.time.LocalDateTime;
 
-/**
- * @author Your Name
- */
 public class HousekeepingValidator {
 
     private HousekeepingValidator() {
@@ -14,12 +11,12 @@ public class HousekeepingValidator {
         return value != null && !value.trim().isEmpty();
     }
 
-    public static boolean isValidRoomNumber(String roomNumber) {
-        return roomNumber != null && roomNumber.matches("[A-Za-z0-9-]{1,10}");
+    public static boolean isBlank(String value) {
+        return value.trim().isEmpty();
     }
 
-    public static boolean isValidPriority(int priority) {
-        return priority >= 1 && priority <= 5;
+    public static boolean isValidRoomNumber(String roomNumber) {
+        return roomNumber != null && roomNumber.matches("[A-Za-z0-9-]{1,10}");
     }
 
     public static boolean isFutureOrPresent(LocalDateTime dateTime) {

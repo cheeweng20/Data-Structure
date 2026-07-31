@@ -13,13 +13,10 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.time.LocalDateTime;
 
-/**
- * @author Your Name
- */
 public class HousekeepingTaskDAO {
 
     private static final int INITIAL_CAPACITY = 100;
-    private static final String HEADER = "TaskId,RoomNumber,AssignedStaff,Status,CreatedAt,ExpectedReadyAt,Priority,Remarks";
+    private static final String HEADER = "TaskId,RoomNumber,AssignedStaff,Status,CreatedAt,ExpectedReadyAt,Remarks";
     private final String fileName;
 
     public HousekeepingTaskDAO() {
@@ -43,7 +40,7 @@ public class HousekeepingTaskDAO {
                 }
 
                 String[] fields = line.split(",", -1);
-                if (fields.length < 8) {
+                if (fields.length < 7) {
                     continue;
                 }
 
@@ -54,8 +51,7 @@ public class HousekeepingTaskDAO {
                         TaskStatus.valueOf(fields[3]),
                         LocalDateTime.parse(fields[4]),
                         LocalDateTime.parse(fields[5]),
-                        Integer.parseInt(fields[6]),
-                        fields[7]));
+                        fields[6]));
             }
         } catch (FileNotFoundException ex) {
             createParentDirectory();
@@ -79,20 +75,6 @@ public class HousekeepingTaskDAO {
             throw new IllegalStateException("Unable to save housekeeping tasks.", ex);
         }
     }
-
-    // private void createDefaultFile() {
-    //     createParentDirectory();
-
-    //     try (PrintWriter writer = new PrintWriter(fileName)) {
-    //         writer.println(HEADER);
-    //         writer.println("HK1001,101,Alicia Tan,DIRTY,2026-07-30T08:00,2026-07-30T11:00,1,Guest checked out");
-    //         writer.println("HK1002,102,Bryan Lim,CLEANING_IN_PROGRESS,2026-07-30T08:20,2026-07-30T11:30,2,Early arrival expected");
-    //         writer.println("HK1003,201,Chong Mei,INSPECTED,2026-07-30T09:00,2026-07-30T12:00,3,Pending supervisor approval");
-    //         writer.println("HK1004,205,Deepa Nair,READY_FOR_CHECK_IN,2026-07-30T09:30,2026-07-30T10:30,4,Ready for front desk");
-    //     } catch (IOException ex) {
-    //         throw new IllegalStateException("Unable to create housekeeping task file.", ex);
-    //     }
-    // }
 
     private void createParentDirectory() {
         File file = new File(fileName);

@@ -3,9 +3,6 @@ package HousekeepingAndTaskLog.entity;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
-/**
- * @author ZheSheng
- */
 public class HousekeepingTask implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -16,19 +13,17 @@ public class HousekeepingTask implements Serializable {
     private TaskStatus status;
     private LocalDateTime createdAt;
     private LocalDateTime expectedReadyAt;
-    private int priority;
     private String remarks;
 
     public HousekeepingTask(String taskId, String roomNumber, String assignedStaff,
             TaskStatus status, LocalDateTime createdAt, LocalDateTime expectedReadyAt,
-            int priority, String remarks) {
+            String remarks) {
         this.taskId = taskId;
         this.roomNumber = roomNumber;
         this.assignedStaff = assignedStaff;
         this.status = status;
         this.createdAt = createdAt;
         this.expectedReadyAt = expectedReadyAt;
-        this.priority = priority;
         this.remarks = remarks;
     }
 
@@ -68,14 +63,6 @@ public class HousekeepingTask implements Serializable {
         this.expectedReadyAt = expectedReadyAt;
     }
 
-    public int getPriority() {
-        return priority;
-    }
-
-    public void setPriority(int priority) {
-        this.priority = priority;
-    }
-
     public String getRemarks() {
         return remarks;
     }
@@ -91,7 +78,6 @@ public class HousekeepingTask implements Serializable {
                 + status + ","
                 + createdAt + ","
                 + expectedReadyAt + ","
-                + priority + ","
                 + remarks.replace(",", ";");
     }
 }

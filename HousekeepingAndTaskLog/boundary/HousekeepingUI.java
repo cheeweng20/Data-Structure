@@ -11,9 +11,6 @@ import java.time.format.DateTimeParseException;
 import java.util.Iterator;
 import java.util.Scanner;
 
-/**
- * @author ZheSheng
- */
 public class HousekeepingUI {
 
     private final Scanner scanner;
@@ -52,9 +49,6 @@ public class HousekeepingUI {
                     searchByRoom();
                     break;
                 case "6":
-                    displayTasks(housekeepingControl.getTasksSortedByPriority());
-                    break;
-                case "7":
                     displayReportMenu();
                     break;
                 case "0":
@@ -73,8 +67,7 @@ public class HousekeepingUI {
         System.out.println("3. Roll Back Last Status Change");
         System.out.println("4. Record Late Check-Out Delay");
         System.out.println("5. Search Task by Room");
-        System.out.println("6. View Task Schedule by Priority");
-        System.out.println("7. View Reports");
+        System.out.println("6. View Reports");
         System.out.println("0. Back");
         System.out.print("Select an option: ");
     }
@@ -84,11 +77,10 @@ public class HousekeepingUI {
         String roomNumber = promptRoomNumber();
         String assignedStaff = promptRequiredText("Assigned staff: ");
         LocalDateTime expectedReadyAt = promptDateTime("Expected ready time (yyyy-MM-ddTHH:mm): ");
-        int priority = promptPriority();
-        String remarks = promptRequiredText("Remarks: ");
+        String remarks = promptText("Remarks: ");
 
         HousekeepingTask task = housekeepingControl.addTask(roomNumber, assignedStaff,
-                expectedReadyAt, priority, remarks);
+                expectedReadyAt, remarks);
 
         System.out.println("Cleaning task added.");
         displayTaskDetails(task);
@@ -106,7 +98,7 @@ public class HousekeepingUI {
 
         displayTaskDetails(task);
         TaskStatus newStatus = promptStatus();
-        String reason = promptRequiredText("Reason / note: ");
+        String reason = promptText("Note: ");
 
         if (housekeepingControl.updateTaskStatus(taskId, newStatus, reason)) {
             System.out.println("Status updated.");
@@ -240,24 +232,15 @@ public class HousekeepingUI {
         }
     }
 
-    private int promptPriority() {
-        while (true) {
-            System.out.print("Priority (1 urgent - 5 low): ");
-            String input = scanner.nextLine().trim();
+    private String promptText(String prompt) {
+        System.out.print(prompt);
+        String value = scanner.nextLine().trim();
 
-            try {
-                int priority = Integer.parseInt(input);
-
-                if (HousekeepingValidator.isValidPriority(priority)) {
-                    return priority;
-                }
-            } catch (NumberFormatException ex) {
-                System.out.println("Please enter a whole number.");
-                continue;
-            }
-
-            System.out.println("Priority must be between 1 and 5.");
+        if (HousekeepingValidator.isBlank(value)) {
+            value = "-";
         }
+
+        return value;
     }
 
     private LocalDateTime promptDateTime(String prompt) {
@@ -331,29 +314,27 @@ public class HousekeepingUI {
         System.out.println("Status            : " + task.getStatus());
         System.out.println("Created At        : " + task.getCreatedAt());
         System.out.println("Expected Ready At : " + task.getExpectedReadyAt());
-        System.out.println("Priority          : " + task.getPriority());
         System.out.println("Remarks           : " + task.getRemarks());
     }
 
     private void printTableHeader() {
         printTableBorder();
-        System.out.printf("| %-8s | %-6s | %-16s | %-22s | %-16s | %-8s |%n",
-                "Task ID", "Room", "Staff", "Status", "Ready Time", "Priority");
+        System.out.printf("| %-8s | %-6s | %-16s | %-22s | %-16s |%n",
+                "Task ID", "Room", "Staff", "Status", "Ready Time");
         printTableBorder();
     }
 
     private void printTaskLine(HousekeepingTask task) {
-        System.out.printf("| %-8s | %-6s | %-16s | %-22s | %-16s | %-8d |%n",
+        System.out.printf("| %-8s | %-6s | %-16s | %-22s | %-16s |%n",
                 task.getTaskId(),
                 task.getRoomNumber(),
                 task.getAssignedStaff(),
                 task.getStatus(),
-                task.getExpectedReadyAt(),
-                task.getPriority());
+                task.getExpectedReadyAt());
     }
 
     private void printTableBorder() {
-        System.out.println("+----------+--------+------------------+------------------------+------------------+----------+");
+        System.out.println("+----------+--------+------------------+------------------------+------------------+");
     }
 
     public static void main(String[] args) {

@@ -2,9 +2,6 @@ package HousekeepingAndTaskLog.entity;
 
 import java.time.LocalDateTime;
 
-/**
- * @author Your Name
- */
 public class StatusChange {
 
     private String taskId;
