@@ -4,6 +4,8 @@ import HousekeepingAndTaskLog.dao.HousekeepingTaskDAO;
 import HousekeepingAndTaskLog.entity.HousekeepingTask;
 import HousekeepingAndTaskLog.entity.StatusChange;
 import HousekeepingAndTaskLog.entity.TaskStatus;
+import WalkInRegistrationAndReservation.dao.RoomDAO;
+import WalkInRegistrationAndReservation.entity.Room;
 import adt.ArrayList;
 import adt.ArrayStack;
 import adt.ListInterface;
@@ -14,17 +16,25 @@ import java.util.Iterator;
 public class HousekeepingControl {
 
     private final HousekeepingTaskDAO housekeepingTaskDAO;
+    private final RoomDAO roomDAO;
     private final ListInterface<HousekeepingTask> tasks;
+    private final ListInterface<Room> rooms;
     private final StackInterface<StatusChange> rollbackLog;
 
     public HousekeepingControl() {
         housekeepingTaskDAO = new HousekeepingTaskDAO();
+        roomDAO = new RoomDAO();
         tasks = housekeepingTaskDAO.retrieveFromFile();
+        rooms = roomDAO.retrieveFromFile();
         rollbackLog = new ArrayStack<>();
     }
 
     public HousekeepingTask addTask(String roomNumber, String assignedStaff,
             LocalDateTime expectedReadyAt, String remarks) {
+        if (!roomExists(roomNumber)) {
+            return null;
+        }
+
         HousekeepingTask task = new HousekeepingTask(generateTaskId(), roomNumber,
                 assignedStaff, TaskStatus.DIRTY, LocalDateTime.now(), expectedReadyAt,
                 remarks);
@@ -107,6 +117,18 @@ public class HousekeepingControl {
         }
 
         return result;
+    }
+
+    public boolean roomExists(String roomNumber) {
+        Iterator<Room> iterator = rooms.iterator();
+
+        while (iterator.hasNext()) {
+            if (iterator.next().getRoomNumber().equalsIgnoreCase(roomNumber)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public ListInterface<HousekeepingTask> filterByStatus(TaskStatus status) {

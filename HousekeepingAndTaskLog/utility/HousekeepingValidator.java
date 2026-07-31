@@ -16,7 +16,7 @@ public class HousekeepingValidator {
     }
 
     public static boolean isValidRoomNumber(String roomNumber) {
-        return roomNumber != null && roomNumber.matches("[A-Za-z0-9-]{1,10}");
+        return roomNumber != null && roomNumber.matches("[A-Za-z0-9-]{1,10}"); // Contains only uppercase, lowercase, numbers or hyphens(-)
     }
 
     public static boolean isFutureOrPresent(LocalDateTime dateTime) {

@@ -197,10 +197,13 @@ public class HousekeepingUI {
             String roomNumber = scanner.nextLine().trim();
 
             if (HousekeepingValidator.isValidRoomNumber(roomNumber)) {
-                return roomNumber;
+                if (housekeepingControl.roomExists(roomNumber)) {
+                    return roomNumber;
+                }
+                System.out.println("Room number does not exist.");
+            } else {
+                System.out.println("Invalid room number. Use letters, numbers, or hyphen only.");
             }
-
-            System.out.println("Invalid room number. Use letters, numbers, or hyphen only.");
         }
     }
 
