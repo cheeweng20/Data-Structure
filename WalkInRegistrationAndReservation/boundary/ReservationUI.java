@@ -52,7 +52,7 @@ public class ReservationUI {
                     searchReservation();
                     break;
                 case "4":
-                    cancelReservation();
+                    displayCancellationMenu();
                     break;
                 case "5":
                     displayReservations(reservationManager.getReservations());
@@ -74,7 +74,7 @@ public class ReservationUI {
         System.out.println("1. Check-In Standard Reservation");
         System.out.println("2. Walk-In Registration");
         System.out.println("3. Search Reservation");
-        System.out.println("4. Cancel Reservation");
+        System.out.println("4. Manage Reservation Cancellation");
         System.out.println("5. View All Reservations");
         System.out.println("6. View Report");
         System.out.println("0. Back");
@@ -337,18 +337,67 @@ public class ReservationUI {
     }
 
     // cancel reserve
-    private void cancelReservation() {
-        System.out.print("Enter confirmation number to cancel: ");
-        String confirmationNumber = scanner.nextLine().trim();
-        Reservation reservation = reservationManager.findReservation(confirmationNumber);
+    private void displayCancellationMenu() {
+        boolean back = false;
 
-        if (reservation == null) {
+        while (!back) {
+            System.out.println("\n--- Reservation Cancellation ---");
+            System.out.println("1. Cancel Reservation");
+            System.out.println("2. Undo Last Cancellation");
+            System.out.println("0. Back");
+            System.out.print("Select an option: ");
+            String choice = scanner.nextLine().trim();
+
+            switch (choice) {
+                case "1":
+                    cancelReservation();
+                    break;
+                case "2":
+                    undoLastCancellation();
+                    break;
+                case "0":
+                    back = true;
+                    break;
+                default:
+                    System.out.println("Invalid option. Please try again.");
+            }
+        }
+    }
+
+    private void cancelReservation() {
+        String searchValue = promptRequiredText(
+                "Enter reservation ID / IC / Passport / Guest Name: ");
+        ListInterface<Reservation> matches = reservationManager.findMatchingReservations(searchValue);
+
+        if (matches.isEmpty()) {
             System.out.println("Reservation not found.");
             return;
         }
 
-        if (reservation.getStatus() == ReservationStatus.CHECKED_IN) {
-            System.out.println("Checked-in reservation cannot be cancelled here.");
+        Reservation reservation = selectReservationForCancellation(matches);
+        if (reservation == null) {
+            return;
+        }
+
+        if (reservation.getStatus() != ReservationStatus.CONFIRMED) {
+            System.out.println("Only confirmed reservations can be cancelled.");
+            System.out.println("Current status: " + reservation.getStatus());
+            return;
+        }
+
+        if (reservation.getCheckInDate() == null
+                || reservation.getCheckInDate().isBefore(LocalDate.now())) {
+            System.out.println("Reservations with a past check-in date cannot be cancelled.");
+            return;
+        }
+
+        Room assignedRoom = reservation.getAssignedRoom();
+        Room savedRoom = assignedRoom == null
+                ? null
+                : reservationManager.findRoomByNumber(assignedRoom.getRoomNumber());
+
+        if (savedRoom == null || savedRoom.getStatus() != Room.RoomStatus.RESERVED) {
+            System.out.println("Reservation does not have a valid reserved room and cannot be cancelled safely.");
             return;
         }
 
@@ -359,10 +408,62 @@ public class ReservationUI {
             return;
         }
 
-        if (reservationManager.cancelReservation(confirmationNumber)) {
+        if (reservationManager.cancelReservation(reservation.getConfirmationNumber())) {
             System.out.println("Reservation cancelled successfully.");
         } else {
             System.out.println("Reservation cancellation failed.");
+        }
+    }
+
+    private Reservation selectReservationForCancellation(ListInterface<Reservation> matches) {
+        if (matches.getNumberOfEntries() == 1) {
+            return matches.getEntry(1);
+        }
+
+        System.out.println("\n--- Matching Reservations ---");
+        System.out.printf("%-5s %-14s %-22s %-14s %-12s%n",
+                "No.", "Reservation", "Guest", "Check-In", "Status");
+
+        for (int i = 1; i <= matches.getNumberOfEntries(); i++) {
+            Reservation reservation = matches.getEntry(i);
+            System.out.printf("%-5d %-14s %-22s %-14s %-12s%n",
+                    i,
+                    reservation.getConfirmationNumber(),
+                    reservation.getGuest().getFullName(),
+                    reservation.getCheckInDate(),
+                    reservation.getStatus());
+        }
+
+        while (true) {
+            int selection = promptPositiveInteger("Select reservation number: ");
+            if (selection <= matches.getNumberOfEntries()) {
+                return matches.getEntry(selection);
+            }
+            System.out.println("Please select a number from 1 to " + matches.getNumberOfEntries() + ".");
+        }
+    }
+
+    private void undoLastCancellation() {
+        Reservation reservation = reservationManager.getLastCancelledReservation();
+
+        if (reservation == null) {
+            System.out.println("No cancellation is available to undo in this session.");
+            return;
+        }
+
+        System.out.println("\n--- Last Cancelled Reservation ---");
+        displayReservationDetails(reservation);
+
+        if (!confirmYes("Undo this cancellation? (Y/N): ")) {
+            System.out.println("Undo cancelled. Reservation remains CANCELLED.");
+            return;
+        }
+
+        if (reservationManager.undoLastCancellation()) {
+            System.out.println("Cancellation undone successfully.");
+            displayReservationDetails(reservation);
+        } else {
+            System.out.println("Unable to undo cancellation because the original room is no longer available.");
         }
     }
 
