@@ -9,7 +9,10 @@ import WalkInRegistrationAndReservation.entity.ReservationStatus;
 import WalkInRegistrationAndReservation.entity.Room;
 import WalkInRegistrationAndReservation.entity.Room.RoomStatus;
 import WalkInRegistrationAndReservation.utility.ConfirmationNumberGenerator;
+import adt.ArrayList;
+import adt.ArrayStack;
 import adt.ListInterface;
+import adt.StackInterface;
 import java.time.LocalDate;
 import java.util.Iterator;
 
@@ -24,6 +27,7 @@ public class ReservationManager {
     private final RoomDAO roomDAO;
     private final ListInterface<Reservation> reservations;
     private final ListInterface<Room> rooms;
+    private final StackInterface<String> cancellationHistory;
 
     public ReservationManager() {
         this(new ReservationDAO(), new RoomDAO());
@@ -34,6 +38,7 @@ public class ReservationManager {
         this.roomDAO = roomDAO;
         reservations = reservationDAO.retrieveFromFile();
         rooms = roomDAO.retrieveFromFile();
+        cancellationHistory = new ArrayStack<>();
     }
 
     // Kept for simple standard reservation creation if needed later.
@@ -125,6 +130,50 @@ public class ReservationManager {
         return null;
     }
 
+    public Reservation findByConfirmationNumber(String confirmationNumber) {
+        if (confirmationNumber == null) {
+            return null;
+        }
+
+        Iterator<Reservation> iterator = reservations.iterator();
+        while (iterator.hasNext()) {
+            Reservation reservation = iterator.next();
+            if (reservation.getConfirmationNumber().equalsIgnoreCase(confirmationNumber)) {
+                return reservation;
+            }
+        }
+
+        return null;
+    }
+
+    public ListInterface<Reservation> findMatchingReservations(String searchValue) {
+        ListInterface<Reservation> matches = new ArrayList<>();
+
+        if (searchValue == null || searchValue.trim().isEmpty()) {
+            return matches;
+        }
+
+        String normalizedSearchValue = searchValue.trim().toLowerCase();
+        Iterator<Reservation> iterator = reservations.iterator();
+
+        while (iterator.hasNext()) {
+            Reservation reservation = iterator.next();
+            Guest guest = reservation.getGuest();
+            boolean confirmationMatches = reservation.getConfirmationNumber()
+                    .equalsIgnoreCase(normalizedSearchValue);
+            boolean guestIdMatches = guest != null
+                    && guest.getGuestId().equalsIgnoreCase(normalizedSearchValue);
+            boolean guestNameMatches = guest != null
+                    && guest.getFullName().toLowerCase().contains(normalizedSearchValue);
+
+            if (confirmationMatches || guestIdMatches || guestNameMatches) {
+                matches.add(reservation);
+            }
+        }
+
+        return matches;
+    }
+
     public Reservation findByConfirmationOrGuestId(String searchValue) {
         Iterator<Reservation> iterator = reservations.iterator();
         while (iterator.hasNext()) {
@@ -159,29 +208,80 @@ public class ReservationManager {
 
     // cancel reservation
     public boolean cancelReservation(String confirmationNumber) {
-        Reservation reservation = findReservation(confirmationNumber);
+        Reservation reservation = findByConfirmationNumber(confirmationNumber);
 
-        // If reservation not found/already check in -->fail
-        if (reservation == null || reservation.getStatus() == ReservationStatus.CHECKED_IN) {
+        if (!canCancelReservation(reservation)) {
             return false;
-        } else {
-            reservation.setStatus(ReservationStatus.CANCELLED); // here can cancel
+        }
 
-            Room assignedRoom = reservation.getAssignedRoom();
-            if (assignedRoom != null) {
-                Room savedRoom = findRoomByNumber(assignedRoom.getRoomNumber());
-                if (savedRoom != null) {
-                    savedRoom.setStatus(RoomStatus.AVAILABLE); // same as the upate occcupied (update the assiged and
-                                                               // room list)
-                    reservation.setAssignedRoom(savedRoom);
-                } else {
-                    assignedRoom.setStatus(RoomStatus.AVAILABLE);
-                }
+        reservation.setStatus(ReservationStatus.CANCELLED);
+
+        Room assignedRoom = reservation.getAssignedRoom();
+        if (assignedRoom != null) {
+            Room savedRoom = findRoomByNumber(assignedRoom.getRoomNumber());
+            if (savedRoom != null) {
+                savedRoom.setStatus(RoomStatus.AVAILABLE);
+                reservation.setAssignedRoom(savedRoom);
+            } else {
+                assignedRoom.setStatus(RoomStatus.AVAILABLE);
+            }
+        }
+
+        cancellationHistory.push(reservation.getConfirmationNumber());
+        saveData();
+        return true;
+    }
+
+    public boolean canCancelReservation(Reservation reservation) {
+        if (reservation == null
+                || reservation.getStatus() != ReservationStatus.CONFIRMED
+                || reservation.getCheckInDate() == null
+                || reservation.getCheckInDate().isBefore(LocalDate.now())
+                || reservation.getAssignedRoom() == null) {
+            return false;
+        }
+
+        Room savedRoom = findRoomByNumber(reservation.getAssignedRoom().getRoomNumber());
+        return savedRoom != null && savedRoom.getStatus() == RoomStatus.RESERVED;
+    }
+
+    public Reservation getLastCancelledReservation() {
+        while (!cancellationHistory.isEmpty()) {
+            Reservation reservation = findByConfirmationNumber(cancellationHistory.peek());
+
+            if (reservation != null && reservation.getStatus() == ReservationStatus.CANCELLED) {
+                return reservation;
             }
 
-            saveData();
-            return true;
+            cancellationHistory.pop();
         }
+
+        return null;
+    }
+
+    public boolean undoLastCancellation() {
+        Reservation reservation = getLastCancelledReservation();
+
+        if (reservation == null) {
+            return false;
+        }
+
+        Room assignedRoom = reservation.getAssignedRoom();
+        if (assignedRoom != null) {
+            Room savedRoom = findRoomByNumber(assignedRoom.getRoomNumber());
+
+            if (savedRoom == null || savedRoom.getStatus() != RoomStatus.AVAILABLE) {
+                return false;
+            }
+
+            savedRoom.setStatus(RoomStatus.RESERVED);
+            reservation.setAssignedRoom(savedRoom);
+        }
+
+        reservation.setStatus(ReservationStatus.CONFIRMED);
+        cancellationHistory.pop();
+        saveData();
+        return true;
     }
 
     // assign room

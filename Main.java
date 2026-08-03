@@ -1,5 +1,6 @@
 import java.util.Scanner;
 
+import HousekeepingAndTaskLog.HousekeepingAndTaskLog;
 import LoyaltyAndRewardsService.LoyaltyAndRewardsService;
 import WalkInRegistrationAndReservation.WalkInRegistrationAndReservation;
 import common.src.Logo;
@@ -41,7 +42,7 @@ public class Main {
                     WalkInRegistrationAndReservation.WalkInRegistrationAndReservationMain(input);
                     break;
                 case 2:
-                    System.out.println("Comming Soon");
+                    HousekeepingAndTaskLog.HousekeepingAndTaskLogMain(input);
                     break;
                 case 3:
                     System.out.println("Comming Soon");
