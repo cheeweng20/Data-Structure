@@ -9,15 +9,17 @@ import WalkInRegistrationAndReservation.entity.ReservationStatus;
 import WalkInRegistrationAndReservation.entity.Room;
 import WalkInRegistrationAndReservation.entity.Room.RoomStatus;
 import WalkInRegistrationAndReservation.utility.ConfirmationNumberGenerator;
+import java.time.LocalDate;
 import adt.ArrayList;
 import adt.ArrayStack;
+import adt.LinkedQueue;
 import adt.ListInterface;
+import adt.QueueInterface;
 import adt.StackInterface;
-import java.time.LocalDate;
 import java.util.Iterator;
 
 /**
- * Coordinates reservation check-in, walk-in registration and room assignment.
+ * reservation check-in, walk-in registration and room assignment.
  *
  * @author Wan Yin
  */
@@ -27,6 +29,7 @@ public class ReservationManager {
     private final RoomDAO roomDAO;
     private final ListInterface<Reservation> reservations;
     private final ListInterface<Room> rooms;
+    private final QueueInterface<Reservation> pendingStandardReservations;
     private final StackInterface<String> cancellationHistory;
 
     public ReservationManager() {
@@ -38,7 +41,102 @@ public class ReservationManager {
         this.roomDAO = roomDAO;
         reservations = reservationDAO.retrieveFromFile();
         rooms = roomDAO.retrieveFromFile();
+        pendingStandardReservations = new LinkedQueue<>();
         cancellationHistory = new ArrayStack<>();
+        rebuildPendingStandardQueue();
+    }
+
+    public Reservation submitStandardBookingRequest(Guest guest, String requestedRoomType,
+            LocalDate checkInDate, LocalDate checkOutDate, int numberOfGuests) {
+        Reservation reservation = new Reservation(generateUniqueConfirmationNumber(), guest,
+                requestedRoomType, checkInDate, checkOutDate, numberOfGuests,
+                BookingType.STANDARD);
+
+        reservations.add(reservation);
+        pendingStandardReservations.enqueue(reservation);
+        saveData();
+        return reservation;
+    }
+
+    public Reservation getNextPendingStandardReservation() {
+        return pendingStandardReservations.getFront();
+    }
+
+    public Iterator<Reservation> getPendingStandardReservationIterator() {
+        return pendingStandardReservations.getIterator();
+    }
+
+    public int getPendingStandardReservationCount() {
+        int count = 0;
+        Iterator<Reservation> iterator = pendingStandardReservations.getIterator();
+
+        while (iterator.hasNext()) {
+            iterator.next();
+            count++;
+        }
+
+        return count;
+    }
+
+    public Reservation processNextPendingStandardReservation() {
+        Reservation reservation = pendingStandardReservations.getFront();
+
+        if (reservation == null) {
+            return null;
+        }
+
+        boolean assigned = assignAvailableRoom(reservation);
+        if (!assigned) {
+            reservation.setStatus(ReservationStatus.REJECTED);
+        }
+
+        pendingStandardReservations.dequeue();
+        saveData();
+        return reservation;
+    }
+
+    public ListInterface<String> getRoomTypes() {
+        ListInterface<String> roomTypes = new ArrayList<>();
+        Iterator<Room> iterator = rooms.iterator();
+
+        while (iterator.hasNext()) {
+            String roomType = iterator.next().getRoomType();
+            if (!roomTypes.contains(roomType)) {
+                roomTypes.add(roomType);
+            }
+        }
+
+        return roomTypes;
+    }
+
+    public String findRoomType(String input) {
+        if (input == null) {
+            return null;
+        }
+
+        Iterator<Room> iterator = rooms.iterator();
+        while (iterator.hasNext()) {
+            Room room = iterator.next();
+            if (room.getRoomType().equalsIgnoreCase(input.trim())) {
+                return room.getRoomType();
+            }
+        }
+
+        return null;
+    }
+
+    public boolean canRoomTypeAccommodate(String roomType, int numberOfGuests) {
+        Iterator<Room> iterator = rooms.iterator();
+
+        while (iterator.hasNext()) {
+            Room room = iterator.next();
+            if (room.getRoomType().equalsIgnoreCase(roomType)
+                    && room.getCapacity() >= numberOfGuests) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     // Kept for simple standard reservation creation if needed later.
@@ -365,6 +463,36 @@ public class ReservationManager {
 
     public ListInterface<Room> getRooms() {
         return rooms;
+    }
+
+    private void rebuildPendingStandardQueue() {
+        ListInterface<Reservation> pendingReservations = new ArrayList<>();
+        Iterator<Reservation> iterator = reservations.iterator();
+
+        while (iterator.hasNext()) {
+            Reservation reservation = iterator.next();
+            if (reservation.getBookingType() == BookingType.STANDARD
+                    && reservation.getStatus() == ReservationStatus.PENDING) {
+                pendingReservations.add(reservation);
+            }
+        }
+
+        for (int i = 1; i < pendingReservations.getNumberOfEntries(); i++) {
+            for (int j = 1; j <= pendingReservations.getNumberOfEntries() - i; j++) {
+                Reservation current = pendingReservations.getEntry(j);
+                Reservation next = pendingReservations.getEntry(j + 1);
+
+                if (current.compareTo(next) > 0) {
+                    pendingReservations.replace(j, next);
+                    pendingReservations.replace(j + 1, current);
+                }
+            }
+        }
+
+        Iterator<Reservation> pendingIterator = pendingReservations.iterator();
+        while (pendingIterator.hasNext()) {
+            pendingStandardReservations.enqueue(pendingIterator.next());
+        }
     }
 
 }

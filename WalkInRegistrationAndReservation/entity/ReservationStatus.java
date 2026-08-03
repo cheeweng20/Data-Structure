@@ -1,12 +1,13 @@
 package WalkInRegistrationAndReservation.entity;
 
-// Represents the current stage of a reservation.
+// reservation status
 /**
  * @author Wan Yin
  */
 public enum ReservationStatus {
     PENDING,
     CONFIRMED,
+    REJECTED,
     CHECKED_IN,
     CHECKED_OUT,
     CANCELLED

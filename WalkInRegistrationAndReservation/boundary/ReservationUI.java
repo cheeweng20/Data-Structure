@@ -60,6 +60,9 @@ public class ReservationUI {
                 case "6":
                     displayReportMenu();
                     break;
+                case "7":
+                    displayStandardBookingRequestMenu();
+                    break;
                 case "0":
                     exit = true;
                     break;
@@ -70,13 +73,14 @@ public class ReservationUI {
     }
 
     private void displayMenu() {
-        System.out.println("\n--- Walk-In Registration & Standard Reservation Check-In ---");
+        System.out.println("\n--- Walk-In Registration & Standard Booking Management ---");
         System.out.println("1. Check-In Standard Reservation");
         System.out.println("2. Walk-In Registration");
         System.out.println("3. Search Reservation");
         System.out.println("4. Manage Reservation Cancellation");
         System.out.println("5. View All Reservations");
         System.out.println("6. View Report");
+        System.out.println("7. Manage Standard Booking Requests");
         System.out.println("0. Back");
         System.out.print("Select an option: ");
     }
@@ -160,6 +164,160 @@ public class ReservationUI {
 
         System.out.println("Walk-in registration successful.");
         displayReservationDetails(reservation);
+    }
+
+    private void displayStandardBookingRequestMenu() {
+        boolean back = false;
+
+        while (!back) {
+            System.out.println("\n--- Standard Booking Requests ---");
+            System.out.println("1. Submit Standard Booking Request");
+            System.out.println("2. View Pending Booking Queue");
+            System.out.println("3. Process Next Booking Request");
+            System.out.println("4. Back");
+            System.out.print("Select an option: ");
+            String choice = scanner.nextLine().trim();
+
+            switch (choice) {
+                case "1":
+                    submitStandardBookingRequest();
+                    break;
+                case "2":
+                    displayPendingStandardBookingQueue();
+                    break;
+                case "3":
+                    processNextStandardBookingRequest();
+                    break;
+                case "4":
+                    back = true;
+                    break;
+                default:
+                    System.out.println("Invalid option. Please try again.");
+            }
+        }
+    }
+
+    //submit booking request (Standard )
+    private void submitStandardBookingRequest() {
+        System.out.println("\n--- Submit Standard Booking Request ---");
+        Guest guest = inputGuest();
+        int numberOfGuests = promptNumberOfGuests();
+        String requestedRoomType = promptRequestedRoomType(numberOfGuests);
+        LocalDate checkInDate = promptStandardCheckInDate();
+        LocalDate checkOutDate = promptCheckOutDate(checkInDate);
+
+        System.out.println("\n--- Review Standard Booking Request ---");
+        System.out.println("Guest Name       : " + guest.getFullName());
+        System.out.println("IC / Passport    : " + guest.getGuestId());
+        System.out.println("Phone Number     : " + guest.getPhoneNumber());
+        System.out.println("Email            : " + guest.getEmail());
+        System.out.println("Number of Guests : " + numberOfGuests);
+        System.out.println("Requested Room   : " + requestedRoomType);
+        System.out.println("Check-in Date    : " + checkInDate);
+        System.out.println("Check-out Date   : " + checkOutDate);
+
+        if (!confirmYes("Submit this booking request? (Y/N): ")) {
+            System.out.println("Booking request cancelled.");
+            return;
+        }
+
+        Reservation reservation = reservationManager.submitStandardBookingRequest(
+                guest, requestedRoomType, checkInDate, checkOutDate, numberOfGuests);
+
+        System.out.println("Booking request submitted successfully.");
+        System.out.println("Request Number : " + reservation.getConfirmationNumber());
+        System.out.println("Queue Position : "
+                + reservationManager.getPendingStandardReservationCount());
+        System.out.println("Status         : " + reservation.getStatus());
+    }
+
+    private String promptRequestedRoomType(int numberOfGuests) {
+        System.out.println("\nSupported room types:");
+        Iterator<String> iterator = reservationManager.getRoomTypes().iterator();
+        while (iterator.hasNext()) {
+            System.out.println("- " + iterator.next());
+        }
+
+        while (true) {
+            String input = promptRequiredText("Requested room type: ");
+            String roomType = reservationManager.findRoomType(input);
+
+            if (roomType == null) {
+                System.out.println("Invalid room type. Please enter one of the supported room types.");
+            } else if (!reservationManager.canRoomTypeAccommodate(roomType, numberOfGuests)) {
+                System.out.println(roomType + " cannot accommodate " + numberOfGuests + " guests.");
+            } else {
+                return roomType;
+            }
+        }
+    }
+
+    private LocalDate promptStandardCheckInDate() {
+        while (true) {
+            LocalDate checkInDate = promptDate("Check-in date (yyyy-MM-dd): ");
+
+            if (!checkInDate.isBefore(LocalDate.now())) {
+                return checkInDate;
+            }
+
+            System.out.println("Check-in date cannot be before today.");
+        }
+    }
+
+    private void displayPendingStandardBookingQueue() {
+        Iterator<Reservation> iterator = reservationManager.getPendingStandardReservationIterator();
+
+        if (!iterator.hasNext()) {
+            System.out.println("No pending standard booking requests.");
+            return;
+        }
+
+        System.out.println("\n--- Pending Standard Booking Queue ---");
+        System.out.printf("%-9s %-14s %-22s %-18s %-12s %-10s%n",
+                "Position", "Request No.", "Guest Name", "Room Type", "Check-In", "Status");
+
+        int position = 1;
+        while (iterator.hasNext()) {
+            Reservation reservation = iterator.next();
+            System.out.printf("%-9d %-14s %-22s %-18s %-12s %-10s%n",
+                    position++,
+                    reservation.getConfirmationNumber(),
+                    reservation.getGuest().getFullName(),
+                    reservation.getRequestedRoomType(),
+                    reservation.getCheckInDate(),
+                    reservation.getStatus());
+        }
+
+        System.out.println("Total pending requests: "
+                + reservationManager.getPendingStandardReservationCount());
+    }
+
+    private void processNextStandardBookingRequest() {
+        Reservation reservation = reservationManager.getNextPendingStandardReservation();
+
+        if (reservation == null) {
+            System.out.println("No pending standard booking requests.");
+            return;
+        }
+
+        System.out.println("\n--- Next Standard Booking Request ---");
+        displayReservationDetails(reservation);
+
+        if (!confirmYes("Process this booking request? (Y/N): ")) {
+            System.out.println("Processing cancelled. Request remains at the front of the queue.");
+            return;
+        }
+
+        Reservation processed = reservationManager.processNextPendingStandardReservation();
+        if (processed.getStatus() == ReservationStatus.CONFIRMED) {
+            System.out.println("Booking confirmed successfully.");
+            displayReservationDetails(processed);
+        } else {
+            System.out.println("Booking request rejected.");
+            System.out.println("Reason: No suitable room is available.");
+            System.out.println("Request Number : " + processed.getConfirmationNumber());
+            System.out.println("Status         : " + processed.getStatus());
+        }
     }
 
     private Guest inputGuest() {
