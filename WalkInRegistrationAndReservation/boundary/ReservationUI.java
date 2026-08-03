@@ -10,6 +10,8 @@ import WalkInRegistrationAndReservation.utility.InputValidator;
 import adt.ListInterface;
 import adt.ArrayList;
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.Scanner;
@@ -46,22 +48,22 @@ public class ReservationUI {
                     checkInStandardReservation();
                     break;
                 case "2":
-                    createWalkInRegistration();
+                    displayStandardBookingRequestMenu();
                     break;
                 case "3":
-                    searchReservation();
+                    createWalkInRegistration();
                     break;
                 case "4":
-                    displayCancellationMenu();
+                    searchReservation();
                     break;
                 case "5":
-                    displayReservations(reservationManager.getReservations());
+                    displayCancellationMenu();
                     break;
                 case "6":
-                    displayReportMenu();
+                    displayReservations(reservationManager.getReservations());
                     break;
                 case "7":
-                    displayStandardBookingRequestMenu();
+                    displayReportMenu();
                     break;
                 case "0":
                     exit = true;
@@ -75,12 +77,12 @@ public class ReservationUI {
     private void displayMenu() {
         System.out.println("\n--- Walk-In Registration & Standard Booking Management ---");
         System.out.println("1. Check-In Standard Reservation");
-        System.out.println("2. Walk-In Registration");
-        System.out.println("3. Search Reservation");
-        System.out.println("4. Manage Reservation Cancellation");
-        System.out.println("5. View All Reservations");
-        System.out.println("6. View Report");
-        System.out.println("7. Manage Standard Booking Requests");
+        System.out.println("2. Manage Standard Booking Requests");
+        System.out.println("3. Walk-In Registration");
+        System.out.println("4. Search Reservation");
+        System.out.println("5. Manage Reservation Cancellation");
+        System.out.println("6. View All Reservations");
+        System.out.println("7. View Reports");
         System.out.println("0. Back");
         System.out.print("Select an option: ");
     }
@@ -212,7 +214,7 @@ public class ReservationUI {
         }
     }
 
-    //submit booking request (Standard )
+    // submit booking request (Standard )
     private void submitStandardBookingRequest() {
         System.out.println("\n--- Submit Standard Booking Request ---");
         Guest guest = inputGuest();
@@ -620,39 +622,101 @@ public class ReservationUI {
         }
     }
 
-    // daily report print
-    private void displayDailyCheckInReport() {
-
-        LocalDate reportDate = promptDate("Enter report date (yyyy-mm-dd): ");
-        System.out.println("\n-- Daily Check In report:" + reportDate);
-
-        ListInterface<Reservation> reservations = reservationManager.getReservations(); // get all reservation records
-        ListInterface<Reservation> reportReservations = new ArrayList<>(); // store matched report records only
-        Iterator<Reservation> iterator = reservations.iterator();
+    private void displayMonthlyReservationSummary() {
+        YearMonth reportMonth = promptReportMonth();
+        ListInterface<Reservation> reportReservations = new ArrayList<>();
+        Iterator<Reservation> iterator = reservationManager.getReservations().iterator();
+        int standardCount = 0;
+        int walkInCount = 0;
+        double estimatedRevenue = 0.00;
 
         while (iterator.hasNext()) {
-            Reservation reservation = iterator.next(); // get one reservation from the list
+            Reservation reservation = iterator.next();
+            if (!YearMonth.from(reservation.getCheckInDate()).equals(reportMonth)) {
+                continue;
+            }
 
-            if (reservation.getStatus() == ReservationStatus.CHECKED_IN
-                    && reservation.getCheckInDate().equals(reportDate)) {
-                reportReservations.add(reservation);
+            reportReservations.add(reservation);
+            if (reservation.getBookingType() == BookingType.STANDARD) {
+                standardCount++;
+            } else {
+                walkInCount++;
+            }
+
+            if (isIncludedInEstimatedRevenue(reservation)) {
+                estimatedRevenue += calculateReservationAmount(reservation);
             }
         }
 
-        sortReservationsByBookingDateTime(reportReservations); // sort report by booking date and time
-        printReportHeader();
+        sortReservationsByBookingDateTime(reportReservations);
+        System.out.println("\n--- Monthly Reservation Summary: " + reportMonth + " ---");
+        System.out.println("Total Reservations : " + reportReservations.getNumberOfEntries());
+        System.out.println("Standard           : " + standardCount);
+        System.out.println("Walk-In            : " + walkInCount);
+        System.out.printf("%nEstimated Revenue  : RM%.2f%n", estimatedRevenue);
 
+        printMonthlyReportHeader();
         for (int i = 1; i <= reportReservations.getNumberOfEntries(); i++) {
-            printReportLine(reportReservations.getEntry(i)); // display each sorted reservation
+            printMonthlyReportLine(reportReservations.getEntry(i));
         }
-        printReportBorder(); // print bottom table line
-
-        System.out.println("Total checked-in reservations for " + reportDate + ": "
-                + reportReservations.getNumberOfEntries());
+        printMonthlyReportBorder();
     }
 
-    private void displayRoomOccupancyReport() {
-        System.out.println("\n--- Room Occupancy Report ---");
+    private YearMonth promptReportMonth() {
+        while (true) {
+            System.out.print("Enter report month (yyyy-MM): ");
+            try {
+                return YearMonth.parse(scanner.nextLine().trim());
+            } catch (DateTimeParseException ex) {
+                System.out.println("Invalid month. Please use yyyy-MM format.");
+            }
+        }
+    }
+
+    private boolean isIncludedInEstimatedRevenue(Reservation reservation) {
+        return reservation.getAssignedRoom() != null
+                && (reservation.getStatus() == ReservationStatus.CONFIRMED
+                        || reservation.getStatus() == ReservationStatus.CHECKED_IN);
+    }
+
+    private double calculateReservationAmount(Reservation reservation) {
+        long nights = ChronoUnit.DAYS.between(reservation.getCheckInDate(), reservation.getCheckOutDate());
+        return nights * reservation.getAssignedRoom().getPricePerNight();
+    }
+
+    private void printMonthlyReportHeader() {
+        printMonthlyReportBorder();
+        System.out.printf("| %-10s | %-18s | %-16s | %-10s | %-9s | %-7s | %-12s |%n",
+                "Res ID", "Guest Name", "Booking Time", "Check-In", "Type", "Room", "Amount");
+        printMonthlyReportBorder();
+    }
+
+    private void printMonthlyReportLine(Reservation reservation) {
+        Room room = reservation.getAssignedRoom();
+        String roomNumber = room == null ? "-" : room.getRoomNumber();
+        String amount = isIncludedInEstimatedRevenue(reservation)
+                ? String.format("RM%.2f", calculateReservationAmount(reservation))
+                : "-";
+        String bookingTime = reservation.getBookingDateTime()
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+
+        System.out.printf("| %-10s | %-18s | %-16s | %-10s | %-9s | %-7s | %-12s |%n",
+                reservation.getConfirmationNumber(),
+                reservation.getGuest().getFullName(),
+                bookingTime,
+                reservation.getCheckInDate(),
+                reservation.getBookingType(),
+                roomNumber,
+                amount);
+    }
+
+    private void printMonthlyReportBorder() {
+        System.out.println(
+                "+------------+--------------------+------------------+------------+-----------+---------+--------------+");
+    }
+
+    private void displayRoomAllocationReport() {
+        System.out.println("\n--- Room Allocation Report ---");
 
         ListInterface<Reservation> reservations = reservationManager.getReservations(); // get all reservation records
         ListInterface<Reservation> reportReservations = new ArrayList<>(); // store assigned room records only
@@ -674,10 +738,7 @@ public class ReservationUI {
         }
         printReportBorder(); // print bottom table line
 
-        System.out.println("\n Total occupied/assigned reservation:" + reportReservations.getNumberOfEntries()); // print
-        // total
-        // assigned
-        // records
+        System.out.println("\nTotal allocated reservations: " + reportReservations.getNumberOfEntries());
 
     }
 
@@ -754,8 +815,8 @@ public class ReservationUI {
 
         while (!back) {
             System.out.println("\n--- Reservation Reports ---");
-            System.out.println("1. Daily Check-In Report");
-            System.out.println("2. Room Occupancy Report");
+            System.out.println("1. Monthly Reservation Summary");
+            System.out.println("2. Room Allocation Report");
             System.out.println("0. Back");
             System.out.print("Select an option: ");
             String choice = scanner.nextLine().trim();
@@ -763,10 +824,10 @@ public class ReservationUI {
             switch (choice) {
 
                 case "1":
-                    displayDailyCheckInReport();
+                    displayMonthlyReservationSummary();
                     break;
                 case "2":
-                    displayRoomOccupancyReport();
+                    displayRoomAllocationReport();
                     break;
                 case "0":
                     back = true;
@@ -783,11 +844,12 @@ public class ReservationUI {
             return;
         }
 
-        String border = "+-----+------------+--------------------+-----------+--------+------------+------------+---------+-------------+";
+        String border = "+-----+------------+--------------------+--------+-----------+----------+-----------------+------------+---------+-------------+";
         System.out.println("\n--- All Reservations ---");
         System.out.println(border);
-        System.out.printf("| %-3s | %-10s | %-18s | %-9s | %-6s | %-10s | %-10s | %-7s | %-11s |%n",
-                "No.", "Res ID", "Guest Name", "Type", "Room", "Check-In", "Check-Out", "Payment", "Status");
+        System.out.printf("| %-3s | %-10s | %-18s | %-6s | %-9s | %-8s | %-15s | %-10s | %-7s | %-11s |%n",
+                "No.", "Res ID", "Guest Name", "Guests", "Type", "Room No.", "Room Type", "Check-In", "Payment",
+                "Status");
         System.out.println(border);
 
         Iterator<Reservation> iterator = reservations.iterator();
@@ -797,15 +859,17 @@ public class ReservationUI {
             Reservation reservation = iterator.next();
             Room room = reservation.getAssignedRoom();
             String roomNumber = room == null ? "-" : room.getRoomNumber();
+            String roomType = room == null ? "Auto Assign" : room.getRoomType();
 
-            System.out.printf("| %-3d | %-10s | %-18s | %-9s | %-6s | %-10s | %-10s | %-7s | %-11s |%n",
+            System.out.printf("| %-3d | %-10s | %-18s | %-6d | %-9s | %-8s | %-15s | %-10s | %-7s | %-11s |%n",
                     number++,
                     reservation.getConfirmationNumber(),
                     reservation.getGuest().getFullName(),
+                    reservation.getNumberOfGuests(),
                     reservation.getBookingType(),
                     roomNumber,
+                    roomType,
                     reservation.getCheckInDate(),
-                    reservation.getCheckOutDate(),
                     reservation.getPaymentStatus(),
                     reservation.getStatus());
         }
