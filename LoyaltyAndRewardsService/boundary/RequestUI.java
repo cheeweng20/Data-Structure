@@ -3,7 +3,6 @@ package LoyaltyAndRewardsService.boundary;
 import java.util.Scanner;
 
 import LoyaltyAndRewardsService.control.RequestControl;
-import LoyaltyAndRewardsService.control.RequestControl.RequestOperationResult;
 import LoyaltyAndRewardsService.control.RewardControl;
 import LoyaltyAndRewardsService.utility.MessageUI;
 import common.src.InputHelper;
@@ -68,13 +67,7 @@ public class RequestUI {
         System.out.println(rewardControl.getRewardTable());
         String rewardId = InputHelper.inputString(scanner, "Enter reward ID: ");
         String memberId = InputHelper.inputString(scanner, "Enter member ID: ");
-        RequestOperationResult result =
-                requestControl.submitRewardRequest(memberId, rewardId, rewardControl);
-        if (result.isSuccessful()) {
-            MessageUI.displaySuccess(result.getMessage());
-        } else {
-            MessageUI.displayError(result.getMessage());
-        }
+        requestControl.submitRewardRequest(memberId, rewardId, rewardControl);
     }
 
     private static void processRequest(Scanner scanner, RequestControl requestControl) {
@@ -91,19 +84,7 @@ public class RequestUI {
             return;
         }
 
-        RequestOperationResult result =
-                requestControl.processNextRequestAndSave(decision.equalsIgnoreCase("Y"));
-        if (!result.isSuccessful()) {
-            MessageUI.displayError(result.getMessage());
-        } else if (result.isApproved()) {
-            MessageUI.displaySuccess(result.getMessage());
-        } else {
-            MessageUI.displayInfo(result.getMessage());
-        }
-
-        if (result.hasTierChange()) {
-            MessageUI.displayInfo(result.getTierChangeMessage());
-        }
+        requestControl.processNextRequestAndSave(decision.equalsIgnoreCase("Y"));
     }
 
     private static void displayRequestTable(String table) {

@@ -11,6 +11,7 @@ import LoyaltyAndRewardsService.dao.RequestDao;
 import LoyaltyAndRewardsService.entity.Member;
 import LoyaltyAndRewardsService.entity.RedemptionRequest;
 import LoyaltyAndRewardsService.entity.Reward;
+import LoyaltyAndRewardsService.utility.MessageUI;
 
 /**
  * @author Chee Weng
@@ -45,26 +46,28 @@ public class RequestControl {
         return submitRequest(memberId, reward.getRewardId(), reward.getPointRequired());
     }
 
-    public RequestOperationResult submitRewardRequest(String memberId, String rewardId,
+    public boolean submitRewardRequest(String memberId, String rewardId,
             RewardControl rewardControl) {
         if (!memberControl.findMember(memberId)) {
-            return RequestOperationResult.failure("Member not found.");
+            MessageUI.displayError("Member not found.");
+            return false;
         }
 
         int pointsRequired = rewardControl.getRewardPointRequired(rewardId);
         String rewardName = rewardControl.getRewardName(rewardId);
         if (pointsRequired <= 0 || rewardName == null) {
-            return RequestOperationResult.failure("Reward not found.");
+            MessageUI.displayError("Reward not found.");
+            return false;
         }
 
         if (!submitRequest(memberId, rewardId, pointsRequired)) {
-            return RequestOperationResult.failure(
-                    "Insufficient available points; request not accepted.");
+            MessageUI.displayError("Insufficient available points; request not accepted.");
+            return false;
         }
 
         saveRequests();
-        return RequestOperationResult.success(
-                "Request for " + rewardName + " submitted and is waiting to be processed.");
+        MessageUI.displayRequestSubmitted(rewardName);
+        return true;
     }
 
     private boolean submitRequest(String memberId, String rewardId, int pointsRequested) {
@@ -113,10 +116,11 @@ public class RequestControl {
         return request;
     }
 
-    public RequestOperationResult processNextRequestAndSave(boolean approve) {
+    public RedemptionRequest processNextRequestAndSave(boolean approve) {
         RedemptionRequest next = peekNextRequest();
         if (next == null) {
-            return RequestOperationResult.failure("No pending requests.");
+            MessageUI.displayInfo("No pending requests.");
+            return null;
         }
 
         String previousTierId = memberControl.getMemberTierId(next.getMemberId());
@@ -134,17 +138,13 @@ public class RequestControl {
         boolean tierChanged = previousTierId == null
                 ? newTierId != null
                 : !previousTierId.equalsIgnoreCase(newTierId);
-        String tierChangeMessage = tierChanged
-                ? "Tier changed: " + memberControl.getTierName(previousTierId)
-                        + " -> " + memberControl.getTierName(newTierId)
-                : "";
-
-        if ("Approved".equalsIgnoreCase(processed.getStatus())) {
-            return RequestOperationResult.processed(
-                    true, "Request approved.", tierChangeMessage);
+        MessageUI.displayRequestProcessed(processed.getStatus());
+        if (tierChanged) {
+            MessageUI.displayTierChange(
+                    memberControl.getTierName(previousTierId),
+                    memberControl.getTierName(newTierId));
         }
-        return RequestOperationResult.processed(
-                false, "Request " + processed.getStatus() + ".", tierChangeMessage);
+        return processed;
     }
 
     public boolean isEmpty() {
@@ -254,51 +254,4 @@ public class RequestControl {
         return output.toString();
     }
 
-    public static final class RequestOperationResult {
-        private final boolean successful;
-        private final boolean approved;
-        private final String message;
-        private final String tierChangeMessage;
-
-        private RequestOperationResult(boolean successful, boolean approved, String message,
-                String tierChangeMessage) {
-            this.successful = successful;
-            this.approved = approved;
-            this.message = message;
-            this.tierChangeMessage = tierChangeMessage;
-        }
-
-        public static RequestOperationResult failure(String message) {
-            return new RequestOperationResult(false, false, message, "");
-        }
-
-        public static RequestOperationResult success(String message) {
-            return new RequestOperationResult(true, false, message, "");
-        }
-
-        public static RequestOperationResult processed(boolean approved, String message,
-                String tierChangeMessage) {
-            return new RequestOperationResult(true, approved, message, tierChangeMessage);
-        }
-
-        public boolean isSuccessful() {
-            return successful;
-        }
-
-        public boolean isApproved() {
-            return approved;
-        }
-
-        public String getMessage() {
-            return message;
-        }
-
-        public boolean hasTierChange() {
-            return !tierChangeMessage.isEmpty();
-        }
-
-        public String getTierChangeMessage() {
-            return tierChangeMessage;
-        }
-    }
 }

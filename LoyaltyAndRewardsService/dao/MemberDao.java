@@ -22,14 +22,18 @@ public class MemberDao {
             reader.readLine(); // Skip file header
             String line;
             while ((line = reader.readLine()) != null) {
-                String[] fields = line.split(",");
+                String[] fields = line.split(",", -1);
 
                 String memberId = fields[0];
                 String name = fields[1];
                 int point = Integer.parseInt(fields[2]);
                 String tierId = fields[3];
+                String lastNotifiedTierId = fields.length >= 5 && !fields[4].isBlank()
+                        ? fields[4]
+                        : tierId;
 
-                memberList.addMember(new Member(memberId, name, point, tierId));
+                memberList.addMember(
+                        new Member(memberId, name, point, tierId, lastNotifiedTierId));
             }
         } catch (FileNotFoundException e) {
             System.out.println("No existing member data found, starting fresh.");
@@ -42,7 +46,7 @@ public class MemberDao {
 
     public static void saveToMemberFile(MemberControl memberList) {
         try (PrintWriter writer = new PrintWriter(new FileWriter(FILE_NAME))) {
-            writer.println("MemberId,Name,Point,TierId");
+            writer.println("MemberId,Name,Point,TierId,LastNotifiedTierId");
             for (int i = 1; i <= memberList.size(); i++) {
                 Member member = memberList.getEntry(i);
                 writer.println(member.toCsvLine());
@@ -54,7 +58,7 @@ public class MemberDao {
 
     private static void createMemberCSVFile() {
         try (PrintWriter writer = new PrintWriter(FILE_NAME)) {
-            writer.println("MemberId,Name,Point,TierId");
+            writer.println("MemberId,Name,Point,TierId,LastNotifiedTierId");
 
             System.out.println("CSV File created success !");
         } catch (IOException e) {

@@ -7,6 +7,7 @@ import LoyaltyAndRewardsService.dao.PointTransactionDao;
 import LoyaltyAndRewardsService.entity.PointTransaction;
 import adt.ArrayList;
 import adt.LinkedList;
+import adt.SortedArrayList;
 
 /**
  * @author Chee Weng
@@ -48,7 +49,7 @@ public class TransactionControl {
     }
 
     public ArrayList<PointTransaction> generateExpiringReport(int withinDays) {
-        ArrayList<PointTransaction> filteredResult = new ArrayList<>();
+        SortedArrayList<PointTransaction> sortedResult = new SortedArrayList<>();
         LocalDate today = LocalDate.now();
         LocalDate cutoff = today.plusDays(withinDays);
 
@@ -61,12 +62,15 @@ public class TransactionControl {
                     && !current.getExpiryDate().isAfter(cutoff);
 
             if (matchesCriteria) {
-                filteredResult.add(current);
+                sortedResult.add(current);
             }
         }
 
-        selectionSortByExpiryDate(filteredResult);
-        return filteredResult;
+        ArrayList<PointTransaction> result = new ArrayList<>();
+        for (PointTransaction transaction : sortedResult) {
+            result.add(transaction);
+        }
+        return result;
     }
 
     public int redeemPointsFromOldestTransactions(String memberId, int pointsToRedeem) {
@@ -146,28 +150,6 @@ public class TransactionControl {
         }
 
         return oldest;
-    }
-
-    private void selectionSortByExpiryDate(ArrayList<PointTransaction> list) { 
-        for (int i = 1; i <= list.getNumberOfEntries() - 1; i++) {
-            int targetPosition = i;
-            PointTransaction targetValue = list.getEntry(i);
-
-            for (int j = i + 1; j <= list.getNumberOfEntries(); j++) {
-                PointTransaction current = list.getEntry(j);
-                if (current.compareTo(targetValue) < 0) {
-                    targetValue = current;
-                    targetPosition = j;
-                }
-            }
-
-            if (targetPosition != i) {
-                for (int position = targetPosition; position > i; position--) {
-                    list.replace(position, list.getEntry(position - 1));
-                }
-                list.replace(i, targetValue);
-            }
-        }
     }
 
 }

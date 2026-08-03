@@ -4,7 +4,7 @@ package LoyaltyAndRewardsService.entity;
 /**
  * @author Chee Weng
  */
-public class Tier {
+public class Tier implements Comparable<Tier> {
     private String tierId;
     private String tierLevel;
     private int minPoint;
@@ -54,6 +54,11 @@ public class Tier {
 
     public void setMinPoint(int minPoint) {
         this.minPoint = minPoint;
+    }
+
+    @Override
+    public int compareTo(Tier other) {
+        return Integer.compare(minPoint, other.minPoint);
     }
 
     public String toCsvLine(){

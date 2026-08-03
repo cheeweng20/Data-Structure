@@ -37,7 +37,8 @@ public class LoyaltyAndRewardsService {
         LoyaltyServiceControl serviceControl = new LoyaltyServiceControl();
 
         NotificationUI.displayStartupNotifications(
-                serviceControl.getTransactionControl(), serviceControl.getRequestControl());
+                serviceControl.getTransactionControl(), serviceControl.getRequestControl(),
+                serviceControl.getMemberControl());
 
         while (!exit) {
             displayMenu(input);
