@@ -10,7 +10,6 @@ import java.util.Iterator;
 import LoyaltyAndRewardsService.dao.RequestDao;
 import LoyaltyAndRewardsService.entity.Member;
 import LoyaltyAndRewardsService.entity.RedemptionRequest;
-import LoyaltyAndRewardsService.entity.Reward;
 import LoyaltyAndRewardsService.utility.MessageUI;
 
 /**
@@ -35,17 +34,6 @@ public class RequestControl {
         nextRequestNumber = 1;
     }
 
-    public boolean submitRequest(String memberId, int pointsRequested) {
-        return submitRequest(memberId, "", pointsRequested);
-    }
-
-    public boolean submitRequest(String memberId, Reward reward) {
-        if (reward == null) {
-            return false;
-        }
-        return submitRequest(memberId, reward.getRewardId(), reward.getPointRequired());
-    }
-
     public boolean submitRewardRequest(String memberId, String rewardId,
             RewardControl rewardControl) {
         if (!memberControl.findMember(memberId)) {
@@ -60,7 +48,7 @@ public class RequestControl {
             return false;
         }
 
-        if (!submitRequest(memberId, rewardId, pointsRequired)) {
+        if (!createPendingRequest(memberId, rewardId, pointsRequired)) {
             MessageUI.displayError("Insufficient available points; request not accepted.");
             return false;
         }
@@ -70,7 +58,7 @@ public class RequestControl {
         return true;
     }
 
-    private boolean submitRequest(String memberId, String rewardId, int pointsRequested) {
+    private boolean createPendingRequest(String memberId, String rewardId, int pointsRequested) {
         Member currentMember = memberControl.getMemberById(memberId);
         if (currentMember == null || pointsRequested <= 0) {
             return false;

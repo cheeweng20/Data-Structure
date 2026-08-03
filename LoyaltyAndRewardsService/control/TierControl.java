@@ -56,7 +56,7 @@ public class TierControl {
     }
 
     public boolean isEmpty() {
-        return tierLinkedList.size() == 0;
+        return tierLinkedList.isEmpty();
     }
 
     public boolean findTier(String tierId) {

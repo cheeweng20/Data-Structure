@@ -3,7 +3,6 @@ package LoyaltyAndRewardsService.boundary;
 import java.util.Scanner;
 
 import LoyaltyAndRewardsService.control.MemberControl;
-import LoyaltyAndRewardsService.control.MemberControl.PointUpdateResult;
 import LoyaltyAndRewardsService.control.RequestControl;
 import LoyaltyAndRewardsService.control.RewardControl;
 import LoyaltyAndRewardsService.control.TransactionControl;
@@ -150,18 +149,7 @@ public class MemberUI {
             return;
         }
 
-        PointUpdateResult result =
-                memberControl.addPoints(memberId, addedPoint, transactionControl);
-        if (!result.isSuccessful()) {
-            MessageUI.displayError("Member not found.");
-            return;
-        }
-
-        MessageUI.displaySuccess(addedPoint + " points added successfully.");
-        MessageUI.displayInfo("Current points: " + result.getCurrentPoint());
-        if (result.isTierChanged()) {
-            MessageUI.displayInfo(result.getTierChangeMessage());
-        }
+        memberControl.addPoints(memberId, addedPoint, transactionControl);
     }
 
     private static void displayPromotion(Scanner scanner, MemberControl memberControl) {

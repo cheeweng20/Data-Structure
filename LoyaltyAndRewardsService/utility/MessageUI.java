@@ -39,6 +39,11 @@ public final class MessageUI {
         displayInfo("Tier changed: " + previousTierName + " -> " + currentTierName);
     }
 
+    public static void displayPointsAdded(int addedPoints, int currentPoints) {
+        displaySuccess(addedPoints + " points added successfully.");
+        displayInfo("Current points: " + currentPoints);
+    }
+
     public static void displayTierAdded(String tierId) {
         displaySuccess("Tier " + tierId + " added successfully.");
     }

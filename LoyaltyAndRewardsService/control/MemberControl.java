@@ -9,6 +9,7 @@ import adt.SortedArrayList;
 import LoyaltyAndRewardsService.dao.MemberDao;
 import LoyaltyAndRewardsService.entity.Member;
 import LoyaltyAndRewardsService.entity.Tier;
+import LoyaltyAndRewardsService.utility.MessageUI;
 
 /**
  * @author Chee Weng
@@ -132,10 +133,15 @@ public class MemberControl {
         return newPoint;
     }
 
-    public PointUpdateResult addPoints(String memberId, int points, TransactionControl transactionControl) {
+    public int addPoints(String memberId, int points, TransactionControl transactionControl) {
         Member member = getMemberById(memberId);
-        if (member == null || points <= 0) {
-            return PointUpdateResult.failure();
+        if (member == null) {
+            MessageUI.displayError("Member not found.");
+            return -1;
+        }
+        if (points <= 0) {
+            MessageUI.displayError("Points to add must be greater than zero.");
+            return -1;
         }
 
         String previousTierId = member.getTierId();
@@ -145,11 +151,16 @@ public class MemberControl {
         transactionControl.saveTransactions();
 
         String newTierId = member.getTierId();
-        return PointUpdateResult.success(
-                newPoint,
-                tierControl.getTierNameById(previousTierId),
-                tierControl.getTierNameById(newTierId),
-                previousTierId == null ? newTierId != null : !previousTierId.equalsIgnoreCase(newTierId));
+        boolean tierChanged = previousTierId == null
+                ? newTierId != null
+                : !previousTierId.equalsIgnoreCase(newTierId);
+        MessageUI.displayPointsAdded(points, newPoint);
+        if (tierChanged) {
+            MessageUI.displayTierChange(
+                    tierControl.getTierNameById(previousTierId),
+                    tierControl.getTierNameById(newTierId));
+        }
+        return newPoint;
     }
 
     public int recalculateAllMemberTiers() {
@@ -368,45 +379,4 @@ public class MemberControl {
         }
     }
 
-    public static final class PointUpdateResult {
-        private final boolean successful;
-        private final int currentPoint;
-        private final String previousTierName;
-        private final String currentTierName;
-        private final boolean tierChanged;
-
-        private PointUpdateResult(boolean successful, int currentPoint, String previousTierName,
-                String currentTierName, boolean tierChanged) {
-            this.successful = successful;
-            this.currentPoint = currentPoint;
-            this.previousTierName = previousTierName;
-            this.currentTierName = currentTierName;
-            this.tierChanged = tierChanged;
-        }
-
-        public static PointUpdateResult failure() {
-            return new PointUpdateResult(false, -1, "", "", false);
-        }
-
-        public static PointUpdateResult success(int currentPoint, String previousTierName,
-                String currentTierName, boolean tierChanged) {
-            return new PointUpdateResult(true, currentPoint, previousTierName, currentTierName, tierChanged);
-        }
-
-        public boolean isSuccessful() {
-            return successful;
-        }
-
-        public int getCurrentPoint() {
-            return currentPoint;
-        }
-
-        public boolean isTierChanged() {
-            return tierChanged;
-        }
-
-        public String getTierChangeMessage() {
-            return "Tier changed: " + previousTierName + " -> " + currentTierName;
-        }
-    }
 }
