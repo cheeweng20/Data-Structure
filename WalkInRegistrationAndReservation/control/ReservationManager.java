@@ -21,15 +21,17 @@ import java.util.Iterator;
 /**
  * reservation check-in, walk-in registration and room assignment.
  *
- * @author Wan Yin
+ * @author Wan Yin·
  */
 public class ReservationManager {
+
+    private static final String AUTO_ASSIGN_ROOM_TYPE = "AUTO ASSIGN";
 
     private final ReservationDAO reservationDAO;
     private final RoomDAO roomDAO;
     private final ListInterface<Reservation> reservations;
     private final ListInterface<Room> rooms;
-    private final QueueInterface<Reservation> pendingStandardReservations;
+    private final QueueInterface<Reservation> pendingStandardReservations; // Pending standard bookings
     private final StackInterface<String> cancellationHistory;
 
     public ReservationManager() {
@@ -46,12 +48,13 @@ public class ReservationManager {
         rebuildPendingStandardQueue();
     }
 
-    public Reservation submitStandardBookingRequest(Guest guest, String requestedRoomType,
+    public Reservation submitStandardBookingRequest(Guest guest,
             LocalDate checkInDate, LocalDate checkOutDate, int numberOfGuests) {
         Reservation reservation = new Reservation(generateUniqueConfirmationNumber(), guest,
-                requestedRoomType, checkInDate, checkOutDate, numberOfGuests,
+                AUTO_ASSIGN_ROOM_TYPE, checkInDate, checkOutDate, numberOfGuests,
                 BookingType.STANDARD);
 
+        // Save record and add to queue.
         reservations.add(reservation);
         pendingStandardReservations.enqueue(reservation);
         saveData();
@@ -79,64 +82,26 @@ public class ReservationManager {
     }
 
     public Reservation processNextPendingStandardReservation() {
+        // Process the front request only.
         Reservation reservation = pendingStandardReservations.getFront();
 
         if (reservation == null) {
             return null;
         }
 
-        boolean assigned = assignAvailableRoom(reservation);
-        if (!assigned) {
+        Room room = findAvailableRoomForGuests(reservation.getNumberOfGuests());
+        if (room == null) {
             reservation.setStatus(ReservationStatus.REJECTED);
+        } else {
+            reservation.setRequestedRoomType(room.getRoomType());
+            reservation.setAssignedRoom(room);
+            reservation.setStatus(ReservationStatus.CONFIRMED);
+            room.setStatus(RoomStatus.RESERVED);
         }
 
         pendingStandardReservations.dequeue();
         saveData();
         return reservation;
-    }
-
-    public ListInterface<String> getRoomTypes() {
-        ListInterface<String> roomTypes = new ArrayList<>();
-        Iterator<Room> iterator = rooms.iterator();
-
-        while (iterator.hasNext()) {
-            String roomType = iterator.next().getRoomType();
-            if (!roomTypes.contains(roomType)) {
-                roomTypes.add(roomType);
-            }
-        }
-
-        return roomTypes;
-    }
-
-    public String findRoomType(String input) {
-        if (input == null) {
-            return null;
-        }
-
-        Iterator<Room> iterator = rooms.iterator();
-        while (iterator.hasNext()) {
-            Room room = iterator.next();
-            if (room.getRoomType().equalsIgnoreCase(input.trim())) {
-                return room.getRoomType();
-            }
-        }
-
-        return null;
-    }
-
-    public boolean canRoomTypeAccommodate(String roomType, int numberOfGuests) {
-        Iterator<Room> iterator = rooms.iterator();
-
-        while (iterator.hasNext()) {
-            Room room = iterator.next();
-            if (room.getRoomType().equalsIgnoreCase(roomType)
-                    && room.getCapacity() >= numberOfGuests) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     // Kept for simple standard reservation creation if needed later.
@@ -181,7 +146,7 @@ public class ReservationManager {
     }
 
     // help check in (client already book before)
-    public boolean checkInStandardReservation(String searchValue) {
+    public boolean checkInStandardReservation(String searchValue, String paymentMethod) {
         Reservation reservation = findReservation(searchValue); // find reservation first
 
         if (reservation == null
@@ -197,6 +162,11 @@ public class ReservationManager {
             return false;
         }
 
+        boolean alreadyPaid = "PAID".equalsIgnoreCase(reservation.getPaymentStatus());
+        if (!alreadyPaid && (paymentMethod == null || paymentMethod.trim().isEmpty())) {
+            return false;
+        }
+
         Room savedRoom = findRoomByNumber(room.getRoomNumber());
         if (savedRoom != null) {
             savedRoom.setStatus(RoomStatus.OCCUPIED);
@@ -205,8 +175,12 @@ public class ReservationManager {
             room.setStatus(RoomStatus.OCCUPIED);
         }
 
+        if (!alreadyPaid) {
+            reservation.setPaymentMethod(paymentMethod);
+            reservation.setPaymentStatus("PAID");
+        }
+
         reservation.setStatus(ReservationStatus.CHECKED_IN);
-        reservation.setPaymentStatus("PAID"); // duble confirm
         saveData();
         return true;
     }
@@ -465,6 +439,7 @@ public class ReservationManager {
         return rooms;
     }
 
+    // Restore pending queue after restart.
     private void rebuildPendingStandardQueue() {
         ListInterface<Reservation> pendingReservations = new ArrayList<>();
         Iterator<Reservation> iterator = reservations.iterator();

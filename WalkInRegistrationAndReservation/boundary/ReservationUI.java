@@ -119,7 +119,22 @@ public class ReservationUI {
             return;
         }
 
-        if (reservationManager.checkInStandardReservation(searchValue)) {
+        String paymentMethod = reservation.getPaymentMethod();
+        if (!"PAID".equalsIgnoreCase(reservation.getPaymentStatus())) {
+            paymentMethod = promptPaymentMethod();
+            System.out.println("Selected payment method: " + paymentMethod);
+
+            if (!confirmYes("Confirm payment? (Y/N): ")) {
+                System.out.println("Payment cancelled. Check-in not completed.");
+                return;
+            }
+
+            System.out.println("Payment successful!");
+        } else {
+            System.out.println("Reservation already paid. No payment required.");
+        }
+
+        if (reservationManager.checkInStandardReservation(searchValue, paymentMethod)) {
             System.out.println("Check-in successful.");
             displayReservationDetails(reservationManager.findReservation(searchValue));
         } else {
@@ -202,7 +217,6 @@ public class ReservationUI {
         System.out.println("\n--- Submit Standard Booking Request ---");
         Guest guest = inputGuest();
         int numberOfGuests = promptNumberOfGuests();
-        String requestedRoomType = promptRequestedRoomType(numberOfGuests);
         LocalDate checkInDate = promptStandardCheckInDate();
         LocalDate checkOutDate = promptCheckOutDate(checkInDate);
 
@@ -212,9 +226,10 @@ public class ReservationUI {
         System.out.println("Phone Number     : " + guest.getPhoneNumber());
         System.out.println("Email            : " + guest.getEmail());
         System.out.println("Number of Guests : " + numberOfGuests);
-        System.out.println("Requested Room   : " + requestedRoomType);
+        System.out.println("Room Assignment  : Automatic best-fit during processing");
         System.out.println("Check-in Date    : " + checkInDate);
         System.out.println("Check-out Date   : " + checkOutDate);
+        System.out.println();
 
         if (!confirmYes("Submit this booking request? (Y/N): ")) {
             System.out.println("Booking request cancelled.");
@@ -222,34 +237,13 @@ public class ReservationUI {
         }
 
         Reservation reservation = reservationManager.submitStandardBookingRequest(
-                guest, requestedRoomType, checkInDate, checkOutDate, numberOfGuests);
+                guest, checkInDate, checkOutDate, numberOfGuests);
 
-        System.out.println("Booking request submitted successfully.");
+        System.out.println("\nBooking request submitted successfully.\n");
         System.out.println("Request Number : " + reservation.getConfirmationNumber());
         System.out.println("Queue Position : "
                 + reservationManager.getPendingStandardReservationCount());
         System.out.println("Status         : " + reservation.getStatus());
-    }
-
-    private String promptRequestedRoomType(int numberOfGuests) {
-        System.out.println("\nSupported room types:");
-        Iterator<String> iterator = reservationManager.getRoomTypes().iterator();
-        while (iterator.hasNext()) {
-            System.out.println("- " + iterator.next());
-        }
-
-        while (true) {
-            String input = promptRequiredText("Requested room type: ");
-            String roomType = reservationManager.findRoomType(input);
-
-            if (roomType == null) {
-                System.out.println("Invalid room type. Please enter one of the supported room types.");
-            } else if (!reservationManager.canRoomTypeAccommodate(roomType, numberOfGuests)) {
-                System.out.println(roomType + " cannot accommodate " + numberOfGuests + " guests.");
-            } else {
-                return roomType;
-            }
-        }
     }
 
     private LocalDate promptStandardCheckInDate() {
@@ -273,21 +267,22 @@ public class ReservationUI {
         }
 
         System.out.println("\n--- Pending Standard Booking Queue ---");
-        System.out.printf("%-9s %-14s %-22s %-18s %-12s %-10s%n",
-                "Position", "Request No.", "Guest Name", "Room Type", "Check-In", "Status");
+        System.out.printf("%-9s %-14s %-22s %-8s %-12s %-10s%n",
+                "Position", "Request No.", "Guest Name", "Guests", "Check-In", "Status");
 
         int position = 1;
         while (iterator.hasNext()) {
             Reservation reservation = iterator.next();
-            System.out.printf("%-9d %-14s %-22s %-18s %-12s %-10s%n",
+            System.out.printf("%-9d %-14s %-22s %-8d %-12s %-10s%n",
                     position++,
                     reservation.getConfirmationNumber(),
                     reservation.getGuest().getFullName(),
-                    reservation.getRequestedRoomType(),
+                    reservation.getNumberOfGuests(),
                     reservation.getCheckInDate(),
                     reservation.getStatus());
         }
 
+        System.out.println();
         System.out.println("Total pending requests: "
                 + reservationManager.getPendingStandardReservationCount());
     }
@@ -788,11 +783,35 @@ public class ReservationUI {
             return;
         }
 
+        String border = "+-----+------------+--------------------+-----------+--------+------------+------------+---------+-------------+";
+        System.out.println("\n--- All Reservations ---");
+        System.out.println(border);
+        System.out.printf("| %-3s | %-10s | %-18s | %-9s | %-6s | %-10s | %-10s | %-7s | %-11s |%n",
+                "No.", "Res ID", "Guest Name", "Type", "Room", "Check-In", "Check-Out", "Payment", "Status");
+        System.out.println(border);
+
         Iterator<Reservation> iterator = reservations.iterator();
+        int number = 1;
 
         while (iterator.hasNext()) {
-            displayReservationDetails(iterator.next());
+            Reservation reservation = iterator.next();
+            Room room = reservation.getAssignedRoom();
+            String roomNumber = room == null ? "-" : room.getRoomNumber();
+
+            System.out.printf("| %-3d | %-10s | %-18s | %-9s | %-6s | %-10s | %-10s | %-7s | %-11s |%n",
+                    number++,
+                    reservation.getConfirmationNumber(),
+                    reservation.getGuest().getFullName(),
+                    reservation.getBookingType(),
+                    roomNumber,
+                    reservation.getCheckInDate(),
+                    reservation.getCheckOutDate(),
+                    reservation.getPaymentStatus(),
+                    reservation.getStatus());
         }
+
+        System.out.println(border);
+        System.out.println("\nTotal reservations: " + reservations.getNumberOfEntries());
     }
 
     private void displayReservationDetails(Reservation reservation) {
@@ -816,7 +835,15 @@ public class ReservationUI {
 
         if (room == null) {
             System.out.println("Room / Unit No.  : Not assigned");
-            System.out.println("Room Type        : " + reservation.getRequestedRoomType());
+            if (reservation.getBookingType() == BookingType.STANDARD
+                    && reservation.getStatus() == ReservationStatus.PENDING) {
+                System.out.println("Room Assignment  : Automatic during processing");
+            } else if (reservation.getBookingType() == BookingType.STANDARD
+                    && reservation.getStatus() == ReservationStatus.REJECTED) {
+                System.out.println("Room Assignment  : No suitable room available");
+            } else {
+                System.out.println("Room Type        : " + reservation.getRequestedRoomType());
+            }
         } else {
             System.out.println("Room / Unit No.  : " + room.getRoomNumber());
             System.out.println("Room Type        : " + room.getRoomType());
