@@ -4,7 +4,6 @@ import java.util.Scanner;
 
 import LoyaltyAndRewardsService.control.MemberControl;
 import LoyaltyAndRewardsService.control.TierControl;
-import LoyaltyAndRewardsService.control.TierControl.TierMaintenanceResult;
 import LoyaltyAndRewardsService.utility.MessageUI;
 import LoyaltyAndRewardsService.utility.Verification;
 import common.src.InputHelper;
@@ -76,14 +75,7 @@ public class TierUI {
             return;
         }
 
-        TierMaintenanceResult result =
-                tierControl.createTier(tierName, minimumPoint, memberControl);
-        if (!result.isSuccessful()) {
-            MessageUI.displayError("Tier level could not be added.");
-            return;
-        }
-        MessageUI.displaySuccess("Tier " + result.getTierId() + " added successfully.");
-        displayRecalculationMessage(result);
+        tierControl.createTier(tierName, minimumPoint, memberControl);
     }
 
     private static void removeTier(Scanner scanner, TierControl tierControl,
@@ -105,13 +97,7 @@ public class TierUI {
             return;
         }
 
-        TierMaintenanceResult result = tierControl.removeTier(tierId, memberControl);
-        if (!result.isSuccessful()) {
-            MessageUI.displayError("Tier level could not be deleted.");
-            return;
-        }
-        MessageUI.displaySuccess("Tier level deleted successfully.");
-        displayRecalculationMessage(result);
+        tierControl.removeTier(tierId, memberControl);
     }
 
     private static void updateTier(Scanner scanner, TierControl tierControl,
@@ -144,14 +130,7 @@ public class TierUI {
             return;
         }
 
-        TierMaintenanceResult result =
-                tierControl.updateTier(tierId, newName, minimumPoint, memberControl);
-        if (!result.isSuccessful()) {
-            MessageUI.displayError("Tier level could not be updated.");
-            return;
-        }
-        MessageUI.displaySuccess("Tier level updated successfully.");
-        displayRecalculationMessage(result);
+        tierControl.updateTier(tierId, newName, minimumPoint, memberControl);
     }
 
     private static void displayTierTable(TierControl tierControl) {
@@ -163,10 +142,4 @@ public class TierUI {
         }
     }
 
-    private static void displayRecalculationMessage(TierMaintenanceResult result) {
-        if (result.getUpdatedMemberCount() > 0) {
-            MessageUI.displayInfo(result.getUpdatedMemberCount()
-                    + " member tier(s) were recalculated.");
-        }
-    }
 }

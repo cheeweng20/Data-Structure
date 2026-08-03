@@ -8,12 +8,19 @@ public class Member implements Comparable<Member> {
     private String name;
     private int point;
     private String tierId;
+    private String lastNotifiedTierId;
 
     public Member(String memberId,String name, int point,String tierId) {
+        this(memberId, name, point, tierId, tierId);
+    }
+
+    public Member(String memberId, String name, int point, String tierId,
+            String lastNotifiedTierId) {
         this.memberId = memberId;
         this.name = name;
         this.point = point;
         this.tierId = tierId;
+        this.lastNotifiedTierId = lastNotifiedTierId;
     }
 
     public String getMemberId() {
@@ -32,6 +39,10 @@ public class Member implements Comparable<Member> {
         return tierId;
     }
 
+    public String getLastNotifiedTierId() {
+        return lastNotifiedTierId;
+    }
+
     public void setMemberId(String memberId) {
         this.memberId = memberId;
     }
@@ -48,13 +59,18 @@ public class Member implements Comparable<Member> {
         this.tierId = tierId;
     }
 
+    public void setLastNotifiedTierId(String lastNotifiedTierId) {
+        this.lastNotifiedTierId = lastNotifiedTierId;
+    }
+
     @Override
     public int compareTo(Member other) {
         return Integer.compare(point, other.point);
     }
 
     public String toCsvLine(){
-        return memberId + "," + name + "," + point + "," + tierId;
+        return memberId + "," + name + "," + point + "," + tierId + ","
+                + lastNotifiedTierId;
     }
     
 }

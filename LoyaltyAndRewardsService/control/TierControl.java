@@ -1,10 +1,12 @@
 package LoyaltyAndRewardsService.control;
 
 import adt.LinkedList;
+import adt.SortedArrayList;
 
 import LoyaltyAndRewardsService.dao.MemberDao;
 import LoyaltyAndRewardsService.dao.TierDao;
 import LoyaltyAndRewardsService.entity.Tier;
+import LoyaltyAndRewardsService.utility.MessageUI;
 
 /**
  * @author Chee Weng
@@ -21,14 +23,18 @@ public class TierControl {
         organizeTierRanges();
     }
 
-    public TierMaintenanceResult createTier(String tierLevelName, int minPoint, MemberControl memberControl) {
+    public boolean createTier(String tierLevelName, int minPoint, MemberControl memberControl) {
         if ((isEmpty() && minPoint != 0) || !isMinimumPointAvailable(minPoint, null)) {
-            return TierMaintenanceResult.failure();
+            MessageUI.displayError("Tier level could not be added.");
+            return false;
         }
 
         String tierId = generateTierId();
         addTierLevel(new Tier(tierId, tierLevelName, minPoint, 0));
-        return persistTierChanges(memberControl, tierId);
+        int updatedMembers = persistTierChanges(memberControl);
+        MessageUI.displayTierAdded(tierId);
+        MessageUI.displayTierRecalculation(updatedMembers);
+        return true;
     }
 
     public boolean updateTierLevelById(String tierId, String tierLevelName, int minPoint, int maxPoint) {
@@ -94,27 +100,35 @@ public class TierControl {
         return false;
     }
 
-    public TierMaintenanceResult removeTier(String tierId, MemberControl memberControl) {
+    public boolean removeTier(String tierId, MemberControl memberControl) {
         Tier tier = getExistTierById(tierId);
         if (tier == null || (size() > 1 && tier.getMinPoint() == 0)) {
-            return TierMaintenanceResult.failure();
+            MessageUI.displayError("Tier level could not be deleted.");
+            return false;
         }
 
         removeTierLevel(tierId);
-        return persistTierChanges(memberControl, tierId);
+        int updatedMembers = persistTierChanges(memberControl);
+        MessageUI.displayTierDeleted();
+        MessageUI.displayTierRecalculation(updatedMembers);
+        return true;
     }
 
-    public TierMaintenanceResult updateTier(String tierId, String tierLevelName, int minPoint,
+    public boolean updateTier(String tierId, String tierLevelName, int minPoint,
             MemberControl memberControl) {
         Tier existing = getExistTierById(tierId);
         if (existing == null
                 || (existing.getMinPoint() == 0 && minPoint != 0)
                 || !isMinimumPointAvailable(minPoint, tierId)
                 || !updateTierLevelById(tierId, tierLevelName, minPoint, 0)) {
-            return TierMaintenanceResult.failure();
+            MessageUI.displayError("Tier level could not be updated.");
+            return false;
         }
 
-        return persistTierChanges(memberControl, tierId);
+        int updatedMembers = persistTierChanges(memberControl);
+        MessageUI.displayTierUpdated();
+        MessageUI.displayTierRecalculation(updatedMembers);
+        return true;
     }
 
     // Helper Function
@@ -203,11 +217,11 @@ public class TierControl {
         return getMinimumPoint(tierId) == 0;
     }
 
-    private TierMaintenanceResult persistTierChanges(MemberControl memberControl, String tierId) {
+    private int persistTierChanges(MemberControl memberControl) {
         int updatedMembers = memberControl.recalculateAllMemberTiers();
         TierDao.saveToTierFile(this);
         MemberDao.saveToMemberFile(memberControl);
-        return TierMaintenanceResult.success(tierId, updatedMembers);
+        return updatedMembers;
     }
 
     private void organizeTierRanges() {
@@ -225,53 +239,15 @@ public class TierControl {
     }
 
     private void sortByMinimumPoint() {
-        for (int i = 1; i < tierLinkedList.size(); i++) {
-            int smallestPosition = i;
+        SortedArrayList<Tier> sortedTiers = new SortedArrayList<>();
+        for (Tier tier : tierLinkedList) {
+            sortedTiers.add(tier);
+        }
 
-            for (int j = i + 1; j <= tierLinkedList.size(); j++) {
-                if (tierLinkedList.getEntry(j).getMinPoint()
-                        < tierLinkedList.getEntry(smallestPosition).getMinPoint()) {
-                    smallestPosition = j;
-                }
-            }
-
-            if (smallestPosition != i) {
-                Tier current = tierLinkedList.getEntry(i);
-                tierLinkedList.replace(i, tierLinkedList.getEntry(smallestPosition));
-                tierLinkedList.replace(smallestPosition, current);
-            }
+        tierLinkedList.clear();
+        for (Tier tier : sortedTiers) {
+            tierLinkedList.add(tier);
         }
     }
 
-    public static final class TierMaintenanceResult {
-        private final boolean successful;
-        private final String tierId;
-        private final int updatedMemberCount;
-
-        private TierMaintenanceResult(boolean successful, String tierId, int updatedMemberCount) {
-            this.successful = successful;
-            this.tierId = tierId;
-            this.updatedMemberCount = updatedMemberCount;
-        }
-
-        public static TierMaintenanceResult failure() {
-            return new TierMaintenanceResult(false, "", 0);
-        }
-
-        public static TierMaintenanceResult success(String tierId, int updatedMemberCount) {
-            return new TierMaintenanceResult(true, tierId, updatedMemberCount);
-        }
-
-        public boolean isSuccessful() {
-            return successful;
-        }
-
-        public String getTierId() {
-            return tierId;
-        }
-
-        public int getUpdatedMemberCount() {
-            return updatedMemberCount;
-        }
-    }
 }

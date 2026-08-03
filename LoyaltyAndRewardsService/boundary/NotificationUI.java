@@ -1,7 +1,11 @@
 package LoyaltyAndRewardsService.boundary;
 
+import java.util.Iterator;
+
+import LoyaltyAndRewardsService.control.MemberControl;
 import LoyaltyAndRewardsService.control.RequestControl;
 import LoyaltyAndRewardsService.control.TransactionControl;
+import LoyaltyAndRewardsService.entity.Member;
 import LoyaltyAndRewardsService.utility.MessageUI;
 
 /**
@@ -16,7 +20,7 @@ public final class NotificationUI {
     }
 
     public static void displayStartupNotifications(TransactionControl transactionControl,
-            RequestControl requestControl) {
+            RequestControl requestControl, MemberControl memberControl) {
         int expiringTransactionCount =
                 transactionControl.getExpiringTransactionCount(DEFAULT_EXPIRY_ALERT_DAYS);
         int expiringPointTotal =
@@ -39,6 +43,21 @@ public final class NotificationUI {
                     + " redemption request(s) are waiting for processing.");
         } else {
             MessageUI.displayInfo("No redemption requests are waiting for processing.");
+        }
+
+        int unreadUpgradeCount = memberControl.getUnreadTierUpgradeCount();
+        if (unreadUpgradeCount > 0) {
+            Iterator<Member> iterator = memberControl.getUnreadTierUpgradeIterator();
+            while (iterator.hasNext()) {
+                Member member = iterator.next();
+                MessageUI.displayTierUpgradeAlert(
+                        member.getMemberId(),
+                        memberControl.getTierName(member.getLastNotifiedTierId()),
+                        memberControl.getTierName(member.getTierId()));
+            }
+            memberControl.markTierUpgradesAsRead();
+        } else {
+            MessageUI.displayInfo("No unread tier-upgrade notifications.");
         }
         System.out.println();
     }

@@ -4,6 +4,7 @@ import java.util.Iterator;
 
 import adt.ArrayList;
 import adt.LinkedList;
+import adt.SortedArrayList;
 
 import LoyaltyAndRewardsService.dao.MemberDao;
 import LoyaltyAndRewardsService.entity.Member;
@@ -30,7 +31,12 @@ public class MemberControl {
     }
 
     public void addMember(Member member) {
-        member.setTierId(tierControl.getTierIdByPoint(member.getPoint()));
+        String tierId = tierControl.getTierIdByPoint(member.getPoint());
+        member.setTierId(tierId);
+        if (member.getLastNotifiedTierId() == null
+                || member.getLastNotifiedTierId().isBlank()) {
+            member.setLastNotifiedTierId(tierId);
+        }
         memberList.add(member);
     }
 
@@ -76,7 +82,8 @@ public class MemberControl {
 
         member.setName(name);
         member.setPoint(point);
-        member.setTierId(tierControl.getTierIdByPoint(point));
+        String currentTierId = tierControl.getTierIdByPoint(point);
+        assignTier(member, currentTierId);
 
         return true;
     }
@@ -100,7 +107,7 @@ public class MemberControl {
         member.setPoint(newPoint);
 
         String newTierId = tierControl.getTierIdByPoint(newPoint);
-        member.setTierId(newTierId);
+        assignTier(member, newTierId);
 
         return newPoint;
     }
@@ -120,7 +127,7 @@ public class MemberControl {
         member.setPoint(newPoint);
 
         String newTierId = tierControl.getTierIdByPoint(newPoint);
-        member.setTierId(newTierId);
+        assignTier(member, newTierId);
 
         return newPoint;
     }
@@ -157,7 +164,7 @@ public class MemberControl {
                     ? correctTierId != null
                     : !currentTierId.equalsIgnoreCase(correctTierId);
             if (changed) {
-                member.setTierId(correctTierId);
+                assignTier(member, correctTierId);
                 changedCount++;
             }
         }
@@ -217,7 +224,8 @@ public class MemberControl {
     }
 
     public ArrayList<Member> generateRankingReport(int minPoint, String targetTierId) {
-        ArrayList<Member> filteredResult = new ArrayList<>();
+        SortedArrayList<Member> sortedResult =
+                new SortedArrayList<>((left, right) -> right.compareTo(left));
         boolean hasTargetTier = targetTierId != null && !targetTierId.isEmpty();
 
         Iterator<Member> iterator = memberList.iterator();
@@ -226,16 +234,15 @@ public class MemberControl {
             boolean matchesCriteria = current.getPoint() >= minPoint
                     && (!hasTargetTier || current.getTierId().equalsIgnoreCase(targetTierId));
             if (matchesCriteria) {
-                filteredResult.add(current);
+                sortedResult.add(current);
             }
         }
 
-        selectionSortByPoint(filteredResult, false);
-        return filteredResult;
+        return copyToArrayList(sortedResult);
     }
 
     public ArrayList<Member> generateLowPointReport(int maxPoint, String excludeTierId) {
-        ArrayList<Member> filteredResult = new ArrayList<>();
+        SortedArrayList<Member> sortedResult = new SortedArrayList<>();
         boolean hasExcludedTier = excludeTierId != null && !excludeTierId.isEmpty();
 
         for (int i = 1; i <= memberList.size(); i++) {
@@ -245,42 +252,19 @@ public class MemberControl {
                     && (!hasExcludedTier || !current.getTierId().equalsIgnoreCase(excludeTierId));
 
             if (matchesCriteria) {
-                filteredResult.add(current);
+                sortedResult.add(current);
             }
         }
 
-        selectionSortByPoint(filteredResult, true);
-        return filteredResult;
+        return copyToArrayList(sortedResult);
     }
 
-    private void selectionSortByPoint(ArrayList<Member> list, boolean ascending) {
-        for (int i = 1; i <= list.getNumberOfEntries() - 1; i++) {
-            int targetPosition = i;
-            Member targetValue = list.getEntry(i);
-
-            for (int j = i + 1; j <= list.getNumberOfEntries(); j++) {
-                Member current = list.getEntry(j);
-
-                boolean shouldSwap;
-                if (ascending) {
-                    shouldSwap = current.compareTo(targetValue) < 0;
-                } else {
-                    shouldSwap = current.compareTo(targetValue) > 0;
-                }
-
-                if (shouldSwap) {
-                    targetValue = current;
-                    targetPosition = j;
-                }
-            }
-
-            if (targetPosition != i) {
-                for (int position = targetPosition; position > i; position--) {
-                    list.replace(position, list.getEntry(position - 1));
-                }
-                list.replace(i, targetValue);
-            }
+    private ArrayList<Member> copyToArrayList(SortedArrayList<Member> sortedResult) {
+        ArrayList<Member> result = new ArrayList<>();
+        for (Member member : sortedResult) {
+            result.add(member);
         }
+        return result;
     }
 
 
@@ -291,7 +275,7 @@ public class MemberControl {
         if(member == null) return "Member Not Found";
 
         String currentTierId = tierControl.getTierIdByPoint(member.getPoint());
-        member.setTierId(currentTierId);
+        assignTier(member, currentTierId);
 
         if (currentTierId == null) {
             return "No tier is configured for the member's current point balance.";
@@ -319,6 +303,69 @@ public class MemberControl {
 
     public void saveMembers() {
         MemberDao.saveToMemberFile(this);
+    }
+
+    public Iterator<Member> getUnreadTierUpgradeIterator() {
+        LinkedList<Member> upgradedMembers = new LinkedList<>();
+        for (Member member : memberList) {
+            if (hasUnreadTierUpgrade(member)) {
+                upgradedMembers.add(member);
+            }
+        }
+        return upgradedMembers.iterator();
+    }
+
+    public int getUnreadTierUpgradeCount() {
+        int count = 0;
+        Iterator<Member> iterator = getUnreadTierUpgradeIterator();
+        while (iterator.hasNext()) {
+            iterator.next();
+            count++;
+        }
+        return count;
+    }
+
+    public void markTierUpgradesAsRead() {
+        for (Member member : memberList) {
+            if (hasUnreadTierUpgrade(member)) {
+                member.setLastNotifiedTierId(member.getTierId());
+            }
+        }
+        saveMembers();
+    }
+
+    private boolean hasUnreadTierUpgrade(Member member) {
+        String previousTierId = member.getLastNotifiedTierId();
+        String currentTierId = member.getTierId();
+        if (previousTierId == null || currentTierId == null
+                || previousTierId.equalsIgnoreCase(currentTierId)) {
+            return false;
+        }
+
+        int previousMinimumPoint = tierControl.getMinimumPoint(previousTierId);
+        int currentMinimumPoint = tierControl.getMinimumPoint(currentTierId);
+        return previousMinimumPoint >= 0 && currentMinimumPoint > previousMinimumPoint;
+    }
+
+    private void assignTier(Member member, String newTierId) {
+        String previousTierId = member.getTierId();
+        member.setTierId(newTierId);
+
+        if (newTierId == null) {
+            member.setLastNotifiedTierId(null);
+            return;
+        }
+        if (previousTierId == null || member.getLastNotifiedTierId() == null
+                || member.getLastNotifiedTierId().isBlank()) {
+            member.setLastNotifiedTierId(newTierId);
+            return;
+        }
+
+        int previousMinimumPoint = tierControl.getMinimumPoint(previousTierId);
+        int currentMinimumPoint = tierControl.getMinimumPoint(newTierId);
+        if (previousMinimumPoint < 0 || currentMinimumPoint < previousMinimumPoint) {
+            member.setLastNotifiedTierId(newTierId);
+        }
     }
 
     public static final class PointUpdateResult {
