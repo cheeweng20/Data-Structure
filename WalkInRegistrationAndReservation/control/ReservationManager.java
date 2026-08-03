@@ -9,24 +9,29 @@ import WalkInRegistrationAndReservation.entity.ReservationStatus;
 import WalkInRegistrationAndReservation.entity.Room;
 import WalkInRegistrationAndReservation.entity.Room.RoomStatus;
 import WalkInRegistrationAndReservation.utility.ConfirmationNumberGenerator;
+import java.time.LocalDate;
 import adt.ArrayList;
 import adt.ArrayStack;
+import adt.LinkedQueue;
 import adt.ListInterface;
+import adt.QueueInterface;
 import adt.StackInterface;
-import java.time.LocalDate;
 import java.util.Iterator;
 
 /**
- * Coordinates reservation check-in, walk-in registration and room assignment.
+ * reservation check-in, walk-in registration and room assignment.
  *
- * @author Wan Yin
+ * @author Wan Yin·
  */
 public class ReservationManager {
+
+    private static final String AUTO_ASSIGN_ROOM_TYPE = "AUTO ASSIGN";
 
     private final ReservationDAO reservationDAO;
     private final RoomDAO roomDAO;
     private final ListInterface<Reservation> reservations;
     private final ListInterface<Room> rooms;
+    private final QueueInterface<Reservation> pendingStandardReservations; // Pending standard bookings
     private final StackInterface<String> cancellationHistory;
 
     public ReservationManager() {
@@ -38,7 +43,65 @@ public class ReservationManager {
         this.roomDAO = roomDAO;
         reservations = reservationDAO.retrieveFromFile();
         rooms = roomDAO.retrieveFromFile();
+        pendingStandardReservations = new LinkedQueue<>();
         cancellationHistory = new ArrayStack<>();
+        rebuildPendingStandardQueue();
+    }
+
+    public Reservation submitStandardBookingRequest(Guest guest,
+            LocalDate checkInDate, LocalDate checkOutDate, int numberOfGuests) {
+        Reservation reservation = new Reservation(generateUniqueConfirmationNumber(), guest,
+                AUTO_ASSIGN_ROOM_TYPE, checkInDate, checkOutDate, numberOfGuests,
+                BookingType.STANDARD);
+
+        // Save record and add to queue.
+        reservations.add(reservation);
+        pendingStandardReservations.enqueue(reservation);
+        saveData();
+        return reservation;
+    }
+
+    public Reservation getNextPendingStandardReservation() {
+        return pendingStandardReservations.getFront();
+    }
+
+    public Iterator<Reservation> getPendingStandardReservationIterator() {
+        return pendingStandardReservations.getIterator();
+    }
+
+    public int getPendingStandardReservationCount() {
+        int count = 0;
+        Iterator<Reservation> iterator = pendingStandardReservations.getIterator();
+
+        while (iterator.hasNext()) {
+            iterator.next();
+            count++;
+        }
+
+        return count;
+    }
+
+    public Reservation processNextPendingStandardReservation() {
+        // Process the front request only.
+        Reservation reservation = pendingStandardReservations.getFront();
+
+        if (reservation == null) {
+            return null;
+        }
+
+        Room room = findAvailableRoomForGuests(reservation.getNumberOfGuests());
+        if (room == null) {
+            reservation.setStatus(ReservationStatus.REJECTED);
+        } else {
+            reservation.setRequestedRoomType(room.getRoomType());
+            reservation.setAssignedRoom(room);
+            reservation.setStatus(ReservationStatus.CONFIRMED);
+            room.setStatus(RoomStatus.RESERVED);
+        }
+
+        pendingStandardReservations.dequeue();
+        saveData();
+        return reservation;
     }
 
     // Kept for simple standard reservation creation if needed later.
@@ -83,7 +146,7 @@ public class ReservationManager {
     }
 
     // help check in (client already book before)
-    public boolean checkInStandardReservation(String searchValue) {
+    public boolean checkInStandardReservation(String searchValue, String paymentMethod) {
         Reservation reservation = findReservation(searchValue); // find reservation first
 
         if (reservation == null
@@ -99,6 +162,11 @@ public class ReservationManager {
             return false;
         }
 
+        boolean alreadyPaid = "PAID".equalsIgnoreCase(reservation.getPaymentStatus());
+        if (!alreadyPaid && (paymentMethod == null || paymentMethod.trim().isEmpty())) {
+            return false;
+        }
+
         Room savedRoom = findRoomByNumber(room.getRoomNumber());
         if (savedRoom != null) {
             savedRoom.setStatus(RoomStatus.OCCUPIED);
@@ -107,8 +175,12 @@ public class ReservationManager {
             room.setStatus(RoomStatus.OCCUPIED);
         }
 
+        if (!alreadyPaid) {
+            reservation.setPaymentMethod(paymentMethod);
+            reservation.setPaymentStatus("PAID");
+        }
+
         reservation.setStatus(ReservationStatus.CHECKED_IN);
-        reservation.setPaymentStatus("PAID"); // duble confirm
         saveData();
         return true;
     }
@@ -365,6 +437,37 @@ public class ReservationManager {
 
     public ListInterface<Room> getRooms() {
         return rooms;
+    }
+
+    // Restore pending queue after restart.
+    private void rebuildPendingStandardQueue() {
+        ListInterface<Reservation> pendingReservations = new ArrayList<>();
+        Iterator<Reservation> iterator = reservations.iterator();
+
+        while (iterator.hasNext()) {
+            Reservation reservation = iterator.next();
+            if (reservation.getBookingType() == BookingType.STANDARD
+                    && reservation.getStatus() == ReservationStatus.PENDING) {
+                pendingReservations.add(reservation);
+            }
+        }
+
+        for (int i = 1; i < pendingReservations.getNumberOfEntries(); i++) {
+            for (int j = 1; j <= pendingReservations.getNumberOfEntries() - i; j++) {
+                Reservation current = pendingReservations.getEntry(j);
+                Reservation next = pendingReservations.getEntry(j + 1);
+
+                if (current.compareTo(next) > 0) {
+                    pendingReservations.replace(j, next);
+                    pendingReservations.replace(j + 1, current);
+                }
+            }
+        }
+
+        Iterator<Reservation> pendingIterator = pendingReservations.iterator();
+        while (pendingIterator.hasNext()) {
+            pendingStandardReservations.enqueue(pendingIterator.next());
+        }
     }
 
 }

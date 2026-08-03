@@ -10,6 +10,8 @@ import WalkInRegistrationAndReservation.utility.InputValidator;
 import adt.ListInterface;
 import adt.ArrayList;
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.Scanner;
@@ -46,18 +48,21 @@ public class ReservationUI {
                     checkInStandardReservation();
                     break;
                 case "2":
-                    createWalkInRegistration();
+                    displayStandardBookingRequestMenu();
                     break;
                 case "3":
-                    searchReservation();
+                    createWalkInRegistration();
                     break;
                 case "4":
-                    displayCancellationMenu();
+                    searchReservation();
                     break;
                 case "5":
-                    displayReservations(reservationManager.getReservations());
+                    displayCancellationMenu();
                     break;
                 case "6":
+                    displayReservations(reservationManager.getReservations());
+                    break;
+                case "7":
                     displayReportMenu();
                     break;
                 case "0":
@@ -70,13 +75,14 @@ public class ReservationUI {
     }
 
     private void displayMenu() {
-        System.out.println("\n--- Walk-In Registration & Standard Reservation Check-In ---");
+        System.out.println("\n--- Walk-In Registration & Standard Booking Management ---");
         System.out.println("1. Check-In Standard Reservation");
-        System.out.println("2. Walk-In Registration");
-        System.out.println("3. Search Reservation");
-        System.out.println("4. Manage Reservation Cancellation");
-        System.out.println("5. View All Reservations");
-        System.out.println("6. View Report");
+        System.out.println("2. Manage Standard Booking Requests");
+        System.out.println("3. Walk-In Registration");
+        System.out.println("4. Search Reservation");
+        System.out.println("5. Manage Reservation Cancellation");
+        System.out.println("6. View All Reservations");
+        System.out.println("7. View Reports");
         System.out.println("0. Back");
         System.out.print("Select an option: ");
     }
@@ -115,7 +121,22 @@ public class ReservationUI {
             return;
         }
 
-        if (reservationManager.checkInStandardReservation(searchValue)) {
+        String paymentMethod = reservation.getPaymentMethod();
+        if (!"PAID".equalsIgnoreCase(reservation.getPaymentStatus())) {
+            paymentMethod = promptPaymentMethod();
+            System.out.println("Selected payment method: " + paymentMethod);
+
+            if (!confirmYes("Confirm payment? (Y/N): ")) {
+                System.out.println("Payment cancelled. Check-in not completed.");
+                return;
+            }
+
+            System.out.println("Payment successful!");
+        } else {
+            System.out.println("Reservation already paid. No payment required.");
+        }
+
+        if (reservationManager.checkInStandardReservation(searchValue, paymentMethod)) {
             System.out.println("Check-in successful.");
             displayReservationDetails(reservationManager.findReservation(searchValue));
         } else {
@@ -160,6 +181,140 @@ public class ReservationUI {
 
         System.out.println("Walk-in registration successful.");
         displayReservationDetails(reservation);
+    }
+
+    private void displayStandardBookingRequestMenu() {
+        boolean back = false;
+
+        while (!back) {
+            System.out.println("\n--- Standard Booking Requests ---");
+            System.out.println("1. Submit Standard Booking Request");
+            System.out.println("2. View Pending Booking Queue");
+            System.out.println("3. Process Next Booking Request");
+            System.out.println("4. Back");
+            System.out.print("Select an option: ");
+            String choice = scanner.nextLine().trim();
+
+            switch (choice) {
+                case "1":
+                    submitStandardBookingRequest();
+                    break;
+                case "2":
+                    displayPendingStandardBookingQueue();
+                    break;
+                case "3":
+                    processNextStandardBookingRequest();
+                    break;
+                case "4":
+                    back = true;
+                    break;
+                default:
+                    System.out.println("Invalid option. Please try again.");
+            }
+        }
+    }
+
+    // submit booking request (Standard )
+    private void submitStandardBookingRequest() {
+        System.out.println("\n--- Submit Standard Booking Request ---");
+        Guest guest = inputGuest();
+        int numberOfGuests = promptNumberOfGuests();
+        LocalDate checkInDate = promptStandardCheckInDate();
+        LocalDate checkOutDate = promptCheckOutDate(checkInDate);
+
+        System.out.println("\n--- Review Standard Booking Request ---");
+        System.out.println("Guest Name       : " + guest.getFullName());
+        System.out.println("IC / Passport    : " + guest.getGuestId());
+        System.out.println("Phone Number     : " + guest.getPhoneNumber());
+        System.out.println("Email            : " + guest.getEmail());
+        System.out.println("Number of Guests : " + numberOfGuests);
+        System.out.println("Room Assignment  : Automatic best-fit during processing");
+        System.out.println("Check-in Date    : " + checkInDate);
+        System.out.println("Check-out Date   : " + checkOutDate);
+        System.out.println();
+
+        if (!confirmYes("Submit this booking request? (Y/N): ")) {
+            System.out.println("Booking request cancelled.");
+            return;
+        }
+
+        Reservation reservation = reservationManager.submitStandardBookingRequest(
+                guest, checkInDate, checkOutDate, numberOfGuests);
+
+        System.out.println("\nBooking request submitted successfully.\n");
+        System.out.println("Request Number : " + reservation.getConfirmationNumber());
+        System.out.println("Queue Position : "
+                + reservationManager.getPendingStandardReservationCount());
+        System.out.println("Status         : " + reservation.getStatus());
+    }
+
+    private LocalDate promptStandardCheckInDate() {
+        while (true) {
+            LocalDate checkInDate = promptDate("Check-in date (yyyy-MM-dd): ");
+
+            if (!checkInDate.isBefore(LocalDate.now())) {
+                return checkInDate;
+            }
+
+            System.out.println("Check-in date cannot be before today.");
+        }
+    }
+
+    private void displayPendingStandardBookingQueue() {
+        Iterator<Reservation> iterator = reservationManager.getPendingStandardReservationIterator();
+
+        if (!iterator.hasNext()) {
+            System.out.println("No pending standard booking requests.");
+            return;
+        }
+
+        System.out.println("\n--- Pending Standard Booking Queue ---");
+        System.out.printf("%-9s %-14s %-22s %-8s %-12s %-10s%n",
+                "Position", "Request No.", "Guest Name", "Guests", "Check-In", "Status");
+
+        int position = 1;
+        while (iterator.hasNext()) {
+            Reservation reservation = iterator.next();
+            System.out.printf("%-9d %-14s %-22s %-8d %-12s %-10s%n",
+                    position++,
+                    reservation.getConfirmationNumber(),
+                    reservation.getGuest().getFullName(),
+                    reservation.getNumberOfGuests(),
+                    reservation.getCheckInDate(),
+                    reservation.getStatus());
+        }
+
+        System.out.println();
+        System.out.println("Total pending requests: "
+                + reservationManager.getPendingStandardReservationCount());
+    }
+
+    private void processNextStandardBookingRequest() {
+        Reservation reservation = reservationManager.getNextPendingStandardReservation();
+
+        if (reservation == null) {
+            System.out.println("No pending standard booking requests.");
+            return;
+        }
+
+        System.out.println("\n--- Next Standard Booking Request ---");
+        displayReservationDetails(reservation);
+
+        if (!confirmYes("Process this booking request? (Y/N): ")) {
+            System.out.println("Processing cancelled. Request remains at the front of the queue.");
+            return;
+        }
+
+        Reservation processed = reservationManager.processNextPendingStandardReservation();
+        if (processed.getStatus() == ReservationStatus.CONFIRMED) {
+            System.out.println("Booking confirmed successfully.");
+            displayReservationDetails(processed);
+        } else {
+            System.out.println("Booking request rejected.");
+            System.out.println("Reason: No suitable room is available.");
+            System.out.println("Request Number : " + processed.getConfirmationNumber());
+            System.out.println("Status         : " + processed.getStatus());
+        }
     }
 
     private Guest inputGuest() {
@@ -467,39 +622,101 @@ public class ReservationUI {
         }
     }
 
-    // daily report print
-    private void displayDailyCheckInReport() {
-
-        LocalDate reportDate = promptDate("Enter report date (yyyy-mm-dd): ");
-        System.out.println("\n-- Daily Check In report:" + reportDate);
-
-        ListInterface<Reservation> reservations = reservationManager.getReservations(); // get all reservation records
-        ListInterface<Reservation> reportReservations = new ArrayList<>(); // store matched report records only
-        Iterator<Reservation> iterator = reservations.iterator();
+    private void displayMonthlyReservationSummary() {
+        YearMonth reportMonth = promptReportMonth();
+        ListInterface<Reservation> reportReservations = new ArrayList<>();
+        Iterator<Reservation> iterator = reservationManager.getReservations().iterator();
+        int standardCount = 0;
+        int walkInCount = 0;
+        double estimatedRevenue = 0.00;
 
         while (iterator.hasNext()) {
-            Reservation reservation = iterator.next(); // get one reservation from the list
+            Reservation reservation = iterator.next();
+            if (!YearMonth.from(reservation.getCheckInDate()).equals(reportMonth)) {
+                continue;
+            }
 
-            if (reservation.getStatus() == ReservationStatus.CHECKED_IN
-                    && reservation.getCheckInDate().equals(reportDate)) {
-                reportReservations.add(reservation);
+            reportReservations.add(reservation);
+            if (reservation.getBookingType() == BookingType.STANDARD) {
+                standardCount++;
+            } else {
+                walkInCount++;
+            }
+
+            if (isIncludedInEstimatedRevenue(reservation)) {
+                estimatedRevenue += calculateReservationAmount(reservation);
             }
         }
 
-        sortReservationsByBookingDateTime(reportReservations); // sort report by booking date and time
-        printReportHeader();
+        sortReservationsByBookingDateTime(reportReservations);
+        System.out.println("\n--- Monthly Reservation Summary: " + reportMonth + " ---");
+        System.out.println("Total Reservations : " + reportReservations.getNumberOfEntries());
+        System.out.println("Standard           : " + standardCount);
+        System.out.println("Walk-In            : " + walkInCount);
+        System.out.printf("%nEstimated Revenue  : RM%.2f%n", estimatedRevenue);
 
+        printMonthlyReportHeader();
         for (int i = 1; i <= reportReservations.getNumberOfEntries(); i++) {
-            printReportLine(reportReservations.getEntry(i)); // display each sorted reservation
+            printMonthlyReportLine(reportReservations.getEntry(i));
         }
-        printReportBorder(); // print bottom table line
-
-        System.out.println("Total checked-in reservations for " + reportDate + ": "
-                + reportReservations.getNumberOfEntries());
+        printMonthlyReportBorder();
     }
 
-    private void displayRoomOccupancyReport() {
-        System.out.println("\n--- Room Occupancy Report ---");
+    private YearMonth promptReportMonth() {
+        while (true) {
+            System.out.print("Enter report month (yyyy-MM): ");
+            try {
+                return YearMonth.parse(scanner.nextLine().trim());
+            } catch (DateTimeParseException ex) {
+                System.out.println("Invalid month. Please use yyyy-MM format.");
+            }
+        }
+    }
+
+    private boolean isIncludedInEstimatedRevenue(Reservation reservation) {
+        return reservation.getAssignedRoom() != null
+                && (reservation.getStatus() == ReservationStatus.CONFIRMED
+                        || reservation.getStatus() == ReservationStatus.CHECKED_IN);
+    }
+
+    private double calculateReservationAmount(Reservation reservation) {
+        long nights = ChronoUnit.DAYS.between(reservation.getCheckInDate(), reservation.getCheckOutDate());
+        return nights * reservation.getAssignedRoom().getPricePerNight();
+    }
+
+    private void printMonthlyReportHeader() {
+        printMonthlyReportBorder();
+        System.out.printf("| %-10s | %-18s | %-16s | %-10s | %-9s | %-7s | %-12s |%n",
+                "Res ID", "Guest Name", "Booking Time", "Check-In", "Type", "Room", "Amount");
+        printMonthlyReportBorder();
+    }
+
+    private void printMonthlyReportLine(Reservation reservation) {
+        Room room = reservation.getAssignedRoom();
+        String roomNumber = room == null ? "-" : room.getRoomNumber();
+        String amount = isIncludedInEstimatedRevenue(reservation)
+                ? String.format("RM%.2f", calculateReservationAmount(reservation))
+                : "-";
+        String bookingTime = reservation.getBookingDateTime()
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+
+        System.out.printf("| %-10s | %-18s | %-16s | %-10s | %-9s | %-7s | %-12s |%n",
+                reservation.getConfirmationNumber(),
+                reservation.getGuest().getFullName(),
+                bookingTime,
+                reservation.getCheckInDate(),
+                reservation.getBookingType(),
+                roomNumber,
+                amount);
+    }
+
+    private void printMonthlyReportBorder() {
+        System.out.println(
+                "+------------+--------------------+------------------+------------+-----------+---------+--------------+");
+    }
+
+    private void displayRoomAllocationReport() {
+        System.out.println("\n--- Room Allocation Report ---");
 
         ListInterface<Reservation> reservations = reservationManager.getReservations(); // get all reservation records
         ListInterface<Reservation> reportReservations = new ArrayList<>(); // store assigned room records only
@@ -521,10 +738,7 @@ public class ReservationUI {
         }
         printReportBorder(); // print bottom table line
 
-        System.out.println("\n Total occupied/assigned reservation:" + reportReservations.getNumberOfEntries()); // print
-        // total
-        // assigned
-        // records
+        System.out.println("\nTotal allocated reservations: " + reportReservations.getNumberOfEntries());
 
     }
 
@@ -601,8 +815,8 @@ public class ReservationUI {
 
         while (!back) {
             System.out.println("\n--- Reservation Reports ---");
-            System.out.println("1. Daily Check-In Report");
-            System.out.println("2. Room Occupancy Report");
+            System.out.println("1. Monthly Reservation Summary");
+            System.out.println("2. Room Allocation Report");
             System.out.println("0. Back");
             System.out.print("Select an option: ");
             String choice = scanner.nextLine().trim();
@@ -610,10 +824,10 @@ public class ReservationUI {
             switch (choice) {
 
                 case "1":
-                    displayDailyCheckInReport();
+                    displayMonthlyReservationSummary();
                     break;
                 case "2":
-                    displayRoomOccupancyReport();
+                    displayRoomAllocationReport();
                     break;
                 case "0":
                     back = true;
@@ -630,11 +844,38 @@ public class ReservationUI {
             return;
         }
 
+        String border = "+-----+------------+--------------------+--------+-----------+----------+-----------------+------------+---------+-------------+";
+        System.out.println("\n--- All Reservations ---");
+        System.out.println(border);
+        System.out.printf("| %-3s | %-10s | %-18s | %-6s | %-9s | %-8s | %-15s | %-10s | %-7s | %-11s |%n",
+                "No.", "Res ID", "Guest Name", "Guests", "Type", "Room No.", "Room Type", "Check-In", "Payment",
+                "Status");
+        System.out.println(border);
+
         Iterator<Reservation> iterator = reservations.iterator();
+        int number = 1;
 
         while (iterator.hasNext()) {
-            displayReservationDetails(iterator.next());
+            Reservation reservation = iterator.next();
+            Room room = reservation.getAssignedRoom();
+            String roomNumber = room == null ? "-" : room.getRoomNumber();
+            String roomType = room == null ? "Auto Assign" : room.getRoomType();
+
+            System.out.printf("| %-3d | %-10s | %-18s | %-6d | %-9s | %-8s | %-15s | %-10s | %-7s | %-11s |%n",
+                    number++,
+                    reservation.getConfirmationNumber(),
+                    reservation.getGuest().getFullName(),
+                    reservation.getNumberOfGuests(),
+                    reservation.getBookingType(),
+                    roomNumber,
+                    roomType,
+                    reservation.getCheckInDate(),
+                    reservation.getPaymentStatus(),
+                    reservation.getStatus());
         }
+
+        System.out.println(border);
+        System.out.println("\nTotal reservations: " + reservations.getNumberOfEntries());
     }
 
     private void displayReservationDetails(Reservation reservation) {
@@ -658,7 +899,15 @@ public class ReservationUI {
 
         if (room == null) {
             System.out.println("Room / Unit No.  : Not assigned");
-            System.out.println("Room Type        : " + reservation.getRequestedRoomType());
+            if (reservation.getBookingType() == BookingType.STANDARD
+                    && reservation.getStatus() == ReservationStatus.PENDING) {
+                System.out.println("Room Assignment  : Automatic during processing");
+            } else if (reservation.getBookingType() == BookingType.STANDARD
+                    && reservation.getStatus() == ReservationStatus.REJECTED) {
+                System.out.println("Room Assignment  : No suitable room available");
+            } else {
+                System.out.println("Room Type        : " + reservation.getRequestedRoomType());
+            }
         } else {
             System.out.println("Room / Unit No.  : " + room.getRoomNumber());
             System.out.println("Room Type        : " + room.getRoomType());
