@@ -1,5 +1,6 @@
 import java.util.Scanner;
 
+import FrontDeskService.FrontDeskService;
 import HousekeepingAndTaskLog.HousekeepingAndTaskLog;
 import LoyaltyAndRewardsService.LoyaltyAndRewardsService;
 import WalkInRegistrationAndReservation.WalkInRegistrationAndReservation;
@@ -45,7 +46,7 @@ public class Main {
                     HousekeepingAndTaskLog.HousekeepingAndTaskLogMain(input);
                     break;
                 case 3:
-                    System.out.println("Comming Soon");
+                    FrontDeskService.FrontDeskServiceMain(input);
                     break;
                 case 4:
                     LoyaltyAndRewardsService.LoyaltyAndRewardsServiceMain(input);
