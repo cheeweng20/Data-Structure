@@ -75,15 +75,26 @@ public class ReservationUI {
     }
 
     private void displayMenu() {
-        System.out.println("\n--- Walk-In Registration & Standard Booking Management ---");
-        System.out.println("1. Check-In Standard Reservation");
-        System.out.println("2. Manage Standard Booking Requests");
-        System.out.println("3. Walk-In Registration");
-        System.out.println("4. Search Reservation");
-        System.out.println("5. Manage Reservation Cancellation");
-        System.out.println("6. View All Reservations");
-        System.out.println("7. View Reports");
-        System.out.println("0. Back");
+        System.out.println("\n--- Walk-In Registration & Standard Booking Management ---\n"
+                + ".-----.----------------------------------------.\n"
+                + "| No. |                Function                |\n"
+                + ":-----+----------------------------------------:\n"
+                + "| 1.  | Check-In Standard Reservation          |\n"
+                + ":-----+----------------------------------------:\n"
+                + "| 2.  | Manage Standard Booking Requests       |\n"
+                + ":-----+----------------------------------------:\n"
+                + "| 3.  | Walk-In Registration                   |\n"
+                + ":-----+----------------------------------------:\n"
+                + "| 4.  | Search Reservation                     |\n"
+                + ":-----+----------------------------------------:\n"
+                + "| 5.  | Manage Reservation Cancellation        |\n"
+                + ":-----+----------------------------------------:\n"
+                + "| 6.  | View All Reservations                  |\n"
+                + ":-----+----------------------------------------:\n"
+                + "| 7.  | View Reports                           |\n"
+                + ":-----+----------------------------------------:\n"
+                + "| 0.  | Back                                   |\n"
+                + "'-----'----------------------------------------'");
         System.out.print("Select an option: ");
     }
 
@@ -187,11 +198,18 @@ public class ReservationUI {
         boolean back = false;
 
         while (!back) {
-            System.out.println("\n--- Standard Booking Requests ---");
-            System.out.println("1. Submit Standard Booking Request");
-            System.out.println("2. View Pending Booking Queue");
-            System.out.println("3. Process Next Booking Request");
-            System.out.println("4. Back");
+            System.out.println("\n--- Standard Booking Requests ---\n"
+                    + ".-----.----------------------------------------.\n"
+                    + "| No. |                Function                |\n"
+                    + ":-----+----------------------------------------:\n"
+                    + "| 1.  | Submit Standard Booking Request        |\n"
+                    + ":-----+----------------------------------------:\n"
+                    + "| 2.  | View Pending Booking Queue             |\n"
+                    + ":-----+----------------------------------------:\n"
+                    + "| 3.  | Process Next Booking Request           |\n"
+                    + ":-----+----------------------------------------:\n"
+                    + "| 4.  | Back                                   |\n"
+                    + "'-----'----------------------------------------'");
             System.out.print("Select an option: ");
             String choice = scanner.nextLine().trim();
 
@@ -269,13 +287,16 @@ public class ReservationUI {
         }
 
         System.out.println("\n--- Pending Standard Booking Queue ---");
-        System.out.printf("%-9s %-14s %-22s %-8s %-12s %-10s%n",
+        String border = "+----------+--------------+----------------------+--------+------------+------------+";
+        System.out.println(border);
+        System.out.printf("| %-8s | %-12s | %-20s | %-6s | %-10s | %-10s |%n",
                 "Position", "Request No.", "Guest Name", "Guests", "Check-In", "Status");
+        System.out.println(border);
 
         int position = 1;
         while (iterator.hasNext()) {
             Reservation reservation = iterator.next();
-            System.out.printf("%-9d %-14s %-22s %-8d %-12s %-10s%n",
+            System.out.printf("| %-8d | %-12s | %-20.20s | %-6d | %-10s | %-10s |%n",
                     position++,
                     reservation.getConfirmationNumber(),
                     reservation.getGuest().getFullName(),
@@ -284,8 +305,8 @@ public class ReservationUI {
                     reservation.getStatus());
         }
 
-        System.out.println();
-        System.out.println("Total pending requests: "
+        System.out.println(border);
+        System.out.println("\nTotal pending requests: "
                 + reservationManager.getPendingStandardReservationCount());
     }
 
@@ -449,11 +470,18 @@ public class ReservationUI {
 
     private String promptPaymentMethod() {
         while (true) {
-            System.out.println("\n--- Payment Method ---");
-            System.out.println("1. Touch n Go");
-            System.out.println("2. Credit / Debit Card");
-            System.out.println("3. Cash");
-            System.out.println("4. Online Banking");
+            System.out.println("\n--- Payment Method ---\n"
+                    + ".-----.----------------------------------------.\n"
+                    + "| No. |                Function                |\n"
+                    + ":-----+----------------------------------------:\n"
+                    + "| 1.  | Touch n Go                             |\n"
+                    + ":-----+----------------------------------------:\n"
+                    + "| 2.  | Credit / Debit Card                    |\n"
+                    + ":-----+----------------------------------------:\n"
+                    + "| 3.  | Cash                                   |\n"
+                    + ":-----+----------------------------------------:\n"
+                    + "| 4.  | Online Banking                         |\n"
+                    + "'-----'----------------------------------------'");
             System.out.print("Enter number to choose: ");
             String choice = scanner.nextLine().trim();
 
@@ -496,10 +524,16 @@ public class ReservationUI {
         boolean back = false;
 
         while (!back) {
-            System.out.println("\n--- Reservation Cancellation ---");
-            System.out.println("1. Cancel Reservation");
-            System.out.println("2. Undo Last Cancellation");
-            System.out.println("0. Back");
+            System.out.println("\n--- Reservation Cancellation ---\n"
+                    + ".-----.----------------------------------------.\n"
+                    + "| No. |                Function                |\n"
+                    + ":-----+----------------------------------------:\n"
+                    + "| 1.  | Cancel Reservation                     |\n"
+                    + ":-----+----------------------------------------:\n"
+                    + "| 2.  | Undo Last Cancellation                 |\n"
+                    + ":-----+----------------------------------------:\n"
+                    + "| 0.  | Back                                   |\n"
+                    + "'-----'----------------------------------------'");
             System.out.print("Select an option: ");
             String choice = scanner.nextLine().trim();
 
@@ -576,18 +610,22 @@ public class ReservationUI {
         }
 
         System.out.println("\n--- Matching Reservations ---");
-        System.out.printf("%-5s %-14s %-22s %-14s %-12s%n",
+        String border = "+-----+--------------+----------------------+------------+-------------+";
+        System.out.println(border);
+        System.out.printf("| %-3s | %-12s | %-20s | %-10s | %-11s |%n",
                 "No.", "Reservation", "Guest", "Check-In", "Status");
+        System.out.println(border);
 
         for (int i = 1; i <= matches.getNumberOfEntries(); i++) {
             Reservation reservation = matches.getEntry(i);
-            System.out.printf("%-5d %-14s %-22s %-14s %-12s%n",
+            System.out.printf("| %-3d | %-12s | %-20.20s | %-10s | %-11s |%n",
                     i,
                     reservation.getConfirmationNumber(),
                     reservation.getGuest().getFullName(),
                     reservation.getCheckInDate(),
                     reservation.getStatus());
         }
+        System.out.println(border);
 
         while (true) {
             int selection = promptPositiveInteger("Select reservation number: ");
@@ -653,7 +691,7 @@ public class ReservationUI {
         System.out.println("Total Reservations : " + reportReservations.getNumberOfEntries());
         System.out.println("Standard           : " + standardCount);
         System.out.println("Walk-In            : " + walkInCount);
-        System.out.printf("%nEstimated Revenue  : RM%.2f%n", estimatedRevenue);
+        System.out.printf("%nMonthly Revenue  : RM%.2f%n", estimatedRevenue);
 
         printMonthlyReportHeader();
         for (int i = 1; i <= reportReservations.getNumberOfEntries(); i++) {
@@ -686,7 +724,7 @@ public class ReservationUI {
 
     private void printMonthlyReportHeader() {
         printMonthlyReportBorder();
-        System.out.printf("| %-10s | %-18s | %-16s | %-10s | %-9s | %-7s | %-12s |%n",
+        System.out.printf("| %-10s | %-18.18s | %-16s | %-10s | %-9s | %-7s | %-12s |%n",
                 "Res ID", "Guest Name", "Booking Time", "Check-In", "Type", "Room", "Amount");
         printMonthlyReportBorder();
     }
@@ -715,22 +753,47 @@ public class ReservationUI {
                 "+------------+--------------------+------------------+------------+-----------+---------+--------------+");
     }
 
-    private void displayRoomAllocationReport() {
-        System.out.println("\n--- Room Allocation Report ---");
-
+    private void displayMonthlyRoomAllocationReport() {
+        YearMonth reportMonth = promptReportMonth();
         ListInterface<Reservation> reservations = reservationManager.getReservations(); // get all reservation records
         ListInterface<Reservation> reportReservations = new ArrayList<>(); // store assigned room records only
         Iterator<Reservation> iterator = reservations.iterator();
+        int totalGuests = 0;
+        int gardenChaletCount = 0;
+        int deluxeChaletCount = 0;
+        int familySuiteCount = 0;
+        int familyVillaCount = 0;
 
         while (iterator.hasNext()) {
             Reservation reservation = iterator.next(); // get one reservation from the list
 
-            if (reservation.getAssignedRoom() != null && reservation.getStatus() != ReservationStatus.CANCELLED) {
-                reportReservations.add(reservation);
+            // Keep active room allocations from the selected month only.
+            if (!YearMonth.from(reservation.getCheckInDate()).equals(reportMonth)
+                    || reservation.getAssignedRoom() == null
+                    || reservation.getStatus() == ReservationStatus.PENDING
+                    || reservation.getStatus() == ReservationStatus.REJECTED
+                    || reservation.getStatus() == ReservationStatus.CANCELLED) {
+                continue;
+            }
+
+            reportReservations.add(reservation);
+            totalGuests += reservation.getNumberOfGuests(); // Add guests for the report total.
+
+            // Count allocations for each room-type bar.
+            String roomType = reservation.getAssignedRoom().getRoomType();
+            if (roomType.equalsIgnoreCase("Garden Chalet")) {
+                gardenChaletCount++;
+            } else if (roomType.equalsIgnoreCase("Deluxe Chalet")) {
+                deluxeChaletCount++;
+            } else if (roomType.equalsIgnoreCase("Family Suite")) {
+                familySuiteCount++;
+            } else if (roomType.equalsIgnoreCase("Family Villa")) {
+                familyVillaCount++;
             }
         }
 
         sortReservationsByRoomNumber(reportReservations); // sort report by room number
+        System.out.println("\n--- Monthly Room Allocation Report: " + reportMonth + " ---");
         printReportHeader();
 
         for (int i = 1; i <= reportReservations.getNumberOfEntries(); i++) {
@@ -738,8 +801,15 @@ public class ReservationUI {
         }
         printReportBorder(); // print bottom table line
 
-        System.out.println("\nTotal allocated reservations: " + reportReservations.getNumberOfEntries());
-
+        System.out.println("\nTotal Allocated Reservations : " + reportReservations.getNumberOfEntries());
+        System.out.println("Total Allocated Guests       : " + totalGuests);
+        System.out.println("\n--- Allocated Room Type Distribution ---");
+        // repeat(count) creates one # for each allocated reservation.
+        System.out.printf("%-15s | %-20s %d%n", "Garden Chalet", "#".repeat(gardenChaletCount), gardenChaletCount);
+        System.out.printf("%-15s | %-20s %d%n", "Deluxe Chalet", "#".repeat(deluxeChaletCount), deluxeChaletCount);
+        System.out.printf("%-15s | %-20s %d%n", "Family Suite", "#".repeat(familySuiteCount), familySuiteCount);
+        System.out.printf("%-15s | %-20s %d%n", "Family Villa", "#".repeat(familyVillaCount), familyVillaCount);
+        System.out.println("\nNotes: # = 1 allocated reservation");
     }
 
     // for opt 1 (checkin report)
@@ -780,7 +850,7 @@ public class ReservationUI {
     private void printReportHeader() {
         printReportBorder(); // print top table line
         System.out.printf("| %-12s | %-18s | %-12s | %-15s | %-8s | %-12s | %-12s | %-12s |%n",
-                "Res ID", "Guest Name", "Room", "Room Type", "Guests",
+                "Res ID", "Guest Name", "Room No.", "Room Type", "Guests",
                 "Check-In", "Check-Out", "Status");
         printReportBorder();
 
@@ -791,7 +861,7 @@ public class ReservationUI {
         String roomNumber = room == null ? "-" : room.getRoomNumber(); // get room number
         String roomType = room == null ? "-" : room.getRoomType(); // get room type
 
-        System.out.printf("| %-12s | %-18s | %-12s | %-15s | %-8d | %-12s | %-12s | %-12s |%n",
+        System.out.printf("| %-12s | %-18.18s | %-12s | %-15s | %-8d | %-12s | %-12s | %-12s |%n",
                 reservation.getConfirmationNumber(),
                 reservation.getGuest().getFullName(),
                 roomNumber,
@@ -814,10 +884,16 @@ public class ReservationUI {
         boolean back = false;
 
         while (!back) {
-            System.out.println("\n--- Reservation Reports ---");
-            System.out.println("1. Monthly Reservation Summary");
-            System.out.println("2. Room Allocation Report");
-            System.out.println("0. Back");
+            System.out.println("\n--- Reservation Reports ---\n"
+                    + ".-----.----------------------------------------.\n"
+                    + "| No. |                Function                |\n"
+                    + ":-----+----------------------------------------:\n"
+                    + "| 1.  | Monthly Reservation Summary            |\n"
+                    + ":-----+----------------------------------------:\n"
+                    + "| 2.  | Monthly Room Allocation Report         |\n"
+                    + ":-----+----------------------------------------:\n"
+                    + "| 0.  | Back                                   |\n"
+                    + "'-----'----------------------------------------'");
             System.out.print("Select an option: ");
             String choice = scanner.nextLine().trim();
 
@@ -827,7 +903,7 @@ public class ReservationUI {
                     displayMonthlyReservationSummary();
                     break;
                 case "2":
-                    displayRoomAllocationReport();
+                    displayMonthlyRoomAllocationReport();
                     break;
                 case "0":
                     back = true;
@@ -861,7 +937,7 @@ public class ReservationUI {
             String roomNumber = room == null ? "-" : room.getRoomNumber();
             String roomType = room == null ? "Auto Assign" : room.getRoomType();
 
-            System.out.printf("| %-3d | %-10s | %-18s | %-6d | %-9s | %-8s | %-15s | %-10s | %-7s | %-11s |%n",
+            System.out.printf("| %-3d | %-10s | %-18.18s | %-6d | %-9s | %-8s | %-15s | %-10s | %-7s | %-11s |%n",
                     number++,
                     reservation.getConfirmationNumber(),
                     reservation.getGuest().getFullName(),
@@ -913,7 +989,7 @@ public class ReservationUI {
             System.out.println("Room Type        : " + room.getRoomType());
             System.out.println("Room Capacity    : " + room.getCapacity());
             System.out.printf("Price per Night  : RM%.2f%n", room.getPricePerNight());
-            System.out.printf("Estimated Price  : RM%.2f%n", totalPrice);
+            System.out.printf("Total Price      : RM%.2f%n", totalPrice);
         }
 
         System.out.println("Payment Method   : " + reservation.getPaymentMethod());
