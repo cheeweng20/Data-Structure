@@ -691,7 +691,7 @@ public class ReservationUI {
         System.out.println("Total Reservations : " + reportReservations.getNumberOfEntries());
         System.out.println("Standard           : " + standardCount);
         System.out.println("Walk-In            : " + walkInCount);
-        System.out.printf("%nEstimated Revenue  : RM%.2f%n", estimatedRevenue);
+        System.out.printf("%nMonthly Revenue  : RM%.2f%n", estimatedRevenue);
 
         printMonthlyReportHeader();
         for (int i = 1; i <= reportReservations.getNumberOfEntries(); i++) {
@@ -753,22 +753,47 @@ public class ReservationUI {
                 "+------------+--------------------+------------------+------------+-----------+---------+--------------+");
     }
 
-    private void displayRoomAllocationReport() {
-        System.out.println("\n--- Room Allocation Report ---");
-
+    private void displayMonthlyRoomAllocationReport() {
+        YearMonth reportMonth = promptReportMonth();
         ListInterface<Reservation> reservations = reservationManager.getReservations(); // get all reservation records
         ListInterface<Reservation> reportReservations = new ArrayList<>(); // store assigned room records only
         Iterator<Reservation> iterator = reservations.iterator();
+        int totalGuests = 0;
+        int gardenChaletCount = 0;
+        int deluxeChaletCount = 0;
+        int familySuiteCount = 0;
+        int familyVillaCount = 0;
 
         while (iterator.hasNext()) {
             Reservation reservation = iterator.next(); // get one reservation from the list
 
-            if (reservation.getAssignedRoom() != null && reservation.getStatus() != ReservationStatus.CANCELLED) {
-                reportReservations.add(reservation);
+            // Keep active room allocations from the selected month only.
+            if (!YearMonth.from(reservation.getCheckInDate()).equals(reportMonth)
+                    || reservation.getAssignedRoom() == null
+                    || reservation.getStatus() == ReservationStatus.PENDING
+                    || reservation.getStatus() == ReservationStatus.REJECTED
+                    || reservation.getStatus() == ReservationStatus.CANCELLED) {
+                continue;
+            }
+
+            reportReservations.add(reservation);
+            totalGuests += reservation.getNumberOfGuests(); // Add guests for the report total.
+
+            // Count allocations for each room-type bar.
+            String roomType = reservation.getAssignedRoom().getRoomType();
+            if (roomType.equalsIgnoreCase("Garden Chalet")) {
+                gardenChaletCount++;
+            } else if (roomType.equalsIgnoreCase("Deluxe Chalet")) {
+                deluxeChaletCount++;
+            } else if (roomType.equalsIgnoreCase("Family Suite")) {
+                familySuiteCount++;
+            } else if (roomType.equalsIgnoreCase("Family Villa")) {
+                familyVillaCount++;
             }
         }
 
         sortReservationsByRoomNumber(reportReservations); // sort report by room number
+        System.out.println("\n--- Monthly Room Allocation Report: " + reportMonth + " ---");
         printReportHeader();
 
         for (int i = 1; i <= reportReservations.getNumberOfEntries(); i++) {
@@ -776,8 +801,15 @@ public class ReservationUI {
         }
         printReportBorder(); // print bottom table line
 
-        System.out.println("\nTotal allocated reservations: " + reportReservations.getNumberOfEntries());
-
+        System.out.println("\nTotal Allocated Reservations : " + reportReservations.getNumberOfEntries());
+        System.out.println("Total Allocated Guests       : " + totalGuests);
+        System.out.println("\n--- Allocated Room Type Distribution ---");
+        // repeat(count) creates one # for each allocated reservation.
+        System.out.printf("%-15s | %-20s %d%n", "Garden Chalet", "#".repeat(gardenChaletCount), gardenChaletCount);
+        System.out.printf("%-15s | %-20s %d%n", "Deluxe Chalet", "#".repeat(deluxeChaletCount), deluxeChaletCount);
+        System.out.printf("%-15s | %-20s %d%n", "Family Suite", "#".repeat(familySuiteCount), familySuiteCount);
+        System.out.printf("%-15s | %-20s %d%n", "Family Villa", "#".repeat(familyVillaCount), familyVillaCount);
+        System.out.println("\nNotes: # = 1 allocated reservation");
     }
 
     // for opt 1 (checkin report)
@@ -818,7 +850,7 @@ public class ReservationUI {
     private void printReportHeader() {
         printReportBorder(); // print top table line
         System.out.printf("| %-12s | %-18s | %-12s | %-15s | %-8s | %-12s | %-12s | %-12s |%n",
-                "Res ID", "Guest Name", "Room", "Room Type", "Guests",
+                "Res ID", "Guest Name", "Room No.", "Room Type", "Guests",
                 "Check-In", "Check-Out", "Status");
         printReportBorder();
 
@@ -858,7 +890,7 @@ public class ReservationUI {
                     + ":-----+----------------------------------------:\n"
                     + "| 1.  | Monthly Reservation Summary            |\n"
                     + ":-----+----------------------------------------:\n"
-                    + "| 2.  | Room Allocation Report                 |\n"
+                    + "| 2.  | Monthly Room Allocation Report         |\n"
                     + ":-----+----------------------------------------:\n"
                     + "| 0.  | Back                                   |\n"
                     + "'-----'----------------------------------------'");
@@ -871,7 +903,7 @@ public class ReservationUI {
                     displayMonthlyReservationSummary();
                     break;
                 case "2":
-                    displayRoomAllocationReport();
+                    displayMonthlyRoomAllocationReport();
                     break;
                 case "0":
                     back = true;
@@ -957,7 +989,7 @@ public class ReservationUI {
             System.out.println("Room Type        : " + room.getRoomType());
             System.out.println("Room Capacity    : " + room.getCapacity());
             System.out.printf("Price per Night  : RM%.2f%n", room.getPricePerNight());
-            System.out.printf("Estimated Price  : RM%.2f%n", totalPrice);
+            System.out.printf("Total Price      : RM%.2f%n", totalPrice);
         }
 
         System.out.println("Payment Method   : " + reservation.getPaymentMethod());
