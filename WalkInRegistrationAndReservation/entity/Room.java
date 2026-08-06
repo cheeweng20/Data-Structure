@@ -15,7 +15,7 @@ public class Room implements Serializable {
         AVAILABLE,
         RESERVED,
         OCCUPIED,
-        CLEANING,
+        NEEDS_CLEANING, // connect to the cleaning task
         MAINTENANCE
     }
 
