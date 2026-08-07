@@ -185,6 +185,29 @@ public class ReservationManager {
         return true;
     }
 
+    // Check out
+    public boolean checkOutReservation(String confirmationNumber) {
+        Reservation reservation = findByConfirmationNumber(confirmationNumber);
+
+        if (reservation == null
+                || reservation.getStatus() != ReservationStatus.CHECKED_IN
+                || reservation.getAssignedRoom() == null) {
+            return false;
+        }
+
+        Room savedRoom = findRoomByNumber(reservation.getAssignedRoom().getRoomNumber());
+        if (savedRoom == null || savedRoom.getStatus() != RoomStatus.OCCUPIED) {
+            return false;
+        }
+
+        reservation.setStatus(ReservationStatus.CHECKED_OUT);
+        savedRoom.setStatus(RoomStatus.NEEDS_CLEANING);
+        reservation.setAssignedRoom(savedRoom);
+        saveData();
+        return true;
+
+    }
+
     // find reservation by confirmation no/guestname/guest ic
     public Reservation findReservation(String searchValue) {
         Iterator<Reservation> iterator = reservations.iterator();

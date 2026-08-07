@@ -54,15 +54,18 @@ public class ReservationUI {
                     createWalkInRegistration();
                     break;
                 case "4":
-                    searchReservation();
+                    checkOutReservation();
                     break;
                 case "5":
-                    displayCancellationMenu();
+                    searchReservation();
                     break;
                 case "6":
-                    displayReservations(reservationManager.getReservations());
+                    displayCancellationMenu();
                     break;
                 case "7":
+                    displayReservations(reservationManager.getReservations());
+                    break;
+                case "8":
                     displayReportMenu();
                     break;
                 case "0":
@@ -85,13 +88,15 @@ public class ReservationUI {
                 + ":-----+----------------------------------------:\n"
                 + "| 3.  | Walk-In Registration                   |\n"
                 + ":-----+----------------------------------------:\n"
-                + "| 4.  | Search Reservation                     |\n"
+                + "| 4.  | Guest Check-Out                        |\n"
                 + ":-----+----------------------------------------:\n"
-                + "| 5.  | Manage Reservation Cancellation        |\n"
+                + "| 5.  | Search Reservation                     |\n"
                 + ":-----+----------------------------------------:\n"
-                + "| 6.  | View All Reservations                  |\n"
+                + "| 6.  | Manage Reservation Cancellation        |\n"
                 + ":-----+----------------------------------------:\n"
-                + "| 7.  | View Reports                           |\n"
+                + "| 7.  | View All Reservations                  |\n"
+                + ":-----+----------------------------------------:\n"
+                + "| 8.  | View Reports                           |\n"
                 + ":-----+----------------------------------------:\n"
                 + "| 0.  | Back                                   |\n"
                 + "'-----'----------------------------------------'");
@@ -152,6 +157,56 @@ public class ReservationUI {
             displayReservationDetails(reservationManager.findReservation(searchValue));
         } else {
             System.out.println("Check-in failed."); // not found
+        }
+    }
+
+    // check out guest
+    private void checkOutReservation() {
+        System.out.println("\n--- Guest Check-Out ---");
+
+        String searchValue = promptRequiredText(
+                "Enter reservation ID / IC / Passport / Guest Name: ");
+        ListInterface<Reservation> matches = reservationManager.findMatchingReservations(searchValue);
+
+        if (matches.isEmpty()) {
+            System.out.println("Reservation not found.");
+            return;
+        }
+
+        Reservation reservation = selectReservation(matches); // Used by both checkout and cancellation.
+
+        if (reservation.getStatus() != ReservationStatus.CHECKED_IN) {
+            System.out.println("Only checked-in reservations can be checked out.");
+            System.out.println("Current status: " + reservation.getStatus());
+            return;
+        }
+
+        Room assignedRoom = reservation.getAssignedRoom();
+        Room savedRoom = null;
+
+        if (assignedRoom != null) {
+            savedRoom = reservationManager.findRoomByNumber(assignedRoom.getRoomNumber());
+        }
+
+        if (savedRoom == null || savedRoom.getStatus() != Room.RoomStatus.OCCUPIED) {
+            System.out.println("Reservation does not have a valid occupied room.");
+            return;
+        }
+
+        displayReservationDetails(reservation);
+
+        if (!confirmYes("Confirm guest check-out? (Y/N): ")) {
+            System.out.println("Check-out cancelled.");
+            return;
+        }
+
+        if (reservationManager.checkOutReservation(reservation.getConfirmationNumber())) {
+            System.out.println("\nGuest checked out successfully.");
+            System.out.println("Room " + savedRoom.getRoomNumber()
+                    + " is now marked as NEEDS CLEANING.");
+            displayReservationDetails(reservation);
+        } else {
+            System.out.println("Check-out failed.");
         }
     }
 
@@ -563,7 +618,7 @@ public class ReservationUI {
             return;
         }
 
-        Reservation reservation = selectReservationForCancellation(matches);
+        Reservation reservation = selectReservation(matches);
         if (reservation == null) {
             return;
         }
@@ -604,7 +659,7 @@ public class ReservationUI {
         }
     }
 
-    private Reservation selectReservationForCancellation(ListInterface<Reservation> matches) {
+    private Reservation selectReservation(ListInterface<Reservation> matches) {
         if (matches.getNumberOfEntries() == 1) {
             return matches.getEntry(1);
         }
