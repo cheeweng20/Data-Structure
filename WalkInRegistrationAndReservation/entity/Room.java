@@ -15,8 +15,7 @@ public class Room implements Serializable {
         AVAILABLE,
         RESERVED,
         OCCUPIED,
-        NEEDS_CLEANING, // connect to the cleaning task
-        MAINTENANCE
+        NEEDS_CLEANING // connect to the cleaning task
     }
 
     private String roomNumber;
