@@ -12,14 +12,14 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 
-// Loads and saves room records using CSV files.
+// Loads and saves single-type room records using CSV files.
 /**
  * @author Wan Yin
  */
 public class RoomDAO {
 
     private static final int INITIAL_CAPACITY = 100;
-    private static final String HEADER = "RoomNumber,RoomType,Capacity,PricePerNight,Status";
+    private static final String HEADER = "RoomNumber,PricePerNight,Status";
     private final String fileName;
 
     public RoomDAO() {
@@ -43,27 +43,14 @@ public class RoomDAO {
                 }
 
                 String[] fields = line.split(",", -1);
-                if (fields.length < 4) {
+                if (fields.length < 3) {
                     continue;
                 }
 
-                String roomNumber = fields[0];
-                String roomType = fields[1];
-                int capacity;
-                double pricePerNight;
-                RoomStatus status;
-
-                if (fields.length >= 5) {
-                    capacity = Integer.parseInt(fields[2]);
-                    pricePerNight = Double.parseDouble(fields[3]);
-                    status = RoomStatus.valueOf(fields[4]);
-                } else {
-                    capacity = 0;
-                    pricePerNight = Double.parseDouble(fields[2]);
-                    status = RoomStatus.valueOf(fields[3]);
-                }
-
-                rooms.add(new Room(roomNumber, roomType, capacity, pricePerNight, status));
+                rooms.add(new Room(
+                        fields[0],
+                        Double.parseDouble(fields[1]),
+                        RoomStatus.valueOf(fields[2])));
             }
         } catch (FileNotFoundException ex) {
             createRoomCSVFile();
@@ -81,8 +68,7 @@ public class RoomDAO {
             writer.println(HEADER);
 
             for (int i = 1; i <= rooms.getNumberOfEntries(); i++) {
-                Room room = rooms.getEntry(i);
-                writer.println(toCsvLine(room));
+                writer.println(toCsvLine(rooms.getEntry(i)));
             }
         } catch (IOException ex) {
             throw new IllegalStateException("Unable to save rooms.", ex);
@@ -91,8 +77,6 @@ public class RoomDAO {
 
     private String toCsvLine(Room room) {
         return room.getRoomNumber() + ","
-                + room.getRoomType() + ","
-                + room.getCapacity() + ","
                 + room.getPricePerNight() + ","
                 + room.getStatus();
     }

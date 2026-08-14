@@ -1,11 +1,10 @@
 package WalkInRegistrationAndReservation.entity;
 
 public enum LoyaltyTier {
-    DIAMOND(4),
     PLATINUM(3),
-    ELITE(2),
-    GOLD(1),
-    STANDARD(0);
+    GOLD(2),
+    SILVER(1),
+    CLASSIC(0);
 
     private final int priorityScore;
 
@@ -15,5 +14,17 @@ public enum LoyaltyTier {
 
     public int getPriorityScore() {
         return priorityScore;
+    }
+
+    public static LoyaltyTier fromTierName(String tierName) {
+        if (tierName == null || tierName.trim().isEmpty()) {
+            return CLASSIC;
+        }
+
+        try {
+            return LoyaltyTier.valueOf(tierName.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            return CLASSIC;
+        }
     }
 }

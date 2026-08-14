@@ -3,11 +3,10 @@ package WalkInRegistrationAndReservation.entity;
 import java.io.Serializable;
 import java.util.Objects;
 
-// store personal data of the guest who made the reservation
+// Stores the guest profile used for priority room allocation.
 /**
  * @author Wan Yin
  */
-
 public class Guest implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -15,23 +14,17 @@ public class Guest implements Serializable {
     private String guestId;
     private String fullName;
     private String phoneNumber;
-    private String email;
     private LoyaltyTier loyaltyTier;
 
     public Guest() {
-        loyaltyTier = LoyaltyTier.STANDARD;
+        loyaltyTier = LoyaltyTier.CLASSIC;
     }
 
-    public Guest(String guestId, String fullName, String phoneNumber, String email) {
-        this(guestId, fullName, phoneNumber, email, LoyaltyTier.STANDARD);
-    }
-
-    public Guest(String guestId, String fullName, String phoneNumber, String email, LoyaltyTier loyaltyTier) {
+    public Guest(String guestId, String fullName, String phoneNumber, LoyaltyTier loyaltyTier) {
         this.guestId = guestId;
         this.fullName = fullName;
         this.phoneNumber = phoneNumber;
-        this.email = email;
-        this.loyaltyTier = loyaltyTier == null ? LoyaltyTier.STANDARD : loyaltyTier;
+        this.loyaltyTier = loyaltyTier == null ? LoyaltyTier.CLASSIC : loyaltyTier;
     }
 
     public String getGuestId() {
@@ -58,20 +51,12 @@ public class Guest implements Serializable {
         this.phoneNumber = phoneNumber;
     }
 
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
     public LoyaltyTier getLoyaltyTier() {
-        return loyaltyTier == null ? LoyaltyTier.STANDARD : loyaltyTier;
+        return loyaltyTier == null ? LoyaltyTier.CLASSIC : loyaltyTier;
     }
 
     public void setLoyaltyTier(LoyaltyTier loyaltyTier) {
-        this.loyaltyTier = loyaltyTier == null ? LoyaltyTier.STANDARD : loyaltyTier;
+        this.loyaltyTier = loyaltyTier == null ? LoyaltyTier.CLASSIC : loyaltyTier;
     }
 
     @Override
@@ -87,13 +72,13 @@ public class Guest implements Serializable {
     }
 
     @Override
-    public int hashCode() { // hash: number use to compare the object
+    public int hashCode() {
         return Objects.hash(guestId);
     }
 
     @Override
     public String toString() {
-        return String.format("Guest ID: %s | Name: %s | Phone: %s | Email: %s | Tier: %s",
-                guestId, fullName, phoneNumber, email, getLoyaltyTier());
+        return String.format("Guest ID: %s | Name: %s | Phone: %s | Tier: %s",
+                guestId, fullName, phoneNumber, getLoyaltyTier());
     }
 }

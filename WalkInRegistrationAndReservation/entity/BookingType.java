@@ -5,7 +5,5 @@ package WalkInRegistrationAndReservation.entity;
  * @author Wan Yin
  */
 public enum BookingType {
-    STANDARD,
-    VIP_PRIORITY,
-    WALK_IN
+    VIP_PRIORITY
 }

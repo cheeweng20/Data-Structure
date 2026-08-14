@@ -19,17 +19,16 @@ import java.io.PrintWriter;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-// Loads and saves reservation records using CSV files.
+// Loads and saves priority reservation records using CSV files.
 /**
  * @author Wan Yin
  */
 public class ReservationDAO {
 
     private static final int INITIAL_CAPACITY = 100;
-    private static final String HEADER = "ConfirmationNumber,GuestId,GuestName,PhoneNumber,Email,LoyaltyTier,"
-            + "RequestedRoomType,AssignedRoomNumber,AssignedRoomType,AssignedRoomCapacity,AssignedRoomPrice,"
-            + "AssignedRoomStatus,CheckInDate,CheckOutDate,BookingDateTime,NumberOfGuests,BookingType,"
-            + "PaymentMethod,PaymentStatus,Status";
+    private static final String HEADER = "ConfirmationNumber,GuestId,GuestName,PhoneNumber,LoyaltyTier,"
+            + "AssignedRoomNumber,AssignedRoomPrice,AssignedRoomStatus,CheckInDate,CheckOutDate,"
+            + "BookingDateTime,BookingType,PaymentMethod,PaymentStatus,Status";
     private final String fileName;
 
     public ReservationDAO() {
@@ -53,43 +52,28 @@ public class ReservationDAO {
                 }
 
                 String[] fields = line.split(",", -1);
-                if (fields.length < 16) {
+                if (fields.length < 15) {
                     continue;
                 }
 
-                boolean hasTierColumn = fields.length >= 20;
-                int offset = hasTierColumn ? 1 : 0;
-                Guest guest = new Guest(fields[1], fields[2], fields[3], fields[4],
-                        parseLoyaltyTier(hasTierColumn ? fields[5] : ""));
-                Room assignedRoom = parseAssignedRoom(fields, offset);
-                boolean hasPaymentColumns = fields.length >= 19 + offset;
-                int checkInDateIndex = (hasPaymentColumns ? 11 : 10) + offset;
-                int checkOutDateIndex = (hasPaymentColumns ? 12 : 11) + offset;
-                int bookingDateTimeIndex = (hasPaymentColumns ? 13 : 12) + offset;
-                int numberOfGuestsIndex = (hasPaymentColumns ? 14 : 13) + offset;
-                int bookingTypeIndex = (hasPaymentColumns ? 15 : 14) + offset;
-                int paymentMethodIndex = hasPaymentColumns ? 16 + offset : -1;
-                int paymentStatusIndex = hasPaymentColumns ? 17 + offset : -1;
-                int statusIndex = (hasPaymentColumns ? 18 : 15) + offset;
+                Guest guest = new Guest(
+                        fields[1],
+                        fields[2],
+                        fields[3],
+                        parseLoyaltyTier(fields[4]));
+                Room assignedRoom = parseAssignedRoom(fields);
 
-                String paymentMethod = paymentMethodIndex == -1 ? "" : fields[paymentMethodIndex];
-                String paymentStatus = paymentStatusIndex == -1 ? "UNPAID" : fields[paymentStatusIndex];
-
-                Reservation reservation = new Reservation(
+                reservations.add(new Reservation(
                         fields[0],
                         guest,
-                        fields[5],
                         assignedRoom,
-                        LocalDate.parse(fields[checkInDateIndex]),
-                        LocalDate.parse(fields[checkOutDateIndex]),
-                        LocalDateTime.parse(fields[bookingDateTimeIndex]),
-                        Integer.parseInt(fields[numberOfGuestsIndex]),
-                        BookingType.valueOf(fields[bookingTypeIndex]),
-                        paymentMethod,
-                        paymentStatus,
-                        ReservationStatus.valueOf(fields[statusIndex]));
-
-                reservations.add(reservation);
+                        LocalDate.parse(fields[8]),
+                        LocalDate.parse(fields[9]),
+                        LocalDateTime.parse(fields[10]),
+                        BookingType.valueOf(fields[11]),
+                        fields[12],
+                        fields[13],
+                        ReservationStatus.valueOf(fields[14])));
             }
         } catch (FileNotFoundException ex) {
             createReservationCSVFile();
@@ -114,37 +98,20 @@ public class ReservationDAO {
         }
     }
 
-    private Room parseAssignedRoom(String[] fields, int offset) {
-        if (fields[6 + offset].isEmpty()) {
+    private Room parseAssignedRoom(String[] fields) {
+        if (fields[5].isEmpty()) {
             return null;
         }
 
-        boolean hasCapacityColumn = fields.length >= 19 + offset;
-        int capacity = hasCapacityColumn && !fields[8 + offset].isEmpty()
-                ? Integer.parseInt(fields[8 + offset])
-                : 0;
-        int priceIndex = hasCapacityColumn ? 9 + offset : 8 + offset;
-        int statusIndex = hasCapacityColumn ? 10 + offset : 9 + offset;
-        double price = fields[priceIndex].isEmpty()
-                ? 0.00
-                : Double.parseDouble(fields[priceIndex]);
-        RoomStatus roomStatus = fields[statusIndex].isEmpty()
+        double price = fields[6].isEmpty() ? 0.00 : Double.parseDouble(fields[6]);
+        RoomStatus roomStatus = fields[7].isEmpty()
                 ? RoomStatus.RESERVED
-                : RoomStatus.valueOf(fields[statusIndex]);
-
-        return new Room(fields[6 + offset], fields[7 + offset], capacity, price, roomStatus);
+                : RoomStatus.valueOf(fields[7]);
+        return new Room(fields[5], price, roomStatus);
     }
 
     private LoyaltyTier parseLoyaltyTier(String value) {
-        if (value == null || value.trim().isEmpty()) {
-            return LoyaltyTier.STANDARD;
-        }
-
-        try {
-            return LoyaltyTier.valueOf(value.trim().toUpperCase());
-        } catch (IllegalArgumentException ex) {
-            return LoyaltyTier.STANDARD;
-        }
+        return LoyaltyTier.fromTierName(value);
     }
 
     private String toCsvLine(Reservation reservation) {
@@ -152,15 +119,11 @@ public class ReservationDAO {
         Room assignedRoom = reservation.getAssignedRoom();
 
         String assignedRoomNumber = "";
-        String assignedRoomType = "";
-        String assignedRoomCapacity = "";
         String assignedRoomPrice = "";
         String assignedRoomStatus = "";
 
         if (assignedRoom != null) {
             assignedRoomNumber = assignedRoom.getRoomNumber();
-            assignedRoomType = assignedRoom.getRoomType();
-            assignedRoomCapacity = Integer.toString(assignedRoom.getCapacity());
             assignedRoomPrice = Double.toString(assignedRoom.getPricePerNight());
             assignedRoomStatus = assignedRoom.getStatus().toString();
         }
@@ -169,18 +132,13 @@ public class ReservationDAO {
                 + guest.getGuestId() + ","
                 + guest.getFullName() + ","
                 + guest.getPhoneNumber() + ","
-                + guest.getEmail() + ","
                 + guest.getLoyaltyTier() + ","
-                + reservation.getRequestedRoomType() + ","
                 + assignedRoomNumber + ","
-                + assignedRoomType + ","
-                + assignedRoomCapacity + ","
                 + assignedRoomPrice + ","
                 + assignedRoomStatus + ","
                 + reservation.getCheckInDate() + ","
                 + reservation.getCheckOutDate() + ","
                 + reservation.getBookingDateTime() + ","
-                + reservation.getNumberOfGuests() + ","
                 + reservation.getBookingType() + ","
                 + reservation.getPaymentMethod() + ","
                 + reservation.getPaymentStatus() + ","
