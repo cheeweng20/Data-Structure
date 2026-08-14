@@ -12,9 +12,9 @@ import WalkInRegistrationAndReservation.utility.ConfirmationNumberGenerator;
 import java.time.LocalDate;
 import adt.ArrayList;
 import adt.ArrayStack;
-import adt.LinkedQueue;
 import adt.ListInterface;
-import adt.QueueInterface;
+import adt.MaxHeapPriorityQueue;
+import adt.PriorityQueueInterface;
 import adt.StackInterface;
 import java.util.Iterator;
 
@@ -31,7 +31,7 @@ public class ReservationManager {
     private final RoomDAO roomDAO;
     private final ListInterface<Reservation> reservations;
     private final ListInterface<Room> rooms;
-    private final QueueInterface<Reservation> pendingStandardReservations; // Pending standard bookings
+    private final PriorityQueueInterface<Reservation> pendingPriorityReservations;
     private final StackInterface<String> cancellationHistory;
 
     public ReservationManager() {
@@ -43,47 +43,39 @@ public class ReservationManager {
         this.roomDAO = roomDAO;
         reservations = reservationDAO.retrieveFromFile();
         rooms = roomDAO.retrieveFromFile();
-        pendingStandardReservations = new LinkedQueue<>();
+        pendingPriorityReservations = new MaxHeapPriorityQueue<>(this::compareReservationPriority);
         cancellationHistory = new ArrayStack<>();
-        rebuildPendingStandardQueue();
+        rebuildPendingPriorityQueue();
     }
 
     public Reservation submitStandardBookingRequest(Guest guest,
             LocalDate checkInDate, LocalDate checkOutDate, int numberOfGuests) {
         Reservation reservation = new Reservation(generateUniqueConfirmationNumber(), guest,
                 AUTO_ASSIGN_ROOM_TYPE, checkInDate, checkOutDate, numberOfGuests,
-                BookingType.STANDARD);
+                BookingType.VIP_PRIORITY);
 
-        // Save record and add to queue.
+        // Save record and add to the heap-backed priority queue.
         reservations.add(reservation);
-        pendingStandardReservations.enqueue(reservation);
+        pendingPriorityReservations.enqueue(reservation);
         saveData();
         return reservation;
     }
 
     public Reservation getNextPendingStandardReservation() {
-        return pendingStandardReservations.getFront();
+        return pendingPriorityReservations.getFront();
     }
 
     public Iterator<Reservation> getPendingStandardReservationIterator() {
-        return pendingStandardReservations.getIterator();
+        return pendingPriorityReservations.getIterator();
     }
 
     public int getPendingStandardReservationCount() {
-        int count = 0;
-        Iterator<Reservation> iterator = pendingStandardReservations.getIterator();
-
-        while (iterator.hasNext()) {
-            iterator.next();
-            count++;
-        }
-
-        return count;
+        return pendingPriorityReservations.getNumberOfEntries();
     }
 
     public Reservation processNextPendingStandardReservation() {
-        // Process the front request only.
-        Reservation reservation = pendingStandardReservations.getFront();
+        // Process the highest-priority request only.
+        Reservation reservation = pendingPriorityReservations.getFront();
 
         if (reservation == null) {
             return null;
@@ -99,7 +91,7 @@ public class ReservationManager {
             room.setStatus(RoomStatus.RESERVED);
         }
 
-        pendingStandardReservations.dequeue();
+        pendingPriorityReservations.dequeue();
         saveData();
         return reservation;
     }
@@ -150,7 +142,7 @@ public class ReservationManager {
         Reservation reservation = findReservation(searchValue); // find reservation first
 
         if (reservation == null
-                || reservation.getBookingType() != BookingType.STANDARD
+                || !isPriorityReservation(reservation)
                 || reservation.getStatus() != ReservationStatus.CONFIRMED
                 || reservation.getCheckInDate().isAfter(LocalDate.now())) {
             return false;
@@ -463,13 +455,13 @@ public class ReservationManager {
     }
 
     // Restore pending queue after restart.
-    private void rebuildPendingStandardQueue() {
+    private void rebuildPendingPriorityQueue() {
         ListInterface<Reservation> pendingReservations = new ArrayList<>();
         Iterator<Reservation> iterator = reservations.iterator();
 
         while (iterator.hasNext()) {
             Reservation reservation = iterator.next();
-            if (reservation.getBookingType() == BookingType.STANDARD
+            if (isPriorityReservation(reservation)
                     && reservation.getStatus() == ReservationStatus.PENDING) {
                 pendingReservations.add(reservation);
             }
@@ -489,8 +481,30 @@ public class ReservationManager {
 
         Iterator<Reservation> pendingIterator = pendingReservations.iterator();
         while (pendingIterator.hasNext()) {
-            pendingStandardReservations.enqueue(pendingIterator.next());
+            pendingPriorityReservations.enqueue(pendingIterator.next());
         }
+    }
+
+    private boolean isPriorityReservation(Reservation reservation) {
+        return reservation.getBookingType() == BookingType.VIP_PRIORITY
+                || reservation.getBookingType() == BookingType.STANDARD;
+    }
+
+    private int compareReservationPriority(Reservation first, Reservation second) {
+        int tierCompare = Integer.compare(
+                first.getGuest().getLoyaltyTier().getPriorityScore(),
+                second.getGuest().getLoyaltyTier().getPriorityScore());
+
+        if (tierCompare != 0) {
+            return tierCompare;
+        }
+
+        int bookingTimeCompare = second.getBookingDateTime().compareTo(first.getBookingDateTime());
+        if (bookingTimeCompare != 0) {
+            return bookingTimeCompare;
+        }
+
+        return second.getConfirmationNumber().compareToIgnoreCase(first.getConfirmationNumber());
     }
 
 }
