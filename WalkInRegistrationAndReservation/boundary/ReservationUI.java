@@ -3,6 +3,7 @@ package WalkInRegistrationAndReservation.boundary;
 import WalkInRegistrationAndReservation.control.ReservationManager;
 import WalkInRegistrationAndReservation.entity.BookingType;
 import WalkInRegistrationAndReservation.entity.Guest;
+import WalkInRegistrationAndReservation.entity.LoyaltyTier;
 import WalkInRegistrationAndReservation.entity.Reservation;
 import WalkInRegistrationAndReservation.entity.ReservationStatus;
 import WalkInRegistrationAndReservation.entity.Room;
@@ -78,15 +79,15 @@ public class ReservationUI {
     }
 
     private void displayMenu() {
-        System.out.println("\n--- Walk-In Registration & Standard Booking Management ---\n"
+        System.out.println("\n--- VIP & Loyalty Tier Priority Room Allocation ---\n"
                 + ".-----.----------------------------------------.\n"
                 + "| No. |                Function                |\n"
                 + ":-----+----------------------------------------:\n"
-                + "| 1.  | Check-In Standard Reservation          |\n"
+                + "| 1.  | Check-In Priority Reservation          |\n"
                 + ":-----+----------------------------------------:\n"
-                + "| 2.  | Manage Standard Booking Requests       |\n"
+                + "| 2.  | Manage VIP Priority Requests           |\n"
                 + ":-----+----------------------------------------:\n"
-                + "| 3.  | Walk-In Registration                   |\n"
+                + "| 3.  | Direct Walk-In Registration            |\n"
                 + ":-----+----------------------------------------:\n"
                 + "| 4.  | Guest Check-Out                        |\n"
                 + ":-----+----------------------------------------:\n"
@@ -105,7 +106,7 @@ public class ReservationUI {
 
     // check in (user booking before)
     private void checkInStandardReservation() {
-        System.out.println("\n--- Check-In Standard Reservation ---");
+        System.out.println("\n--- Check-In Priority Reservation ---");
         String searchValue = promptRequiredText("Enter reservation ID / IC / Passport / Guest Name: ");
         Reservation reservation = reservationManager.findReservation(searchValue);
 
@@ -114,8 +115,8 @@ public class ReservationUI {
             return;
         }
 
-        if (reservation.getBookingType() != BookingType.STANDARD) { // check the book type
-            System.out.println("This is not a standard reservation.");
+        if (!isPriorityReservation(reservation)) { // check the book type
+            System.out.println("This is not a priority reservation.");
             return;
         }
 
@@ -253,15 +254,15 @@ public class ReservationUI {
         boolean back = false;
 
         while (!back) {
-            System.out.println("\n--- Standard Booking Requests ---\n"
+            System.out.println("\n--- VIP Priority Room Allocation Requests ---\n"
                     + ".-----.----------------------------------------.\n"
                     + "| No. |                Function                |\n"
                     + ":-----+----------------------------------------:\n"
-                    + "| 1.  | Submit Standard Booking Request        |\n"
+                    + "| 1.  | Submit VIP Priority Request            |\n"
                     + ":-----+----------------------------------------:\n"
-                    + "| 2.  | View Pending Booking Queue             |\n"
+                    + "| 2.  | View Priority Allocation Heap          |\n"
                     + ":-----+----------------------------------------:\n"
-                    + "| 3.  | Process Next Booking Request           |\n"
+                    + "| 3.  | Allocate Next Priority Guest           |\n"
                     + ":-----+----------------------------------------:\n"
                     + "| 4.  | Back                                   |\n"
                     + "'-----'----------------------------------------'");
@@ -287,19 +288,20 @@ public class ReservationUI {
         }
     }
 
-    // submit booking request (Standard )
+    // submit booking request by loyalty tier priority
     private void submitStandardBookingRequest() {
-        System.out.println("\n--- Submit Standard Booking Request ---");
+        System.out.println("\n--- Submit VIP Priority Request ---");
         Guest guest = inputGuest();
         int numberOfGuests = promptNumberOfGuests();
         LocalDate checkInDate = promptStandardCheckInDate();
         LocalDate checkOutDate = promptCheckOutDate(checkInDate);
 
-        System.out.println("\n--- Review Standard Booking Request ---");
+        System.out.println("\n--- Review VIP Priority Request ---");
         System.out.println("Guest Name       : " + guest.getFullName());
         System.out.println("IC / Passport    : " + guest.getGuestId());
         System.out.println("Phone Number     : " + guest.getPhoneNumber());
         System.out.println("Email            : " + guest.getEmail());
+        System.out.println("Loyalty Tier     : " + guest.getLoyaltyTier());
         System.out.println("Number of Guests : " + numberOfGuests);
         System.out.println("Room Assignment  : Automatic best-fit during processing");
         System.out.println("Check-in Date    : " + checkInDate);
@@ -314,9 +316,9 @@ public class ReservationUI {
         Reservation reservation = reservationManager.submitStandardBookingRequest(
                 guest, checkInDate, checkOutDate, numberOfGuests);
 
-        System.out.println("\nBooking request submitted successfully.\n");
+        System.out.println("\nPriority request submitted successfully.\n");
         System.out.println("Request Number : " + reservation.getConfirmationNumber());
-        System.out.println("Queue Position : "
+        System.out.println("Heap Count     : "
                 + reservationManager.getPendingStandardReservationCount());
         System.out.println("Status         : " + reservation.getStatus());
     }
@@ -337,24 +339,25 @@ public class ReservationUI {
         Iterator<Reservation> iterator = reservationManager.getPendingStandardReservationIterator();
 
         if (!iterator.hasNext()) {
-            System.out.println("No pending standard booking requests.");
+            System.out.println("No pending priority allocation requests.");
             return;
         }
 
-        System.out.println("\n--- Pending Standard Booking Queue ---");
-        String border = "+----------+--------------+----------------------+--------+------------+------------+";
+        System.out.println("\n--- Pending VIP Priority Allocation Heap ---");
+        String border = "+----------+--------------+----------------------+-----------+--------+------------+------------+";
         System.out.println(border);
-        System.out.printf("| %-8s | %-12s | %-20s | %-6s | %-10s | %-10s |%n",
-                "Position", "Request No.", "Guest Name", "Guests", "Check-In", "Status");
+        System.out.printf("| %-8s | %-12s | %-20s | %-9s | %-6s | %-10s | %-10s |%n",
+                "Priority", "Request No.", "Guest Name", "Tier", "Guests", "Check-In", "Status");
         System.out.println(border);
 
         int position = 1;
         while (iterator.hasNext()) {
             Reservation reservation = iterator.next();
-            System.out.printf("| %-8d | %-12s | %-20.20s | %-6d | %-10s | %-10s |%n",
+            System.out.printf("| %-8d | %-12s | %-20.20s | %-9s | %-6d | %-10s | %-10s |%n",
                     position++,
                     reservation.getConfirmationNumber(),
                     reservation.getGuest().getFullName(),
+                    reservation.getGuest().getLoyaltyTier(),
                     reservation.getNumberOfGuests(),
                     reservation.getCheckInDate(),
                     reservation.getStatus());
@@ -369,21 +372,21 @@ public class ReservationUI {
         Reservation reservation = reservationManager.getNextPendingStandardReservation();
 
         if (reservation == null) {
-            System.out.println("No pending standard booking requests.");
+            System.out.println("No pending priority allocation requests.");
             return;
         }
 
-        System.out.println("\n--- Next Standard Booking Request ---");
+        System.out.println("\n--- Next Priority Guest For Room Allocation ---");
         displayReservationDetails(reservation);
 
         if (!confirmYes("Process this booking request? (Y/N): ")) {
-            System.out.println("Processing cancelled. Request remains at the front of the queue.");
+            System.out.println("Processing cancelled. Request remains at the front of the priority heap.");
             return;
         }
 
         Reservation processed = reservationManager.processNextPendingStandardReservation();
         if (processed.getStatus() == ReservationStatus.CONFIRMED) {
-            System.out.println("Booking confirmed successfully.");
+            System.out.println("Priority room allocation confirmed successfully.");
             displayReservationDetails(processed);
         } else {
             System.out.println("Booking request rejected.");
@@ -398,7 +401,36 @@ public class ReservationUI {
         String fullName = promptFullName();
         String phoneNumber = promptPhoneNumber();
         String email = promptEmail();
-        return new Guest(guestId, fullName, phoneNumber, email);
+        LoyaltyTier loyaltyTier = promptLoyaltyTier();
+        return new Guest(guestId, fullName, phoneNumber, email, loyaltyTier);
+    }
+
+    private LoyaltyTier promptLoyaltyTier() {
+        while (true) {
+            System.out.println("\n--- Loyalty Tier ---");
+            System.out.println("1. Diamond");
+            System.out.println("2. Platinum");
+            System.out.println("3. Elite");
+            System.out.println("4. Gold");
+            System.out.println("5. Standard");
+            System.out.print("Select loyalty tier: ");
+            String input = scanner.nextLine().trim();
+
+            switch (input) {
+                case "1":
+                    return LoyaltyTier.DIAMOND;
+                case "2":
+                    return LoyaltyTier.PLATINUM;
+                case "3":
+                    return LoyaltyTier.ELITE;
+                case "4":
+                    return LoyaltyTier.GOLD;
+                case "5":
+                    return LoyaltyTier.STANDARD;
+                default:
+                    System.out.println("Invalid tier. Please select 1 to 5.");
+            }
+        }
     }
 
     private String promptIcOrPassport() {
@@ -719,7 +751,7 @@ public class ReservationUI {
         YearMonth reportMonth = promptReportMonth();
         ListInterface<Reservation> reportReservations = new ArrayList<>();
         Iterator<Reservation> iterator = reservationManager.getReservations().iterator();
-        int standardCount = 0;
+        int priorityCount = 0;
         int walkInCount = 0;
         double estimatedRevenue = 0.00;
 
@@ -730,8 +762,8 @@ public class ReservationUI {
             }
 
             reportReservations.add(reservation);
-            if (reservation.getBookingType() == BookingType.STANDARD) {
-                standardCount++;
+            if (isPriorityReservation(reservation)) {
+                priorityCount++;
             } else {
                 walkInCount++;
             }
@@ -744,7 +776,7 @@ public class ReservationUI {
         sortReservationsByBookingDateTime(reportReservations);
         System.out.println("\n--- Monthly Reservation Summary: " + reportMonth + " ---");
         System.out.println("Total Reservations : " + reportReservations.getNumberOfEntries());
-        System.out.println("Standard           : " + standardCount);
+        System.out.println("Priority Bookings  : " + priorityCount);
         System.out.println("Walk-In            : " + walkInCount);
         System.out.printf("%nMonthly Revenue  : RM%.2f%n", estimatedRevenue);
 
@@ -975,11 +1007,11 @@ public class ReservationUI {
             return;
         }
 
-        String border = "+-----+------------+--------------------+--------+-----------+----------+-----------------+------------+---------+-------------+";
+        String border = "+-----+------------+--------------------+-----------+--------+-----------+----------+-----------------+------------+---------+-------------+";
         System.out.println("\n--- All Reservations ---");
         System.out.println(border);
-        System.out.printf("| %-3s | %-10s | %-18s | %-6s | %-9s | %-8s | %-15s | %-10s | %-7s | %-11s |%n",
-                "No.", "Res ID", "Guest Name", "Guests", "Type", "Room No.", "Room Type", "Check-In", "Payment",
+        System.out.printf("| %-3s | %-10s | %-18s | %-9s | %-6s | %-9s | %-8s | %-15s | %-10s | %-7s | %-11s |%n",
+                "No.", "Res ID", "Guest Name", "Tier", "Guests", "Type", "Room No.", "Room Type", "Check-In", "Payment",
                 "Status");
         System.out.println(border);
 
@@ -992,10 +1024,11 @@ public class ReservationUI {
             String roomNumber = room == null ? "-" : room.getRoomNumber();
             String roomType = room == null ? "Auto Assign" : room.getRoomType();
 
-            System.out.printf("| %-3d | %-10s | %-18.18s | %-6d | %-9s | %-8s | %-15s | %-10s | %-7s | %-11s |%n",
+            System.out.printf("| %-3d | %-10s | %-18.18s | %-9s | %-6d | %-9s | %-8s | %-15s | %-10s | %-7s | %-11s |%n",
                     number++,
                     reservation.getConfirmationNumber(),
                     reservation.getGuest().getFullName(),
+                    reservation.getGuest().getLoyaltyTier(),
                     reservation.getNumberOfGuests(),
                     reservation.getBookingType(),
                     roomNumber,
@@ -1022,6 +1055,7 @@ public class ReservationUI {
         System.out.println("IC / Passport    : " + guest.getGuestId());
         System.out.println("Phone Number     : " + guest.getPhoneNumber());
         System.out.println("Email            : " + guest.getEmail());
+        System.out.println("Loyalty Tier     : " + guest.getLoyaltyTier());
         System.out.println("Booking Type     : " + reservation.getBookingType());
         System.out.println("Number of Guests : " + reservation.getNumberOfGuests());
         System.out.println("Check-in Date    : " + reservation.getCheckInDate());
@@ -1030,10 +1064,10 @@ public class ReservationUI {
 
         if (room == null) {
             System.out.println("Room / Unit No.  : Not assigned");
-            if (reservation.getBookingType() == BookingType.STANDARD
+            if (isPriorityReservation(reservation)
                     && reservation.getStatus() == ReservationStatus.PENDING) {
                 System.out.println("Room Assignment  : Automatic during processing");
-            } else if (reservation.getBookingType() == BookingType.STANDARD
+            } else if (isPriorityReservation(reservation)
                     && reservation.getStatus() == ReservationStatus.REJECTED) {
                 System.out.println("Room Assignment  : No suitable room available");
             } else {
@@ -1061,6 +1095,11 @@ public class ReservationUI {
 
     public ReservationManager getReservationManager() {
         return reservationManager;
+    }
+
+    private boolean isPriorityReservation(Reservation reservation) {
+        return reservation.getBookingType() == BookingType.VIP_PRIORITY
+                || reservation.getBookingType() == BookingType.STANDARD;
     }
 
     public static void main(String[] args) {

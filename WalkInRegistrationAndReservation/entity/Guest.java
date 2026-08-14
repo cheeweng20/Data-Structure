@@ -16,15 +16,22 @@ public class Guest implements Serializable {
     private String fullName;
     private String phoneNumber;
     private String email;
+    private LoyaltyTier loyaltyTier;
 
     public Guest() {
+        loyaltyTier = LoyaltyTier.STANDARD;
     }
 
     public Guest(String guestId, String fullName, String phoneNumber, String email) {
+        this(guestId, fullName, phoneNumber, email, LoyaltyTier.STANDARD);
+    }
+
+    public Guest(String guestId, String fullName, String phoneNumber, String email, LoyaltyTier loyaltyTier) {
         this.guestId = guestId;
         this.fullName = fullName;
         this.phoneNumber = phoneNumber;
         this.email = email;
+        this.loyaltyTier = loyaltyTier == null ? LoyaltyTier.STANDARD : loyaltyTier;
     }
 
     public String getGuestId() {
@@ -59,6 +66,14 @@ public class Guest implements Serializable {
         this.email = email;
     }
 
+    public LoyaltyTier getLoyaltyTier() {
+        return loyaltyTier == null ? LoyaltyTier.STANDARD : loyaltyTier;
+    }
+
+    public void setLoyaltyTier(LoyaltyTier loyaltyTier) {
+        this.loyaltyTier = loyaltyTier == null ? LoyaltyTier.STANDARD : loyaltyTier;
+    }
+
     @Override
     public boolean equals(Object object) {
         if (this == object) {
@@ -78,7 +93,7 @@ public class Guest implements Serializable {
 
     @Override
     public String toString() {
-        return String.format("Guest ID: %s | Name: %s | Phone: %s | Email: %s",
-                guestId, fullName, phoneNumber, email);
+        return String.format("Guest ID: %s | Name: %s | Phone: %s | Email: %s | Tier: %s",
+                guestId, fullName, phoneNumber, email, getLoyaltyTier());
     }
 }

@@ -2,6 +2,7 @@ package WalkInRegistrationAndReservation.dao;
 
 import WalkInRegistrationAndReservation.entity.BookingType;
 import WalkInRegistrationAndReservation.entity.Guest;
+import WalkInRegistrationAndReservation.entity.LoyaltyTier;
 import WalkInRegistrationAndReservation.entity.Reservation;
 import WalkInRegistrationAndReservation.entity.ReservationStatus;
 import WalkInRegistrationAndReservation.entity.Room;
@@ -25,7 +26,7 @@ import java.time.LocalDateTime;
 public class ReservationDAO {
 
     private static final int INITIAL_CAPACITY = 100;
-    private static final String HEADER = "ConfirmationNumber,GuestId,GuestName,PhoneNumber,Email,"
+    private static final String HEADER = "ConfirmationNumber,GuestId,GuestName,PhoneNumber,Email,LoyaltyTier,"
             + "RequestedRoomType,AssignedRoomNumber,AssignedRoomType,AssignedRoomCapacity,AssignedRoomPrice,"
             + "AssignedRoomStatus,CheckInDate,CheckOutDate,BookingDateTime,NumberOfGuests,BookingType,"
             + "PaymentMethod,PaymentStatus,Status";
@@ -56,17 +57,20 @@ public class ReservationDAO {
                     continue;
                 }
 
-                Guest guest = new Guest(fields[1], fields[2], fields[3], fields[4]);
-                Room assignedRoom = parseAssignedRoom(fields);
-                boolean hasPaymentColumns = fields.length >= 19;
-                int checkInDateIndex = hasPaymentColumns ? 11 : 10;
-                int checkOutDateIndex = hasPaymentColumns ? 12 : 11;
-                int bookingDateTimeIndex = hasPaymentColumns ? 13 : 12;
-                int numberOfGuestsIndex = hasPaymentColumns ? 14 : 13;
-                int bookingTypeIndex = hasPaymentColumns ? 15 : 14;
-                int paymentMethodIndex = hasPaymentColumns ? 16 : -1;
-                int paymentStatusIndex = hasPaymentColumns ? 17 : -1;
-                int statusIndex = hasPaymentColumns ? 18 : 15;
+                boolean hasTierColumn = fields.length >= 20;
+                int offset = hasTierColumn ? 1 : 0;
+                Guest guest = new Guest(fields[1], fields[2], fields[3], fields[4],
+                        parseLoyaltyTier(hasTierColumn ? fields[5] : ""));
+                Room assignedRoom = parseAssignedRoom(fields, offset);
+                boolean hasPaymentColumns = fields.length >= 19 + offset;
+                int checkInDateIndex = (hasPaymentColumns ? 11 : 10) + offset;
+                int checkOutDateIndex = (hasPaymentColumns ? 12 : 11) + offset;
+                int bookingDateTimeIndex = (hasPaymentColumns ? 13 : 12) + offset;
+                int numberOfGuestsIndex = (hasPaymentColumns ? 14 : 13) + offset;
+                int bookingTypeIndex = (hasPaymentColumns ? 15 : 14) + offset;
+                int paymentMethodIndex = hasPaymentColumns ? 16 + offset : -1;
+                int paymentStatusIndex = hasPaymentColumns ? 17 + offset : -1;
+                int statusIndex = (hasPaymentColumns ? 18 : 15) + offset;
 
                 String paymentMethod = paymentMethodIndex == -1 ? "" : fields[paymentMethodIndex];
                 String paymentStatus = paymentStatusIndex == -1 ? "UNPAID" : fields[paymentStatusIndex];
@@ -110,17 +114,17 @@ public class ReservationDAO {
         }
     }
 
-    private Room parseAssignedRoom(String[] fields) {
-        if (fields[6].isEmpty()) {
+    private Room parseAssignedRoom(String[] fields, int offset) {
+        if (fields[6 + offset].isEmpty()) {
             return null;
         }
 
-        boolean hasCapacityColumn = fields.length >= 19;
-        int capacity = hasCapacityColumn && !fields[8].isEmpty()
-                ? Integer.parseInt(fields[8])
+        boolean hasCapacityColumn = fields.length >= 19 + offset;
+        int capacity = hasCapacityColumn && !fields[8 + offset].isEmpty()
+                ? Integer.parseInt(fields[8 + offset])
                 : 0;
-        int priceIndex = hasCapacityColumn ? 9 : 8;
-        int statusIndex = hasCapacityColumn ? 10 : 9;
+        int priceIndex = hasCapacityColumn ? 9 + offset : 8 + offset;
+        int statusIndex = hasCapacityColumn ? 10 + offset : 9 + offset;
         double price = fields[priceIndex].isEmpty()
                 ? 0.00
                 : Double.parseDouble(fields[priceIndex]);
@@ -128,7 +132,19 @@ public class ReservationDAO {
                 ? RoomStatus.RESERVED
                 : RoomStatus.valueOf(fields[statusIndex]);
 
-        return new Room(fields[6], fields[7], capacity, price, roomStatus);
+        return new Room(fields[6 + offset], fields[7 + offset], capacity, price, roomStatus);
+    }
+
+    private LoyaltyTier parseLoyaltyTier(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return LoyaltyTier.STANDARD;
+        }
+
+        try {
+            return LoyaltyTier.valueOf(value.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            return LoyaltyTier.STANDARD;
+        }
     }
 
     private String toCsvLine(Reservation reservation) {
@@ -154,6 +170,7 @@ public class ReservationDAO {
                 + guest.getFullName() + ","
                 + guest.getPhoneNumber() + ","
                 + guest.getEmail() + ","
+                + guest.getLoyaltyTier() + ","
                 + reservation.getRequestedRoomType() + ","
                 + assignedRoomNumber + ","
                 + assignedRoomType + ","

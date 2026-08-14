@@ -6,5 +6,6 @@ package WalkInRegistrationAndReservation.entity;
  */
 public enum BookingType {
     STANDARD,
+    VIP_PRIORITY,
     WALK_IN
 }
