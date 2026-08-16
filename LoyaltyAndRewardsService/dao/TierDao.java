@@ -21,15 +21,34 @@ public class TierDao {
         try (BufferedReader reader = new BufferedReader(new FileReader(FILE_NAME))) {
             reader.readLine(); // Skip file header
             String line;
+            int lineNumber = 1;
             while ((line = reader.readLine()) != null) {
-                String[] fields = line.split(",");
+                lineNumber++;
+                if (line.trim().isEmpty()) {
+                    continue;
+                }
 
-                String tierId = fields[0];
-                String tierLevel = fields[1];
-                int minPoint = Integer.parseInt(fields[2]);
-                int maxPoint = Integer.parseInt(fields[3]);
+                try {
+                    String[] fields = line.split(",", -1);
+                    if (fields.length != 4) {
+                        throw new IllegalArgumentException("expected 4 columns");
+                    }
 
-                tierLinkedList.addTierLevel(new Tier(tierId, tierLevel, minPoint, maxPoint));
+                    String tierId = fields[0].trim();
+                    String tierLevel = fields[1].trim();
+                    int minPoint = Integer.parseInt(fields[2].trim());
+                    int maxPoint = Integer.parseInt(fields[3].trim());
+                    if (tierId.isEmpty() || tierLevel.isEmpty() || minPoint < 0
+                            || maxPoint < 0 || (maxPoint != 0 && maxPoint < minPoint)) {
+                        throw new IllegalArgumentException("invalid tier value");
+                    }
+
+                    tierLinkedList.addTierLevel(new Tier(
+                            tierId, tierLevel, minPoint, maxPoint));
+                } catch (RuntimeException exception) {
+                    System.out.println("Skipping invalid tier record at line "
+                            + lineNumber + ": " + exception.getMessage());
+                }
             }
         } catch (FileNotFoundException e) {
             System.out.println("No existing tier data found, starting fresh.");

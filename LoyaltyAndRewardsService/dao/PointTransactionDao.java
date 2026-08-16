@@ -23,27 +23,44 @@ public class PointTransactionDao {
         try (BufferedReader reader = new BufferedReader(new FileReader(FILE_NAME))) {
             reader.readLine();
             String line;
+            int lineNumber = 1;
             while ((line = reader.readLine()) != null) {
+                lineNumber++;
                 if (line.isEmpty()) {
                     continue;
                 }
 
-                String[] fields = line.split(",", -1);
-                if (fields.length < 5) {
-                    continue;
+                try {
+                    String[] fields = line.split(",", -1);
+                    if (fields.length < 5) {
+                        throw new IllegalArgumentException("expected at least 5 columns");
+                    }
+
+                    String transactionId = fields[0].trim();
+                    String memberId = fields[1].trim();
+                    int pointsEarned = Integer.parseInt(fields[2].trim());
+                    boolean hasRemainingPoints = fields.length >= 6;
+                    int pointsRemaining = hasRemainingPoints
+                            ? Integer.parseInt(fields[3].trim()) : pointsEarned;
+                    LocalDate earnedDate = LocalDate.parse(
+                            fields[hasRemainingPoints ? 4 : 3].trim());
+                    LocalDate expiryDate = LocalDate.parse(
+                            fields[hasRemainingPoints ? 5 : 4].trim());
+
+                    if (transactionId.isEmpty() || memberId.isEmpty()
+                            || pointsEarned < 0 || pointsRemaining < 0
+                            || pointsRemaining > pointsEarned
+                            || expiryDate.isBefore(earnedDate)) {
+                        throw new IllegalArgumentException("invalid transaction value");
+                    }
+
+                    transactionList.addTransaction(
+                            new PointTransaction(transactionId, memberId, pointsEarned,
+                                    pointsRemaining, earnedDate, expiryDate));
+                } catch (RuntimeException exception) {
+                    System.out.println("Skipping invalid transaction record at line "
+                            + lineNumber + ": " + exception.getMessage());
                 }
-
-                String transactionId = fields[0];
-                String memberId = fields[1];
-                int pointsEarned = Integer.parseInt(fields[2]);
-                boolean hasRemainingPoints = fields.length >= 6;
-                int pointsRemaining = hasRemainingPoints ? Integer.parseInt(fields[3]) : pointsEarned;
-                LocalDate earnedDate = LocalDate.parse(fields[hasRemainingPoints ? 4 : 3]);
-                LocalDate expiryDate = LocalDate.parse(fields[hasRemainingPoints ? 5 : 4]);
-
-                transactionList.addTransaction(
-                        new PointTransaction(transactionId, memberId, pointsEarned, pointsRemaining,
-                                earnedDate, expiryDate));
             }
         } catch (FileNotFoundException e) {
             System.out.println("No existing transaction data found, starting fresh.");

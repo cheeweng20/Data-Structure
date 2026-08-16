@@ -22,22 +22,32 @@ public class RewardDao {
         try (BufferedReader reader = new BufferedReader(new FileReader(FILE_NAME))) {
             reader.readLine(); // Skip CSV header.
             String line;
+            int lineNumber = 1;
 
             while ((line = reader.readLine()) != null) {
+                lineNumber++;
                 if (line.trim().isEmpty()) {
                     continue;
                 }
 
                 String[] fields = line.split(",", -1);
                 if (fields.length != 3) {
-                    System.out.println("Skipping invalid reward record: " + line);
+                    System.out.println("Skipping invalid reward record at line "
+                            + lineNumber + ": expected 3 columns");
                     continue;
                 }
 
                 try {
-                    rewardList.addReward(new Reward(fields[0], fields[1], Integer.parseInt(fields[2])));
-                } catch (NumberFormatException e) {
-                    System.out.println("Skipping invalid reward point value: " + line);
+                    String rewardId = fields[0].trim();
+                    String rewardName = fields[1].trim();
+                    int pointRequired = Integer.parseInt(fields[2].trim());
+                    if (rewardId.isEmpty() || rewardName.isEmpty() || pointRequired <= 0) {
+                        throw new IllegalArgumentException("invalid reward value");
+                    }
+                    rewardList.addReward(new Reward(rewardId, rewardName, pointRequired));
+                } catch (RuntimeException exception) {
+                    System.out.println("Skipping invalid reward record at line "
+                            + lineNumber + ": " + exception.getMessage());
                 }
             }
         } catch (FileNotFoundException e) {

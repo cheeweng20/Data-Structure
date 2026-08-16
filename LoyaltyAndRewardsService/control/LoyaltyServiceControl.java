@@ -34,6 +34,7 @@ public class LoyaltyServiceControl {
     private LinkedList<RedemptionRequest> requestHistory;
     private LinkedList<Reward> rewardList;
     private int nextRequestNumber;
+    private int recentlyExpiredPointTotal;
 
     // ==================== Initialization and Persistence Control ====================
 
@@ -51,6 +52,7 @@ public class LoyaltyServiceControl {
         PointTransactionDao.loadFromTransactionFile(this);
         RequestDao.loadFromRequestFile(this);
         RewardDao.loadFromRewardFile(this);
+        recentlyExpiredPointTotal = expirePointsAndSave();
     }
 
     public void saveAll() {
@@ -295,8 +297,19 @@ public class LoyaltyServiceControl {
         if (member == null) {
             return false;
         }
+        return updateMember(memberId, name, member.getPassport(), member.getPhoneNumber(), point);
+    }
+
+    public boolean updateMember(String memberId, String name, String passport,
+            String phoneNumber, int point) {
+        Member member = getMemberById(memberId);
+        if (member == null) {
+            return false;
+        }
 
         member.setName(name);
+        member.setPassport(passport);
+        member.setPhoneNumber(phoneNumber);
         member.setPoint(point);
         promoteTierIfEligible(member);
         saveMembers();
@@ -536,6 +549,26 @@ public class LoyaltyServiceControl {
         return pointsToRedeem - remainingToRedeem;
     }
 
+    /**
+     * Expires unused transaction points after their expiry date and deducts the
+     * available amount from the member's spendable balance without changing the
+     * member's achieved tier.
+     *
+     * @return the total number of unused transaction points that expired
+     */
+    public int expirePointsAndSave() {
+        int expiredPoints = expirePoints(LocalDate.now());
+        if (expiredPoints > 0) {
+            saveMembers();
+            saveTransactions();
+        }
+        return expiredPoints;
+    }
+
+    public int getRecentlyExpiredPointTotal() {
+        return recentlyExpiredPointTotal;
+    }
+
     public int getExpiringTransactionCount(int withinDays) {
         return generateExpiringReport(withinDays).getNumberOfEntries();
     }
@@ -568,6 +601,7 @@ public class LoyaltyServiceControl {
     // ==================== Redemption Request Control ====================
 
     public boolean submitRewardRequest(String memberId, String rewardId) {
+        expirePointsAndSave();
         if (!findMember(memberId)) {
             MessageUI.displayError("Member not found.");
             return false;
@@ -594,6 +628,7 @@ public class LoyaltyServiceControl {
     }
 
     public RedemptionRequest processNextRequestAndSave(boolean approve) {
+        expirePointsAndSave();
         RedemptionRequest next = peekNextRequest();
         if (next == null) {
             MessageUI.displayInfo("No pending requests.");
@@ -953,18 +988,45 @@ public class LoyaltyServiceControl {
 
     private PointTransaction findOldestAvailableTransaction(String memberId) {
         PointTransaction oldest = null;
+        LocalDate today = LocalDate.now();
         Iterator<PointTransaction> iterator = transactionList.iterator();
 
         while (iterator.hasNext()) {
             PointTransaction current = iterator.next();
             boolean belongsToMember = current.getMemberId().equalsIgnoreCase(memberId);
             if (belongsToMember && current.getPointsRemaining() > 0
+                    && !current.getExpiryDate().isBefore(today)
                     && (oldest == null || current.compareTo(oldest) < 0)) {
                 oldest = current;
             }
         }
 
         return oldest;
+    }
+
+    private int expirePoints(LocalDate today) {
+        int totalExpired = 0;
+        Iterator<PointTransaction> iterator = transactionList.iterator();
+
+        while (iterator.hasNext()) {
+            PointTransaction transaction = iterator.next();
+            if (transaction.getPointsRemaining() <= 0
+                    || !transaction.getExpiryDate().isBefore(today)) {
+                continue;
+            }
+
+            int expiringPoints = transaction.getPointsRemaining();
+            transaction.setPointsRemaining(0);
+            totalExpired += expiringPoints;
+
+            Member member = getMemberById(transaction.getMemberId());
+            if (member != null) {
+                int deducted = Math.min(member.getPoint(), expiringPoints);
+                member.setPoint(member.getPoint() - deducted);
+            }
+        }
+
+        return totalExpired;
     }
 
     // ==================== Redemption Request Helpers ====================

@@ -16,6 +16,8 @@ import adt.ListInterface;
 
 /**
  * Creates a dependency-free PDF copy of a console report and adds a simple chart.
+ *
+ * @author Chee Weng
  */
 public final class ReportPdfExporter {
     public enum ChartType {

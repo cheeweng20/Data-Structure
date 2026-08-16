@@ -36,27 +36,41 @@ public class RequestDao {
         try (BufferedReader reader = new BufferedReader(new FileReader(FILE_NAME))) {
             reader.readLine(); // skip header
             String line;
+            int lineNumber = 1;
             while ((line = reader.readLine()) != null) {
+                lineNumber++;
                 if (line.isEmpty()) {
                     continue;
                 }
 
-                String[] fields = line.split(",", -1);
-                if (fields.length < 5) {
-                    continue;
+                try {
+                    String[] fields = line.split(",", -1);
+                    if (fields.length < 5) {
+                        throw new IllegalArgumentException("expected at least 5 columns");
+                    }
+
+                    boolean hasRewardId = fields.length >= 6;
+                    String requestId = fields[0].trim();
+                    String memberId = fields[1].trim();
+                    String rewardId = hasRewardId ? fields[2].trim() : "";
+                    int pointsRequested = Integer.parseInt(
+                            fields[hasRewardId ? 3 : 2].trim());
+                    LocalDate requestDate = LocalDate.parse(
+                            fields[hasRewardId ? 4 : 3].trim());
+                    String status = fields[hasRewardId ? 5 : 4].trim();
+
+                    if (requestId.isEmpty() || memberId.isEmpty()
+                            || pointsRequested <= 0 || status.isEmpty()) {
+                        throw new IllegalArgumentException("invalid required request value");
+                    }
+
+                    RedemptionRequest request = new RedemptionRequest(
+                            requestId, memberId, rewardId, pointsRequested, requestDate, status);
+                    requestControl.addRequest(request);
+                } catch (RuntimeException exception) {
+                    System.out.println("Skipping invalid request record at line "
+                            + lineNumber + ": " + exception.getMessage());
                 }
-
-                boolean hasRewardId = fields.length >= 6;
-                String requestId = fields[0];
-                String memberId = fields[1];
-                String rewardId = hasRewardId ? fields[2] : "";
-                int pointsRequested = Integer.parseInt(fields[hasRewardId ? 3 : 2]);
-                LocalDate requestDate = LocalDate.parse(fields[hasRewardId ? 4 : 3]);
-                String status = fields[hasRewardId ? 5 : 4];
-
-                RedemptionRequest request = new RedemptionRequest(
-                        requestId, memberId, rewardId, pointsRequested, requestDate, status);
-                requestControl.addRequest(request);
             }
         } catch (FileNotFoundException e) {
             System.out.println("No existing request data found, creating new file.");

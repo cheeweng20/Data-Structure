@@ -44,6 +44,11 @@ public final class MessageUI {
         displayInfo("Current points: " + currentPoints);
     }
 
+    public static void displayPointsExpired(int expiredPoints) {
+        displayInfo(expiredPoints
+                + " unredeemed transaction point(s) expired; member balances were updated.");
+    }
+
     public static void displayTierAdded(String tierId) {
         displaySuccess("Tier " + tierId + " added successfully.");
     }

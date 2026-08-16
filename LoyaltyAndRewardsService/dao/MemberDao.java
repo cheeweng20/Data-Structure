@@ -21,25 +21,43 @@ public class MemberDao {
         try (BufferedReader reader = new BufferedReader(new FileReader(FILE_NAME))) {
             reader.readLine(); // Skip file header
             String line;
+            int lineNumber = 1;
             while ((line = reader.readLine()) != null) {
-                String[] fields = line.split(",", -1);
+                lineNumber++;
+                if (line.trim().isEmpty()) {
+                    continue;
+                }
 
-                String memberId = fields[0];
-                String name = fields[1];
-                boolean hasContactFields = fields.length >= 6;
-                String passport = hasContactFields ? fields[2] : "";
-                String phoneNumber = hasContactFields ? fields[3] : "";
-                int point = Integer.parseInt(fields[hasContactFields ? 4 : 2]);
-                String tierId = fields[hasContactFields ? 5 : 3];
-                int notifiedTierIndex = hasContactFields ? 6 : 4;
-                String lastNotifiedTierId = fields.length > notifiedTierIndex
-                        && !fields[notifiedTierIndex].isBlank()
-                        ? fields[notifiedTierIndex]
-                        : tierId;
+                try {
+                    String[] fields = line.split(",", -1);
+                    if (fields.length < 4) {
+                        throw new IllegalArgumentException("expected at least 4 columns");
+                    }
 
-                memberList.addMember(
-                        new Member(memberId, name, passport, phoneNumber, point, tierId,
-                                lastNotifiedTierId));
+                    String memberId = fields[0].trim();
+                    String name = fields[1].trim();
+                    boolean hasContactFields = fields.length >= 6;
+                    String passport = hasContactFields ? fields[2].trim() : "";
+                    String phoneNumber = hasContactFields ? fields[3].trim() : "";
+                    int point = Integer.parseInt(fields[hasContactFields ? 4 : 2].trim());
+                    String tierId = fields[hasContactFields ? 5 : 3].trim();
+                    int notifiedTierIndex = hasContactFields ? 6 : 4;
+                    String lastNotifiedTierId = fields.length > notifiedTierIndex
+                            && !fields[notifiedTierIndex].isBlank()
+                            ? fields[notifiedTierIndex].trim()
+                            : tierId;
+
+                    if (memberId.isEmpty() || name.isEmpty() || tierId.isEmpty() || point < 0) {
+                        throw new IllegalArgumentException("invalid required member value");
+                    }
+
+                    memberList.addMember(
+                            new Member(memberId, name, passport, phoneNumber, point, tierId,
+                                    lastNotifiedTierId));
+                } catch (RuntimeException exception) {
+                    System.out.println("Skipping invalid member record at line "
+                            + lineNumber + ": " + exception.getMessage());
+                }
             }
         } catch (FileNotFoundException e) {
             System.out.println("No existing member data found, starting fresh.");

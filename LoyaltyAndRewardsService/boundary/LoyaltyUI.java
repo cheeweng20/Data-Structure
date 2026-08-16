@@ -92,6 +92,9 @@ public final class LoyaltyUI {
 
         System.out.println();
         System.out.println("=== Loyalty Notifications ===");
+        if (serviceControl.getRecentlyExpiredPointTotal() > 0) {
+            MessageUI.displayPointsExpired(serviceControl.getRecentlyExpiredPointTotal());
+        }
         if (expiringTransactionCount > 0) {
             MessageUI.displayInfo(expiringPointTotal + " unredeemed point(s) from "
                     + expiringTransactionCount + " transaction(s) will expire within "
@@ -235,13 +238,18 @@ public final class LoyaltyUI {
         }
 
         String newName = InputHelper.inputString(scanner, "Enter new member name: ");
+        String newPassport = InputHelper.inputString(scanner, "Enter new passport number: ");
+        String newPhoneNumber = InputHelper.inputString(scanner, "Enter new phone number: ");
         int newPoint = InputHelper.inputInt(scanner, "Enter new member points: ");
         if (!Verification.verifyMemberPoint(newPoint)
-                || !Verification.verifyMemberName(newName, memberId, serviceControl)) {
+                || !Verification.verifyMemberName(newName, memberId, serviceControl)
+                || !Verification.verifyPassport(newPassport)
+                || !Verification.verifyPhoneNumber(newPhoneNumber)) {
             return;
         }
 
-        serviceControl.updateMember(memberId, newName, newPoint);
+        serviceControl.updateMember(
+                memberId, newName, newPassport, newPhoneNumber, newPoint);
         MessageUI.displaySuccess("Member updated successfully.");
     }
 
