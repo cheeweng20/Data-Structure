@@ -258,6 +258,21 @@ public class ReservationManager {
         return rooms;
     }
 
+    public String generateGuestId() {
+        int highestNumber = 0;
+        Iterator<Reservation> iterator = reservations.iterator();
+
+        while (iterator.hasNext()) {
+            Reservation reservation = iterator.next();
+            Guest guest = reservation.getGuest();
+            if (guest != null) {
+                highestNumber = Math.max(highestNumber, parseNumericId(guest.getGuestId(), "G"));
+            }
+        }
+
+        return String.format("G%03d", highestNumber + 1);
+    }
+
     //Rebuild the pending priority queue from the reservations list
     private void rebuildPendingPriorityQueue() {
         Iterator<Reservation> iterator = reservations.iterator();
@@ -279,6 +294,18 @@ public class ReservationManager {
         }
 
         return confirmationNumber;
+    }
+
+    private int parseNumericId(String value, String prefix) {
+        if (value == null || !value.startsWith(prefix) || value.length() <= prefix.length()) {
+            return 0;
+        }
+
+        try {
+            return Integer.parseInt(value.substring(prefix.length()));
+        } catch (NumberFormatException ex) {
+            return 0;
+        }
     }
 
     //RESUT     

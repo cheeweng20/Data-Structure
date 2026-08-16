@@ -23,8 +23,10 @@ public class LoyaltyLookupDAO {
 
     public LoyaltyProfile findProfile(String memberId) {
         if (memberId == null || memberId.trim().isEmpty()) {
-            return null; // no ID entered, so no loyalty profile can be found
+            return null; // no search value entered, so no loyalty profile can be found
         }
+
+        String searchValue = normalize(memberId);
 
         try (BufferedReader reader = new BufferedReader(new FileReader(memberFileName))) {
             reader.readLine(); // skip CSV header
@@ -36,23 +38,33 @@ public class LoyaltyLookupDAO {
                 }
 
                 String[] fields = line.split(",", -1); // keep empty CSV columns
-                if (fields.length < 4 || !fields[0].equalsIgnoreCase(memberId.trim())) {
+                if (fields.length < 7) {
+                    continue; // skip rows that do not match the current loyalty CSV format
+                }
+
+                String memberIdValue = fields[0].trim();
+                String phoneNumber = fields[3].trim();
+                boolean memberIdMatches = memberIdValue.equalsIgnoreCase(memberId.trim());
+                boolean phoneMatches = normalize(phoneNumber).equals(searchValue);
+
+                if (!memberIdMatches && !phoneMatches) {
                     continue; // skip rows that are not the selected member
                 }
 
-                int points = Integer.parseInt(fields[2]); // member points decide the tier
-                return new LoyaltyProfile(fields[0], fields[1], findTierByPoints(points));
+                return new LoyaltyProfile(memberIdValue, fields[1].trim(), phoneNumber,
+                        findTierById(fields[6].trim()));
             }
-        } catch (IOException | NumberFormatException ex) {
+        } catch (IOException ex) {
             return null; // if loyalty file cannot be read, treat as no member found
         }
 
         return null;
     }
 
-    private LoyaltyTier findTierByPoints(int points) {
-        LoyaltyTier matchedTier = LoyaltyTier.CLASSIC; // default tier if no range matches
-        int highestMinimumPoint = -1; // keeps the strongest matching tier range
+    private LoyaltyTier findTierById(String tierId) {
+        if (tierId == null || tierId.trim().isEmpty()) {
+            return LoyaltyTier.CLASSIC;
+        }
 
         try (BufferedReader reader = new BufferedReader(new FileReader(tierFileName))) {
             reader.readLine(); // skip CSV header
@@ -64,36 +76,32 @@ public class LoyaltyLookupDAO {
                 }
 
                 String[] fields = line.split(",", -1);
-                if (fields.length < 4) {
-                    continue;
-                }
-
-                int minimumPoint = Integer.parseInt(fields[2]);
-                int maximumPoint = Integer.parseInt(fields[3]);
-                boolean noUpperLimit = maximumPoint == 0; // 0 means this tier has no max point
-                boolean withinRange = points >= minimumPoint && (noUpperLimit || points <= maximumPoint);
-
-                if (withinRange && minimumPoint > highestMinimumPoint) {
-                    matchedTier = LoyaltyTier.fromTierName(fields[1]); // convert CSV tier text to enum
-                    highestMinimumPoint = minimumPoint;
+                if (fields.length >= 2 && fields[0].equalsIgnoreCase(tierId.trim())) {
+                    return LoyaltyTier.fromTierName(fields[1]); // convert tier name to allocation priority
                 }
             }
-        } catch (IOException | NumberFormatException ex) {
+        } catch (IOException ex) {
             return LoyaltyTier.CLASSIC; // fallback keeps allocation running safely
         }
 
-        return matchedTier;
+        return LoyaltyTier.CLASSIC;
+    }
+
+    private String normalize(String value) {
+        return value == null ? "" : value.replaceAll("[^A-Za-z0-9]", "").toLowerCase();
     }
 
     public static class LoyaltyProfile {
 
         private final String memberId;
         private final String name;
+        private final String phoneNumber;
         private final LoyaltyTier loyaltyTier;
 
-        public LoyaltyProfile(String memberId, String name, LoyaltyTier loyaltyTier) {
+        public LoyaltyProfile(String memberId, String name, String phoneNumber, LoyaltyTier loyaltyTier) {
             this.memberId = memberId;
             this.name = name;
+            this.phoneNumber = phoneNumber;
             this.loyaltyTier = loyaltyTier;
         }
 
@@ -103,6 +111,10 @@ public class LoyaltyLookupDAO {
 
         public String getName() {
             return name;
+        }
+
+        public String getPhoneNumber() {
+            return phoneNumber;
         }
 
         public LoyaltyTier getLoyaltyTier() {

@@ -142,24 +142,34 @@ public class ReservationUI {
     }
 
     private Guest inputGuest() {
-        String guestId = promptRequiredText("Member ID : ");
-        LoyaltyProfile profile = reservationManager.findLoyaltyProfile(guestId);  // use the guestID
+        String searchValue = promptRequiredText("Member ID / Phone Number : ");
+        LoyaltyProfile profile = reservationManager.findLoyaltyProfile(searchValue);  // find member by ID or phone
+        String guestId;
         String fullName;
+        String phoneNumber;
         LoyaltyTier loyaltyTier;
 
         if (profile == null) {
             MessageUI.displayInfo("No loyalty member record found. Guest will be treated as CLASSIC.");
+            guestId = reservationManager.generateGuestId();
+            System.out.println("Generated Guest ID: " + guestId);
             fullName = promptFullName();
+            phoneNumber = InputValidator.isValidPhoneNumber(searchValue)
+                    ? searchValue
+                    : promptPhoneNumber();
             loyaltyTier = LoyaltyTier.CLASSIC;
         } else {
+            guestId = profile.getMemberId();
             fullName = profile.getName();
+            phoneNumber = profile.getPhoneNumber();
             loyaltyTier = profile.getLoyaltyTier();
             MessageUI.displaySuccess("Loyalty member found.");
+            System.out.println("Member ID        : " + guestId);
             System.out.println("Member Name      : " + fullName);
+            System.out.println("Phone Number     : " + phoneNumber);
             System.out.println("Loyalty Tier     : " + loyaltyTier);
         }
 
-        String phoneNumber = promptPhoneNumber();
         return new Guest(guestId, fullName, phoneNumber, loyaltyTier);
     }
 
@@ -525,7 +535,7 @@ public class ReservationUI {
                 (left, right) -> left.getBookingDateTime().compareTo(right.getBookingDateTime())); // sorted list arranges report by booking time
         Iterator<Reservation> iterator = reservationManager.getReservations().iterator();
         int[] statusCounts = new int[ReservationStatus.values().length];
-        double estimatedRevenue = 0.00;
+        double totalRevenue = 0.00;
 
         while (iterator.hasNext()) {
             Reservation reservation = iterator.next();
@@ -537,7 +547,7 @@ public class ReservationUI {
             statusCounts[reservation.getStatus().ordinal()]++;
             if (reservation.getAssignedRoom() != null
                     && reservation.getStatus() != ReservationStatus.REJECTED) {
-                estimatedRevenue += calculateReservationAmount(reservation);
+                totalRevenue += calculateReservationAmount(reservation);
             }
         }
 
@@ -548,6 +558,9 @@ public class ReservationUI {
         StringBuilder report = new StringBuilder();
         report.append("=== Monthly Reservation Summary: ").append(reportMonth).append(" ===\n");
         report.append("Total Reservations : ").append(reportReservations.getNumberOfEntries()).append('\n');
+        report.append("Pending            : ")
+                .append(statusCounts[ReservationStatus.PENDING.ordinal()])
+                .append('\n');
         report.append("Allocated Rooms    : ")
                 .append(statusCounts[ReservationStatus.CONFIRMED.ordinal()]
                         + statusCounts[ReservationStatus.CHECKED_IN.ordinal()]
@@ -558,7 +571,7 @@ public class ReservationUI {
                 .append('\n');
         report.append("Rejected           : ")
                 .append(statusCounts[ReservationStatus.REJECTED.ordinal()]).append('\n');
-        report.append(String.format("Total Revenue      : RM%.2f%n%n", estimatedRevenue));
+        report.append(String.format("Total Revenue      : RM%.2f%n%n", totalRevenue));
         appendMonthlyReportHeader(report);
 
         for (int i = 1; i <= reportReservations.getNumberOfEntries(); i++) {
