@@ -9,7 +9,7 @@ import java.io.PrintWriter;
 import java.time.LocalDate;
 import java.util.Iterator;
 
-import LoyaltyAndRewardsService.control.RequestControl;
+import LoyaltyAndRewardsService.control.LoyaltyServiceControl;
 import LoyaltyAndRewardsService.entity.RedemptionRequest;
 
 /**
@@ -18,7 +18,7 @@ import LoyaltyAndRewardsService.entity.RedemptionRequest;
 public class RequestDao {
     private static final String FILE_NAME = "LoyaltyAndRewardsService/src/requests.csv";
 
-    public static void saveToRequestFile(RequestControl requestControl) {
+    public static void saveToRequestFile(LoyaltyServiceControl requestControl) {
         try (PrintWriter writer = new PrintWriter(new FileWriter(FILE_NAME))) {
             writer.println("RequestId,MemberId,RewardId,PointsRequested,RequestDate,Status");
 
@@ -32,7 +32,7 @@ public class RequestDao {
         }
     }
 
-    public static void loadFromRequestFile(RequestControl requestControl) {
+    public static void loadFromRequestFile(LoyaltyServiceControl requestControl) {
         try (BufferedReader reader = new BufferedReader(new FileReader(FILE_NAME))) {
             reader.readLine(); // skip header
             String line;

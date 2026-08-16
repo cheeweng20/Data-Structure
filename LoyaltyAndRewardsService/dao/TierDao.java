@@ -7,7 +7,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 
-import LoyaltyAndRewardsService.control.TierControl;
+import LoyaltyAndRewardsService.control.LoyaltyServiceControl;
 import LoyaltyAndRewardsService.entity.Tier;
 
 /**
@@ -17,7 +17,7 @@ public class TierDao {
     private static final String FILE_NAME = "LoyaltyAndRewardsService/src/tier.csv";
 
     // CSV File Reader and Writter
-    public static void loadFromTierFile(TierControl tierLinkedList) {
+    public static void loadFromTierFile(LoyaltyServiceControl tierLinkedList) {
         try (BufferedReader reader = new BufferedReader(new FileReader(FILE_NAME))) {
             reader.readLine(); // Skip file header
             String line;
@@ -40,12 +40,12 @@ public class TierDao {
         }
     }
 
-    public static void saveToTierFile(TierControl tierLinkedList) {
+    public static void saveToTierFile(LoyaltyServiceControl tierLinkedList) {
         try (PrintWriter writer = new PrintWriter(new FileWriter(FILE_NAME))) {
             writer.println("TierId,TierLevel,MinPoint,MaxPoint");
 
-            for (int i = 1; i <= tierLinkedList.size(); i++) {
-                Tier tier = tierLinkedList.getEntry(i);
+            for (int i = 1; i <= tierLinkedList.getTierCount(); i++) {
+                Tier tier = tierLinkedList.getTierEntry(i);
                 writer.println(tier.toCsvLine());
             }
         } catch (IOException e) {

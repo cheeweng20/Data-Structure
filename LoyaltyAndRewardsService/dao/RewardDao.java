@@ -7,7 +7,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 
-import LoyaltyAndRewardsService.control.RewardControl;
+import LoyaltyAndRewardsService.control.LoyaltyServiceControl;
 import LoyaltyAndRewardsService.entity.Reward;
 
 /**
@@ -18,7 +18,7 @@ import LoyaltyAndRewardsService.entity.Reward;
 public class RewardDao {
     private static final String FILE_NAME = "LoyaltyAndRewardsService/src/reward.csv";
 
-    public static void loadFromRewardFile(RewardControl rewardList) {
+    public static void loadFromRewardFile(LoyaltyServiceControl rewardList) {
         try (BufferedReader reader = new BufferedReader(new FileReader(FILE_NAME))) {
             reader.readLine(); // Skip CSV header.
             String line;
@@ -48,11 +48,11 @@ public class RewardDao {
         }
     }
 
-    public static void saveToRewardFile(RewardControl rewardList) {
+    public static void saveToRewardFile(LoyaltyServiceControl rewardList) {
         try (PrintWriter writer = new PrintWriter(new FileWriter(FILE_NAME))) {
             writer.println("RewardId,RewardName,PointRequired");
-            for (int i = 1; i <= rewardList.size(); i++) {
-                writer.println(rewardList.getEntry(i).toCsvLine());
+            for (int i = 1; i <= rewardList.getRewardCount(); i++) {
+                writer.println(rewardList.getRewardEntry(i).toCsvLine());
             }
         } catch (IOException e) {
             System.out.println("Error saving reward file: " + e.getMessage());

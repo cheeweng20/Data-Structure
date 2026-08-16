@@ -8,7 +8,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.time.LocalDate;
 
-import LoyaltyAndRewardsService.control.TransactionControl;
+import LoyaltyAndRewardsService.control.LoyaltyServiceControl;
 import LoyaltyAndRewardsService.entity.PointTransaction;
 
 /**
@@ -19,7 +19,7 @@ public class PointTransactionDao {
     private static final String HEADER =
             "TransactionId,MemberId,PointsEarned,PointsRemaining,EarnedDate,ExpiryDate";
 
-    public static void loadFromTransactionFile(TransactionControl transactionList) {
+    public static void loadFromTransactionFile(LoyaltyServiceControl transactionList) {
         try (BufferedReader reader = new BufferedReader(new FileReader(FILE_NAME))) {
             reader.readLine();
             String line;
@@ -53,11 +53,11 @@ public class PointTransactionDao {
         }
     }
 
-    public static void saveToTransactionFile(TransactionControl transactionList) {
+    public static void saveToTransactionFile(LoyaltyServiceControl transactionList) {
         try (PrintWriter writer = new PrintWriter(new FileWriter(FILE_NAME))) {
             writer.println(HEADER);
-            for (int i = 1; i <= transactionList.size(); i++) {
-                PointTransaction transaction = transactionList.getEntry(i);
+            for (int i = 1; i <= transactionList.getTransactionCount(); i++) {
+                PointTransaction transaction = transactionList.getTransactionEntry(i);
                 writer.println(transaction.toCsvLine());
             }
         } catch (IOException e) {
@@ -65,11 +65,11 @@ public class PointTransactionDao {
         }
     }
 
-    public static void loadFromMemberFile(TransactionControl transactionList) {
+    public static void loadFromMemberFile(LoyaltyServiceControl transactionList) {
         loadFromTransactionFile(transactionList);
     }
 
-    public static void saveToMemberFile(TransactionControl transactionList) {
+    public static void saveToMemberFile(LoyaltyServiceControl transactionList) {
         saveToTransactionFile(transactionList);
     }
 
