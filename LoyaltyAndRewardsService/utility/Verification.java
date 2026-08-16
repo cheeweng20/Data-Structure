@@ -1,7 +1,6 @@
 package LoyaltyAndRewardsService.utility;
 
-import LoyaltyAndRewardsService.control.MemberControl;
-import LoyaltyAndRewardsService.control.TierControl;
+import LoyaltyAndRewardsService.control.LoyaltyServiceControl;
 import LoyaltyAndRewardsService.entity.Member;
 import LoyaltyAndRewardsService.entity.Tier;
 
@@ -31,17 +30,18 @@ public class Verification {
         return true;
     }
 
-    public static boolean verifyTierName(String tierName, TierControl tierLinkedList) {
+    public static boolean verifyTierName(String tierName, LoyaltyServiceControl tierLinkedList) {
         return verifyTierName(tierName, null, tierLinkedList);
     }
 
-    public static boolean verifyTierName(String tierName, String excludedTierId, TierControl tierLinkedList) {
+    public static boolean verifyTierName(String tierName, String excludedTierId,
+            LoyaltyServiceControl tierLinkedList) {
         if (tierName == null || tierName.trim().isEmpty()) {
             MessageUI.displayError("Tier name cannot be empty. Please enter a valid tier name.");
             return false;
         }
-        for (int i = 1; i <= tierLinkedList.size(); i++) {
-            Tier tier = tierLinkedList.getEntry(i);
+        for (int i = 1; i <= tierLinkedList.getTierCount(); i++) {
+            Tier tier = tierLinkedList.getTierEntry(i);
             boolean isExcludedTier = excludedTierId != null
                     && tier.getTierId().equalsIgnoreCase(excludedTierId);
             if (tier != null && !isExcludedTier && tierName.equalsIgnoreCase(tier.getTierLevel())) {
@@ -57,18 +57,18 @@ public class Verification {
         return true;
     }
 
-    public static boolean verifyMemberName(String memberName, MemberControl memberLinkedList) {
+    public static boolean verifyMemberName(String memberName, LoyaltyServiceControl memberLinkedList) {
         return verifyMemberName(memberName, null, memberLinkedList);
     }
 
     public static boolean verifyMemberName(String memberName, String excludedMemberId,
-            MemberControl memberLinkedList) {
+            LoyaltyServiceControl memberLinkedList) {
         if (memberName == null || memberName.trim().isEmpty()) {
             MessageUI.displayError("Member name cannot be empty. Please enter a valid member name.");
             return false;
         }
-        for (int i = 1; i <= memberLinkedList.size(); i++) {
-            Member member = memberLinkedList.getEntry(i);
+        for (int i = 1; i <= memberLinkedList.getMemberCount(); i++) {
+            Member member = memberLinkedList.getMemberEntry(i);
             boolean isExcludedMember = excludedMemberId != null
                     && member.getMemberId().equalsIgnoreCase(excludedMemberId);
             if (member != null && !isExcludedMember && memberName.equalsIgnoreCase(member.getName())) {

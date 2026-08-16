@@ -7,7 +7,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 
-import LoyaltyAndRewardsService.control.MemberControl;
+import LoyaltyAndRewardsService.control.LoyaltyServiceControl;
 import LoyaltyAndRewardsService.entity.Member;
 
 /**
@@ -17,7 +17,7 @@ public class MemberDao {
     private static final String FILE_NAME = "LoyaltyAndRewardsService/src/member.csv";
 
         // CSV File Reader and Writer
-    public static void loadFromMemberFile(MemberControl memberList) {
+    public static void loadFromMemberFile(LoyaltyServiceControl memberList) {
         try (BufferedReader reader = new BufferedReader(new FileReader(FILE_NAME))) {
             reader.readLine(); // Skip file header
             String line;
@@ -44,11 +44,11 @@ public class MemberDao {
         }
     }
 
-    public static void saveToMemberFile(MemberControl memberList) {
+    public static void saveToMemberFile(LoyaltyServiceControl memberList) {
         try (PrintWriter writer = new PrintWriter(new FileWriter(FILE_NAME))) {
             writer.println("MemberId,Name,Point,TierId,LastNotifiedTierId");
-            for (int i = 1; i <= memberList.size(); i++) {
-                Member member = memberList.getEntry(i);
+            for (int i = 1; i <= memberList.getMemberCount(); i++) {
+                Member member = memberList.getMemberEntry(i);
                 writer.println(member.toCsvLine());
             }
         } catch (IOException e) {
