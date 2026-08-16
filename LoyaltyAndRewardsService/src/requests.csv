@@ -1,4 +1,2 @@
-RequestId,MemberId,RewardId,PointsRequested,RequestDate,Status
-R001,M001,R001,50,2026-07-29,Approved
-R002,M002,R001,50,2026-07-29,Approved
-R003,M001,R002,300,2026-07-29,Approved
+RequestId,MemberId,ConfirmationNumber,PointsRequested,RequestDate,Status
+R001,M001,90953815,200,2026-08-16,Approved
