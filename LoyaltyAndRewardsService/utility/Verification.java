@@ -85,6 +85,24 @@ public class Verification {
         return true;
     }
 
+    public static boolean verifyPassport(String passport) {
+        if (passport == null || !passport.trim().matches("^[A-Za-z0-9]{5,20}$")) {
+            MessageUI.displayError(
+                    "Passport number must contain 5 to 20 letters or numbers.");
+            return false;
+        }
+        return true;
+    }
+
+    public static boolean verifyPhoneNumber(String phoneNumber) {
+        if (phoneNumber == null || !phoneNumber.trim().matches("^[0-9+ -]{7,20}$")) {
+            MessageUI.displayError(
+                    "Phone number must contain 7 to 20 digits; +, spaces, and hyphens are allowed.");
+            return false;
+        }
+        return true;
+    }
+
     public static boolean verifyRewardPoints(int points) {
         if (points <= 0) {
             MessageUI.displayError("Reward points must be greater than zero.");

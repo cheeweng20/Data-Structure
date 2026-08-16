@@ -262,9 +262,10 @@ public class LoyaltyServiceControl {
         memberList.add(member);
     }
 
-    public String createMember(String name, int point) {
+    public String createMember(String name, String passport, String phoneNumber, int point) {
         String memberId = generateMemberId();
-        addMember(new Member(memberId, name, point, getTierIdByPoint(point)));
+        addMember(new Member(memberId, name, passport, phoneNumber, point,
+                getTierIdByPoint(point)));
         saveMembers();
         return memberId;
     }
@@ -370,17 +371,19 @@ public class LoyaltyServiceControl {
         }
 
         StringBuilder output = new StringBuilder();
-        String border = "+------------+----------------------+----------+----------------+";
+        String border = "+------------+----------------------+------------------+------------------+----------+----------------+";
         output.append(border).append(System.lineSeparator());
-        output.append(String.format("| %-10s | %-20s | %8s | %-14s |%n",
-                "Member ID", "Name", "Points", "Tier"));
+        output.append(String.format("| %-10s | %-20s | %-16s | %-16s | %8s | %-14s |%n",
+                "Member ID", "Name", "Passport", "Phone Number", "Points", "Tier"));
         output.append(border).append(System.lineSeparator());
         for (int i = 1; i <= memberList.size(); i++) {
             Member member = memberList.getEntry(i);
             Tier tier = getExistTierById(member.getTierId());
             String tierName = tier == null ? "Unknown" : tier.getTierLevel();
-            output.append(String.format("| %-10.10s | %-20.20s | %8d | %-14.14s |%n",
-                    member.getMemberId(), member.getName(), member.getPoint(), tierName));
+            output.append(String.format(
+                    "| %-10.10s | %-20.20s | %-16.16s | %-16.16s | %8d | %-14.14s |%n",
+                    member.getMemberId(), member.getName(), member.getPassport(),
+                    member.getPhoneNumber(), member.getPoint(), tierName));
         }
         output.append(border);
         return output.toString();

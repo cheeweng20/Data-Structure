@@ -189,14 +189,18 @@ public final class LoyaltyUI {
     private static void addMember(Scanner scanner, LoyaltyServiceControl serviceControl) {
         scanner.nextLine();
         String name = InputHelper.inputString(scanner, "Enter member name: ");
+        String passport = InputHelper.inputString(scanner, "Enter passport number: ");
+        String phoneNumber = InputHelper.inputString(scanner, "Enter phone number: ");
         int point = InputHelper.inputInt(scanner, "Enter current member points: ");
 
         if (!Verification.verifyMemberPoint(point)
-                || !Verification.verifyMemberName(name, serviceControl)) {
+                || !Verification.verifyMemberName(name, serviceControl)
+                || !Verification.verifyPassport(passport)
+                || !Verification.verifyPhoneNumber(phoneNumber)) {
             return;
         }
 
-        String memberId = serviceControl.createMember(name, point);
+        String memberId = serviceControl.createMember(name, passport, phoneNumber, point);
         MessageUI.displaySuccess("Member " + memberId + " added successfully.");
     }
 

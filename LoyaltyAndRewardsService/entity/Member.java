@@ -6,18 +6,32 @@ package LoyaltyAndRewardsService.entity;
 public class Member implements Comparable<Member> {
     private String memberId;
     private String name;
+    private String passport;
+    private String phoneNumber;
     private int point;
     private String tierId;
     private String lastNotifiedTierId;
 
     public Member(String memberId,String name, int point,String tierId) {
-        this(memberId, name, point, tierId, tierId);
+        this(memberId, name, "", "", point, tierId, tierId);
     }
 
     public Member(String memberId, String name, int point, String tierId,
             String lastNotifiedTierId) {
+        this(memberId, name, "", "", point, tierId, lastNotifiedTierId);
+    }
+
+    public Member(String memberId, String name, String passport, String phoneNumber,
+            int point, String tierId) {
+        this(memberId, name, passport, phoneNumber, point, tierId, tierId);
+    }
+
+    public Member(String memberId, String name, String passport, String phoneNumber,
+            int point, String tierId, String lastNotifiedTierId) {
         this.memberId = memberId;
         this.name = name;
+        this.passport = passport;
+        this.phoneNumber = phoneNumber;
         this.point = point;
         this.tierId = tierId;
         this.lastNotifiedTierId = lastNotifiedTierId;
@@ -29,6 +43,14 @@ public class Member implements Comparable<Member> {
 
     public String getName() {
         return name;
+    }
+
+    public String getPassport() {
+        return passport;
+    }
+
+    public String getPhoneNumber() {
+        return phoneNumber;
     }
 
     public int getPoint() {
@@ -51,6 +73,14 @@ public class Member implements Comparable<Member> {
         this.name = name;
     }
 
+    public void setPassport(String passport) {
+        this.passport = passport;
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
+    }
+
     public void setPoint(int point) {
         this.point = point;
     }
@@ -69,7 +99,8 @@ public class Member implements Comparable<Member> {
     }
 
     public String toCsvLine(){
-        return memberId + "," + name + "," + point + "," + tierId + ","
+        return memberId + "," + name + "," + passport + "," + phoneNumber + ","
+                + point + "," + tierId + ","
                 + lastNotifiedTierId;
     }
     

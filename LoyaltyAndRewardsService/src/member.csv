@@ -1,4 +1,4 @@
-MemberId,Name,Point,TierId
-M001,WAN YIN,1175,T005
-M002,Chee Weng,1000,T005
-M003,Test Rename,450,T002
+MemberId,Name,Passport,PhoneNumber,Point,TierId,LastNotifiedTierId
+M001,WAN YIN,,,1175,T005,T005
+M002,Chee Weng,,,1000,T005,T005
+M003,Test Rename,,,450,T002,T002
