@@ -253,8 +253,8 @@ public class LoyaltyServiceControl {
     }
 
     public void addMember(Member member) {
-        String tierId = getTierIdByPoint(member.getPoint());
-        member.setTierId(tierId);
+        promoteTierIfEligible(member);
+        String tierId = member.getTierId();
         if (member.getLastNotifiedTierId() == null
                 || member.getLastNotifiedTierId().isBlank()) {
             member.setLastNotifiedTierId(tierId);
@@ -298,7 +298,7 @@ public class LoyaltyServiceControl {
 
         member.setName(name);
         member.setPoint(point);
-        assignTier(member, getTierIdByPoint(point));
+        promoteTierIfEligible(member);
         saveMembers();
         return true;
     }
@@ -311,7 +311,6 @@ public class LoyaltyServiceControl {
 
         int newPoint = member.getPoint() - pointRedeem;
         member.setPoint(newPoint);
-        assignTier(member, getTierIdByPoint(newPoint));
         return newPoint;
     }
 
@@ -329,7 +328,7 @@ public class LoyaltyServiceControl {
         String previousTierId = member.getTierId();
         int newPoint = member.getPoint() + points;
         member.setPoint(newPoint);
-        assignTier(member, getTierIdByPoint(newPoint));
+        promoteTierIfEligible(member);
         addTransaction(memberId, points);
         saveMembers();
         saveTransactions();
@@ -350,14 +349,7 @@ public class LoyaltyServiceControl {
 
         for (int i = 1; i <= memberList.size(); i++) {
             Member member = memberList.getEntry(i);
-            String correctTierId = getTierIdByPoint(member.getPoint());
-            String currentTierId = member.getTierId();
-
-            boolean changed = currentTierId == null
-                    ? correctTierId != null
-                    : !currentTierId.equalsIgnoreCase(correctTierId);
-            if (changed) {
-                assignTier(member, correctTierId);
+            if (promoteTierIfEligible(member)) {
                 changedCount++;
             }
         }
@@ -433,8 +425,8 @@ public class LoyaltyServiceControl {
             return "Member Not Found";
         }
 
-        String currentTierId = getTierIdByPoint(member.getPoint());
-        assignTier(member, currentTierId);
+        promoteTierIfEligible(member);
+        String currentTierId = member.getTierId();
 
         if (currentTierId == null) {
             return "No tier is configured for the member's current point balance.";
@@ -905,6 +897,29 @@ public class LoyaltyServiceControl {
         int previousMinimumPoint = getMinimumPoint(previousTierId);
         int currentMinimumPoint = getMinimumPoint(currentTierId);
         return previousMinimumPoint >= 0 && currentMinimumPoint > previousMinimumPoint;
+    }
+
+    /**
+     * Promotes a member when the current point balance qualifies for a higher
+     * tier. A valid achieved tier is never replaced by a lower tier when points
+     * are redeemed, expire, or are manually reduced.
+     */
+    private boolean promoteTierIfEligible(Member member) {
+        String eligibleTierId = getTierIdByPoint(member.getPoint());
+        if (eligibleTierId == null) {
+            return false;
+        }
+
+        String currentTierId = member.getTierId();
+        int currentMinimumPoint = getMinimumPoint(currentTierId);
+        int eligibleMinimumPoint = getMinimumPoint(eligibleTierId);
+        boolean hasNoValidCurrentTier = currentTierId == null || currentMinimumPoint < 0;
+
+        if (hasNoValidCurrentTier || eligibleMinimumPoint > currentMinimumPoint) {
+            assignTier(member, eligibleTierId);
+            return true;
+        }
+        return false;
     }
 
     private void assignTier(Member member, String newTierId) {
