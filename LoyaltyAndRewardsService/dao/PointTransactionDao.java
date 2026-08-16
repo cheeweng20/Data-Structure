@@ -8,19 +8,31 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.time.LocalDate;
 
-import LoyaltyAndRewardsService.control.LoyaltyServiceControl;
 import LoyaltyAndRewardsService.entity.PointTransaction;
+import adt.LinkedList;
+import adt.ListInterface;
 
 /**
  * @author Chee Weng
  */
 public class PointTransactionDao {
-    private static final String FILE_NAME = "LoyaltyAndRewardsService/src/transaction.csv";
+    private static final String DEFAULT_FILE_NAME =
+            "LoyaltyAndRewardsService/src/transaction.csv";
     private static final String HEADER =
-            "TransactionId,MemberId,PointsEarned,PointsRemaining,EarnedDate,ExpiryDate";
+            "TransactionId,MemberId,PointsEarned,PointsRemaining,EarnedDate,ExpiryDate,SourceReference";
+    private final String fileName;
 
-    public static void loadFromTransactionFile(LoyaltyServiceControl transactionList) {
-        try (BufferedReader reader = new BufferedReader(new FileReader(FILE_NAME))) {
+    public PointTransactionDao() {
+        this(DEFAULT_FILE_NAME);
+    }
+
+    public PointTransactionDao(String fileName) {
+        this.fileName = fileName;
+    }
+
+    public ListInterface<PointTransaction> retrieveFromFile() {
+        ListInterface<PointTransaction> transactions = new LinkedList<>();
+        try (BufferedReader reader = new BufferedReader(new FileReader(fileName))) {
             reader.readLine();
             String line;
             int lineNumber = 1;
@@ -32,20 +44,17 @@ public class PointTransactionDao {
 
                 try {
                     String[] fields = line.split(",", -1);
-                    if (fields.length < 5) {
-                        throw new IllegalArgumentException("expected at least 5 columns");
+                    if (fields.length != 7) {
+                        throw new IllegalArgumentException("expected 7 columns");
                     }
 
                     String transactionId = fields[0].trim();
                     String memberId = fields[1].trim();
                     int pointsEarned = Integer.parseInt(fields[2].trim());
-                    boolean hasRemainingPoints = fields.length >= 6;
-                    int pointsRemaining = hasRemainingPoints
-                            ? Integer.parseInt(fields[3].trim()) : pointsEarned;
-                    LocalDate earnedDate = LocalDate.parse(
-                            fields[hasRemainingPoints ? 4 : 3].trim());
-                    LocalDate expiryDate = LocalDate.parse(
-                            fields[hasRemainingPoints ? 5 : 4].trim());
+                    int pointsRemaining = Integer.parseInt(fields[3].trim());
+                    LocalDate earnedDate = LocalDate.parse(fields[4].trim());
+                    LocalDate expiryDate = LocalDate.parse(fields[5].trim());
+                    String sourceReference = fields[6].trim();
 
                     if (transactionId.isEmpty() || memberId.isEmpty()
                             || pointsEarned < 0 || pointsRemaining < 0
@@ -54,9 +63,8 @@ public class PointTransactionDao {
                         throw new IllegalArgumentException("invalid transaction value");
                     }
 
-                    transactionList.addTransaction(
-                            new PointTransaction(transactionId, memberId, pointsEarned,
-                                    pointsRemaining, earnedDate, expiryDate));
+                    transactions.add(new PointTransaction(transactionId, memberId, pointsEarned,
+                            pointsRemaining, earnedDate, expiryDate, sourceReference));
                 } catch (RuntimeException exception) {
                     System.out.println("Skipping invalid transaction record at line "
                             + lineNumber + ": " + exception.getMessage());
@@ -68,13 +76,13 @@ public class PointTransactionDao {
         } catch (IOException e) {
             System.out.println("Error reading transaction file: " + e.getMessage());
         }
+        return transactions;
     }
 
-    public static void saveToTransactionFile(LoyaltyServiceControl transactionList) {
-        try (PrintWriter writer = new PrintWriter(new FileWriter(FILE_NAME))) {
+    public void saveToFile(ListInterface<PointTransaction> transactions) {
+        try (PrintWriter writer = new PrintWriter(new FileWriter(fileName))) {
             writer.println(HEADER);
-            for (int i = 1; i <= transactionList.getTransactionCount(); i++) {
-                PointTransaction transaction = transactionList.getTransactionEntry(i);
+            for (PointTransaction transaction : transactions) {
                 writer.println(transaction.toCsvLine());
             }
         } catch (IOException e) {
@@ -82,16 +90,8 @@ public class PointTransactionDao {
         }
     }
 
-    public static void loadFromMemberFile(LoyaltyServiceControl transactionList) {
-        loadFromTransactionFile(transactionList);
-    }
-
-    public static void saveToMemberFile(LoyaltyServiceControl transactionList) {
-        saveToTransactionFile(transactionList);
-    }
-
-    private static void createTransactionCSVFile() {
-        try (PrintWriter writer = new PrintWriter(FILE_NAME)) {
+    private void createTransactionCSVFile() {
+        try (PrintWriter writer = new PrintWriter(fileName)) {
             writer.println(HEADER);
             System.out.println("CSV File created success !");
         } catch (IOException e) {

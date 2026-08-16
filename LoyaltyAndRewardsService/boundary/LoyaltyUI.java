@@ -7,8 +7,12 @@ import java.time.format.DateTimeParseException;
 import java.util.Iterator;
 import java.util.Scanner;
 
+import adt.ArrayList;
 import LoyaltyAndRewardsService.control.LoyaltyServiceControl;
 import LoyaltyAndRewardsService.entity.Member;
+import LoyaltyAndRewardsService.entity.PointTransaction;
+import LoyaltyAndRewardsService.entity.RedemptionRequest;
+import LoyaltyAndRewardsService.entity.Tier;
 import LoyaltyAndRewardsService.utility.MessageUI;
 import LoyaltyAndRewardsService.utility.ReportPdfExporter;
 import LoyaltyAndRewardsService.utility.ReportPdfExporter.ChartType;
@@ -35,23 +39,20 @@ public final class LoyaltyUI {
     public void start() {
         boolean exit = false;
 
-        displayStartupNotifications(serviceControl);
+        displayStartupNotifications();
 
         while (!exit) {
             displayMenu();
             int menuSelected = scanner.nextInt();
             switch (menuSelected) {
                 case 1:
-                    memberOperator(scanner, serviceControl);
+                    memberOperator();
                     break;
                 case 2:
-                    tierOperator(scanner, serviceControl);
+                    displayTierTable();
                     break;
                 case 3:
-                    rewardOperator(scanner, serviceControl);
-                    break;
-                case 4:
-                    reportOperator(scanner, serviceControl);
+                    reportOperator();
                     break;
                 case 0:
                     exit = true;
@@ -72,18 +73,16 @@ public final class LoyaltyUI {
                 ":-----+-------------------:\r\n" + //
                 "|  1. | Member Management |\r\n" + //
                 ":-----+-------------------:\r\n" + //
-                "|  2. | Tier Management   |\r\n" + //
+                "|  2. | Tier Progression  |\r\n" + //
                 ":-----+-------------------:\r\n" + //
-                "|  3. | Rewards Management|\r\n" + //
-                ":-----+-------------------:\r\n" + //
-                "|  4. | Report            |\r\n" + //
+                "|  3. | Report            |\r\n" + //
                 "'-----'-------------------'\r\n" + //
                 "\r\n" + //
                 "");
         System.out.print("Enter Number of Function(0 to exit current program): ");
     }
 
-    public static void displayStartupNotifications(LoyaltyServiceControl serviceControl) {
+    private void displayStartupNotifications() {
         int expiringTransactionCount =
                 serviceControl.getExpiringTransactionCount(DEFAULT_EXPIRY_ALERT_DAYS);
         int expiringPointTotal =
@@ -128,7 +127,7 @@ public final class LoyaltyUI {
         System.out.println();
     }
 
-    public static void memberOperator(Scanner scanner, LoyaltyServiceControl serviceControl) {
+    private void memberOperator() {
         boolean exit = false;
 
         while (!exit) {
@@ -142,42 +141,37 @@ public final class LoyaltyUI {
                     + ":-----+----------------------:\r\n"
                     + "| 3.  | Update Member Info   |\r\n"
                     + ":-----+----------------------:\r\n"
-                    + "| 4.  | Add Point for Member |\r\n"
+                    + "| 4.  | Redemption Requests  |\r\n"
                     + ":-----+----------------------:\r\n"
-                    + "| 5.  | Point Redemption     |\r\n"
+                    + "| 5.  | Member List          |\r\n"
                     + ":-----+----------------------:\r\n"
-                    + "| 6.  | Member List          |\r\n"
-                    + ":-----+----------------------:\r\n"
-                    + "| 7.  | Member Promotion     |\r\n"
+                    + "| 6.  | Member Promotion     |\r\n"
                     + "'-----'----------------------'\r\n");
 
             int userEntry = InputHelper.inputInt(scanner, "Please enter a number (0 to exit): ");
             switch (userEntry) {
                 case 1:
-                    addMember(scanner, serviceControl);
+                    addMember();
                     break;
                 case 2:
-                    removeMember(scanner, serviceControl);
+                    removeMember();
                     break;
                 case 3:
-                    updateMember(scanner, serviceControl);
+                    updateMember();
                     break;
                 case 4:
-                    addMemberPoints(scanner, serviceControl);
-                    break;
-                case 5:
                     if (serviceControl.isMemberEmpty()) {
                         MessageUI.displayInfo("No member records found.");
                         break;
                     }
                     scanner.nextLine();
-                    requestOperator(scanner, serviceControl);
+                    requestOperator();
+                    break;
+                case 5:
+                    displayMemberTable();
                     break;
                 case 6:
-                    displayMemberTable(serviceControl);
-                    break;
-                case 7:
-                    displayPromotion(scanner, serviceControl);
+                    displayPromotion();
                     break;
                 case 0:
                     exit = true;
@@ -189,48 +183,45 @@ public final class LoyaltyUI {
         }
     }
 
-    private static void addMember(Scanner scanner, LoyaltyServiceControl serviceControl) {
+    private void addMember() {
         scanner.nextLine();
         String name = InputHelper.inputString(scanner, "Enter member name: ");
         String passport = InputHelper.inputString(scanner, "Enter passport number: ");
         String phoneNumber = InputHelper.inputString(scanner, "Enter phone number: ");
-        int point = InputHelper.inputInt(scanner, "Enter current member points: ");
 
-        if (!Verification.verifyMemberPoint(point)
-                || !Verification.verifyMemberName(name, serviceControl)
-                || !Verification.verifyPassport(passport)
-                || !Verification.verifyPhoneNumber(phoneNumber)) {
+        if (!validateMemberDetails(name, passport, phoneNumber, null)) {
             return;
         }
 
-        String memberId = serviceControl.createMember(name, passport, phoneNumber, point);
+        String memberId = serviceControl.createMember(name, passport, phoneNumber);
         MessageUI.displaySuccess("Member " + memberId + " added successfully.");
     }
 
-    private static void removeMember(Scanner scanner, LoyaltyServiceControl serviceControl) {
+    private void removeMember() {
         if (serviceControl.isMemberEmpty()) {
             MessageUI.displayInfo("No member records found.");
             return;
         }
 
         scanner.nextLine();
-        displayMemberTable(serviceControl);
+        displayMemberTable();
         String memberId = InputHelper.inputString(scanner, "Enter member ID: ");
         if (serviceControl.removeMember(memberId)) {
             MessageUI.displaySuccess("Member deleted successfully.");
         } else {
-            MessageUI.displayError("Member not found.");
+            MessageUI.displayError(
+                    "Member not found or has a pending redemption request.");
         }
     }
 
-    private static void updateMember(Scanner scanner, LoyaltyServiceControl serviceControl) {
+    private void updateMember() {
         if (serviceControl.isMemberEmpty()) {
             MessageUI.displayInfo("No member records found.");
             return;
         }
 
         scanner.nextLine();
-        displayMemberTable(serviceControl);
+        displayMemberTable();
         String memberId = InputHelper.inputString(scanner, "Enter member ID to update: ");
         if (!serviceControl.findMember(memberId)) {
             MessageUI.displayError("Member not found.");
@@ -240,37 +231,42 @@ public final class LoyaltyUI {
         String newName = InputHelper.inputString(scanner, "Enter new member name: ");
         String newPassport = InputHelper.inputString(scanner, "Enter new passport number: ");
         String newPhoneNumber = InputHelper.inputString(scanner, "Enter new phone number: ");
-        int newPoint = InputHelper.inputInt(scanner, "Enter new member points: ");
-        if (!Verification.verifyMemberPoint(newPoint)
-                || !Verification.verifyMemberName(newName, memberId, serviceControl)
-                || !Verification.verifyPassport(newPassport)
-                || !Verification.verifyPhoneNumber(newPhoneNumber)) {
+        if (!validateMemberDetails(
+                newName, newPassport, newPhoneNumber, memberId)) {
             return;
         }
 
         serviceControl.updateMember(
-                memberId, newName, newPassport, newPhoneNumber, newPoint);
+                memberId, newName, newPassport, newPhoneNumber);
         MessageUI.displaySuccess("Member updated successfully.");
     }
 
-    private static void addMemberPoints(Scanner scanner, LoyaltyServiceControl serviceControl) {
-        if (serviceControl.isMemberEmpty()) {
-            MessageUI.displayInfo("No member records found.");
-            return;
+    private boolean validateMemberDetails(String name, String passport,
+            String phoneNumber, String excludedMemberId) {
+        if (!Verification.isValidMemberName(name)) {
+            MessageUI.displayError(
+                    "Member name must contain 3 to 20 valid name characters.");
+            return false;
         }
-
-        scanner.nextLine();
-        String memberId = InputHelper.inputString(scanner, "Enter member ID: ");
-        int addedPoint = InputHelper.inputInt(scanner, "Enter points to add: ");
-        if (addedPoint <= 0) {
-            MessageUI.displayError("Points to add must be greater than zero.");
-            return;
+        if (!serviceControl.isMemberNameAvailable(name, excludedMemberId)) {
+            MessageUI.displayError(
+                    "Member name already exists. Please enter a different member name.");
+            return false;
         }
-
-        serviceControl.addPoints(memberId, addedPoint);
+        if (!Verification.isValidPassport(passport)) {
+            MessageUI.displayError(
+                    "Passport number must contain 5 to 20 letters or numbers.");
+            return false;
+        }
+        if (!Verification.isValidPhoneNumber(phoneNumber)) {
+            MessageUI.displayError(
+                    "Phone number must contain 7 to 20 digits; +, spaces, and hyphens are allowed.");
+            return false;
+        }
+        return true;
     }
 
-    private static void displayPromotion(Scanner scanner, LoyaltyServiceControl serviceControl) {
+    private void displayPromotion() {
         scanner.nextLine();
         String memberId = InputHelper.inputString(scanner, "Enter member ID: ");
         if (!serviceControl.findMember(memberId)) {
@@ -280,16 +276,32 @@ public final class LoyaltyUI {
         MessageUI.displayInfo(serviceControl.generatePersonalizedPromotion(memberId));
     }
 
-    private static void displayMemberTable(LoyaltyServiceControl serviceControl) {
-        String table = serviceControl.getMemberTable();
-        if (table.isEmpty()) {
+    private void displayMemberTable() {
+        if (serviceControl.isMemberEmpty()) {
             MessageUI.displayInfo("No member records found.");
-        } else {
-            System.out.println(table);
+            return;
         }
+
+        String border = "+------------+----------------------+------------------+------------------+------------+------------+----------------+";
+        System.out.println(border);
+        System.out.printf(
+                "| %-10s | %-20s | %-16s | %-16s | %10s | %10s | %-14s |%n",
+                "Member ID", "Name", "Passport", "Phone Number", "Available", "Lifetime",
+                "Tier");
+        System.out.println(border);
+        for (int i = 1; i <= serviceControl.getMemberCount(); i++) {
+            Member member = serviceControl.getMemberEntry(i);
+            System.out.printf(
+                    "| %-10.10s | %-20.20s | %-16.16s | %-16.16s | %10d | %10d | %-14.14s |%n",
+                    member.getMemberId(), member.getName(), member.getPassport(),
+                    member.getPhoneNumber(), member.getPoint(),
+                    member.getLifetimePointsEarned(),
+                    serviceControl.getTierNameById(member.getTierId()));
+        }
+        System.out.println(border);
     }
 
-    public static void requestOperator(Scanner scanner, LoyaltyServiceControl serviceControl) {
+    private void requestOperator() {
         boolean exit = false;
 
         while (!exit) {
@@ -297,13 +309,11 @@ public final class LoyaltyUI {
                     + ".-----.---------------------------.\r\n"
                     + "| No. |         Function          |\r\n"
                     + ":-----+---------------------------:\r\n"
-                    + "|  1. | Submit Redemption Request |\r\n"
+                    + "|  1. | Process Next Request      |\r\n"
                     + ":-----+---------------------------:\r\n"
-                    + "|  2. | Process Next Request      |\r\n"
+                    + "|  2. | View Pending Requests     |\r\n"
                     + ":-----+---------------------------:\r\n"
-                    + "|  3. | View Pending Requests     |\r\n"
-                    + ":-----+---------------------------:\r\n"
-                    + "|  4. | View Request History      |\r\n"
+                    + "|  3. | View Request History      |\r\n"
                     + "'-----'---------------------------'\r\n");
 
             int userEntry = InputHelper.inputInt(scanner, "Please enter a number (0 to exit): ");
@@ -311,16 +321,15 @@ public final class LoyaltyUI {
 
             switch (userEntry) {
                 case 1:
-                    submitRequest(scanner, serviceControl);
+                    processRequest();
                     break;
                 case 2:
-                    processRequest(scanner, serviceControl);
+                    displayRequestTable("Pending Point-Payment Requests",
+                            serviceControl.getPendingRequestIterator());
                     break;
                 case 3:
-                    displayRequestTable(serviceControl.getPendingRequestTable());
-                    break;
-                case 4:
-                    displayRequestTable(serviceControl.getRequestHistoryTable());
+                    displayRequestTable("Point-Payment Request History",
+                            serviceControl.getRequestIterator());
                     break;
                 case 0:
                     exit = true;
@@ -332,25 +341,13 @@ public final class LoyaltyUI {
         }
     }
 
-    private static void submitRequest(Scanner scanner, LoyaltyServiceControl serviceControl) {
-        if (serviceControl.isRewardEmpty()) {
-            MessageUI.displayInfo("No reward records found. Please create a reward first.");
-            return;
-        }
-
-        System.out.println(serviceControl.getRewardTable());
-        String rewardId = InputHelper.inputString(scanner, "Enter reward ID: ");
-        String memberId = InputHelper.inputString(scanner, "Enter member ID: ");
-        serviceControl.submitRewardRequest(memberId, rewardId);
-    }
-
-    private static void processRequest(Scanner scanner, LoyaltyServiceControl serviceControl) {
-        String nextRequest = serviceControl.getNextRequestTable();
-        if (nextRequest.isEmpty()) {
+    private void processRequest() {
+        RedemptionRequest nextRequest = serviceControl.getNextPendingRequest();
+        if (nextRequest == null) {
             MessageUI.displayInfo("No pending requests.");
             return;
         }
-        System.out.println(nextRequest);
+        displayRequestTable("Next Point-Payment Request", nextRequest);
 
         String decision = InputHelper.inputString(scanner, "Approve this request? (Y/N): ");
         if (!decision.equalsIgnoreCase("Y") && !decision.equalsIgnoreCase("N")) {
@@ -358,245 +355,76 @@ public final class LoyaltyUI {
             return;
         }
 
-        serviceControl.processNextRequestAndSave(decision.equalsIgnoreCase("Y"));
+        RedemptionRequest processed =
+                serviceControl.processNextRequestAndSave(decision.equalsIgnoreCase("Y"));
+        if (processed != null) {
+            MessageUI.displayRequestProcessed(processed.getStatus());
+        }
     }
 
-    private static void displayRequestTable(String table) {
-        if (table.isEmpty()) {
+    private void displayRequestTable(String title,
+            Iterator<RedemptionRequest> iterator) {
+        if (!iterator.hasNext()) {
             MessageUI.displayInfo("No request records found.");
-        } else {
-            System.out.println(table);
-        }
-    }
-
-    public static void tierOperator(Scanner scanner, LoyaltyServiceControl serviceControl) {
-        boolean exit = false;
-
-        while (!exit) {
-            System.out.println("\r\n"
-                    + ".-----.------------------------.\r\n"
-                    + "| No. |        Function        |\r\n"
-                    + ":-----+------------------------:\r\n"
-                    + "|  1. | New Tier Level         |\r\n"
-                    + ":-----+------------------------:\r\n"
-                    + "|  2. | Remove Tier Level      |\r\n"
-                    + ":-----+------------------------:\r\n"
-                    + "|  3. | Update Tier Level Info |\r\n"
-                    + ":-----+------------------------:\r\n"
-                    + "|  4. | Tier List              |\r\n"
-                    + "'-----'------------------------'\r\n");
-
-            int userEntry = InputHelper.inputInt(scanner, "Please enter a number (0 to exit): ");
-            switch (userEntry) {
-                case 1:
-                    addTier(scanner, serviceControl);
-                    break;
-                case 2:
-                    removeTier(scanner, serviceControl);
-                    break;
-                case 3:
-                    updateTier(scanner, serviceControl);
-                    break;
-                case 4:
-                    displayTierTable(serviceControl);
-                    break;
-                case 0:
-                    exit = true;
-                    break;
-                default:
-                    MessageUI.displayError("Invalid option.");
-                    break;
-            }
-        }
-    }
-
-    private static void addTier(Scanner scanner, LoyaltyServiceControl serviceControl) {
-        scanner.nextLine();
-        String tierName = InputHelper.inputString(scanner, "Enter tier name: ");
-        int minimumPoint = InputHelper.inputInt(scanner, "Enter minimum points: ");
-
-        if (serviceControl.isTierEmpty() && minimumPoint != 0) {
-            MessageUI.displayError("The first tier must start at 0 points.");
-            return;
-        }
-        if (!Verification.verifyTierName(tierName, serviceControl)
-                || !Verification.verifyTierPoints(minimumPoint, 0)) {
-            return;
-        }
-        if (!serviceControl.isMinimumPointAvailable(minimumPoint, null)) {
-            MessageUI.displayError("Another tier already uses that minimum point.");
             return;
         }
 
-        serviceControl.createTier(tierName, minimumPoint);
+        printRequestTableHeader(title);
+        while (iterator.hasNext()) {
+            printRequestTableLine(iterator.next());
+        }
+        printRequestTableBorder();
     }
 
-    private static void removeTier(Scanner scanner, LoyaltyServiceControl serviceControl) {
-        if (serviceControl.isTierEmpty()) {
+    private void displayRequestTable(String title, RedemptionRequest request) {
+        printRequestTableHeader(title);
+        printRequestTableLine(request);
+        printRequestTableBorder();
+    }
+
+    private void printRequestTableHeader(String title) {
+        System.out.println("=== " + title + " ===");
+        printRequestTableBorder();
+        System.out.printf("| %-10s | %-10s | %-20s | %16s | %-10s | %-30s |%n",
+                "Request ID", "Member ID", "Confirmation No.", "Points", "Date", "Status");
+        printRequestTableBorder();
+    }
+
+    private void printRequestTableLine(RedemptionRequest request) {
+        System.out.printf("| %-10.10s | %-10.10s | %-20.20s | %16d | %-10s | %-30.30s |%n",
+                request.getRequestId(), request.getMemberId(),
+                request.getConfirmationNumber(), request.getPointsRequested(),
+                request.getRequestDate(), request.getStatus());
+    }
+
+    private void printRequestTableBorder() {
+        System.out.println(
+                "+------------+------------+----------------------+------------------+------------+--------------------------------+");
+    }
+
+    private void displayTierTable() {
+        Iterator<Tier> iterator = serviceControl.getTierIterator();
+        if (!iterator.hasNext()) {
             MessageUI.displayInfo("No tier records found.");
             return;
         }
 
-        scanner.nextLine();
-        displayTierTable(serviceControl);
-        String tierId = InputHelper.inputString(scanner, "Enter tier ID: ");
-        if (!serviceControl.findTier(tierId)) {
-            MessageUI.displayError("Tier level not found.");
-            return;
+        String border = "+------------+----------------------+------------+------------+";
+        System.out.println(border);
+        System.out.printf("| %-10s | %-20s | %10s | %10s |%n",
+                "Tier ID", "Tier Level", "Min Points", "Max Points");
+        System.out.println(border);
+        while (iterator.hasNext()) {
+            Tier tier = iterator.next();
+            String maxPoints = tier.getMaxPoint() == 0
+                    ? "No limit" : String.valueOf(tier.getMaxPoint());
+            System.out.printf("| %-10.10s | %-20.20s | %10d | %10s |%n",
+                    tier.getTierId(), tier.getTierLevel(), tier.getMinPoint(), maxPoints);
         }
-        if (serviceControl.getTierCount() > 1 && serviceControl.isBaseTier(tierId)) {
-            MessageUI.displayError("The base tier cannot be deleted while higher tiers exist.");
-            return;
-        }
-
-        serviceControl.removeTier(tierId);
+        System.out.println(border);
     }
 
-    private static void updateTier(Scanner scanner, LoyaltyServiceControl serviceControl) {
-        if (serviceControl.isTierEmpty()) {
-            MessageUI.displayInfo("No tier records found.");
-            return;
-        }
-
-        scanner.nextLine();
-        displayTierTable(serviceControl);
-        String tierId = InputHelper.inputString(scanner, "Enter tier ID to update: ");
-        if (!serviceControl.findTier(tierId)) {
-            MessageUI.displayError("Tier level not found.");
-            return;
-        }
-
-        String newName = InputHelper.inputString(scanner, "Enter new tier name: ");
-        int minimumPoint = InputHelper.inputInt(scanner, "Enter new minimum points: ");
-        if (serviceControl.isBaseTier(tierId) && minimumPoint != 0) {
-            MessageUI.displayError("The base tier must continue to start at 0 points.");
-            return;
-        }
-        if (!Verification.verifyTierPoints(minimumPoint, 0)
-                || !Verification.verifyTierName(newName, tierId, serviceControl)) {
-            return;
-        }
-        if (!serviceControl.isMinimumPointAvailable(minimumPoint, tierId)) {
-            MessageUI.displayError("Another tier already uses that minimum point.");
-            return;
-        }
-
-        serviceControl.updateTier(tierId, newName, minimumPoint);
-    }
-
-    private static void displayTierTable(LoyaltyServiceControl serviceControl) {
-        String table = serviceControl.getTierTable();
-        if (table.isEmpty()) {
-            MessageUI.displayInfo("No tier records found.");
-        } else {
-            System.out.println(table);
-        }
-    }
-
-    public static void rewardOperator(Scanner scanner, LoyaltyServiceControl serviceControl) {
-        boolean exit = false;
-
-        while (!exit) {
-            System.out.println("\r\n"
-                    + ".-----.----------------------.\r\n"
-                    + "| No. |       Function       |\r\n"
-                    + ":-----+----------------------:\r\n"
-                    + "| 1.  | New Reward           |\r\n"
-                    + ":-----+----------------------:\r\n"
-                    + "| 2.  | Remove Reward        |\r\n"
-                    + ":-----+----------------------:\r\n"
-                    + "| 3.  | Update Reward Info   |\r\n"
-                    + ":-----+----------------------:\r\n"
-                    + "| 4.  | Reward List          |\r\n"
-                    + "'-----'----------------------'\r\n");
-
-            int userEntry = InputHelper.inputInt(scanner, "Please enter a number (0 to exit): ");
-            scanner.nextLine();
-
-            switch (userEntry) {
-                case 1:
-                    addReward(scanner, serviceControl);
-                    break;
-                case 2:
-                    removeReward(scanner, serviceControl);
-                    break;
-                case 3:
-                    updateReward(scanner, serviceControl);
-                    break;
-                case 4:
-                    displayRewardTable(serviceControl);
-                    break;
-                case 0:
-                    exit = true;
-                    break;
-                default:
-                    MessageUI.displayError("Invalid option.");
-                    break;
-            }
-        }
-    }
-
-    private static void addReward(Scanner scanner, LoyaltyServiceControl serviceControl) {
-        String rewardName = InputHelper.inputString(scanner, "Enter reward name: ");
-        int pointRequired = InputHelper.inputInt(scanner, "Enter points required to redeem: ");
-        if (!Verification.verifyRewardName(rewardName)
-                || !Verification.verifyRewardPoints(pointRequired)) {
-            return;
-        }
-
-        String rewardId = serviceControl.createReward(rewardName, pointRequired);
-        MessageUI.displaySuccess("Reward " + rewardId + " added successfully.");
-    }
-
-    private static void removeReward(Scanner scanner, LoyaltyServiceControl serviceControl) {
-        if (serviceControl.isRewardEmpty()) {
-            MessageUI.displayInfo("No reward records found.");
-            return;
-        }
-
-        displayRewardTable(serviceControl);
-        String rewardId = InputHelper.inputString(scanner, "Enter reward ID to remove: ");
-        if (serviceControl.removeReward(rewardId)) {
-            MessageUI.displaySuccess("Reward deleted successfully.");
-        } else {
-            MessageUI.displayError("Reward not found.");
-        }
-    }
-
-    private static void updateReward(Scanner scanner, LoyaltyServiceControl serviceControl) {
-        if (serviceControl.isRewardEmpty()) {
-            MessageUI.displayInfo("No reward records found.");
-            return;
-        }
-
-        displayRewardTable(serviceControl);
-        String rewardId = InputHelper.inputString(scanner, "Enter reward ID to update: ");
-        if (!serviceControl.findReward(rewardId)) {
-            MessageUI.displayError("Reward not found.");
-            return;
-        }
-
-        String rewardName = InputHelper.inputString(scanner, "Enter new reward name: ");
-        int pointRequired = InputHelper.inputInt(scanner, "Enter new points required: ");
-        if (!Verification.verifyRewardName(rewardName)
-                || !Verification.verifyRewardPoints(pointRequired)) {
-            return;
-        }
-
-        serviceControl.updateReward(rewardId, rewardName, pointRequired);
-        MessageUI.displaySuccess("Reward updated successfully.");
-    }
-
-    private static void displayRewardTable(LoyaltyServiceControl serviceControl) {
-        String table = serviceControl.getRewardTable();
-        if (table.isEmpty()) {
-            MessageUI.displayInfo("No reward records found.");
-        } else {
-            System.out.println(table);
-        }
-    }
-
-    public static void reportOperator(Scanner scanner, LoyaltyServiceControl serviceControl) {
+    private void reportOperator() {
         boolean exit = false;
 
         while (!exit) {
@@ -604,23 +432,18 @@ public final class LoyaltyUI {
                     + ".-----.-----------------------------.\r\n"
                     + "| No. |          Function           |\r\n"
                     + ":-----+-----------------------------:\r\n"
-                    + "|  1. | Member Point Ranking Report |\r\n"
+                    + "|  1. | Expiring Points Alert       |\r\n"
                     + ":-----+-----------------------------:\r\n"
-                    + "|  2. | Expiring Points Alert       |\r\n"
-                    + ":-----+-----------------------------:\r\n"
-                    + "|  3. | Business Cycle Summary      |\r\n"
+                    + "|  2. | Business Cycle Summary      |\r\n"
                     + "'-----'-----------------------------'\r\n");
 
             int selection = InputHelper.inputInt(scanner, "Enter a number (0 to exit): ");
             switch (selection) {
                 case 1:
-                    displayMemberRanking(scanner, serviceControl);
+                    displayExpiringPoints();
                     break;
                 case 2:
-                    displayExpiringPoints(scanner, serviceControl);
-                    break;
-                case 3:
-                    displayBusinessCycleSummary(scanner, serviceControl);
+                    displayBusinessCycleSummary();
                     break;
                 case 0:
                     exit = true;
@@ -632,24 +455,7 @@ public final class LoyaltyUI {
         }
     }
 
-    private static void displayMemberRanking(Scanner scanner, LoyaltyServiceControl serviceControl) {
-        int minimumPoint = InputHelper.inputInt(scanner, "Enter minimum member points: ");
-        if (minimumPoint < 0) {
-            MessageUI.displayError("Minimum point cannot be negative.");
-            return;
-        }
-
-        scanner.nextLine();
-        String tierId =
-                InputHelper.inputString(scanner, "Enter tier ID to filter (blank for all): ");
-        String report = serviceControl.generateMemberRankingReport(minimumPoint, tierId);
-        if (displayReport(report, "No members match the criteria.")) {
-            offerPdfExport(scanner, "Member Point Ranking Report", report,
-                    ChartType.MEMBER_POINTS);
-        }
-    }
-
-    private static void displayExpiringPoints(Scanner scanner, LoyaltyServiceControl serviceControl) {
+    private void displayExpiringPoints() {
         int withinDays =
                 InputHelper.inputInt(scanner, "Alert for points expiring within how many days: ");
         if (withinDays < 0) {
@@ -657,22 +463,22 @@ public final class LoyaltyUI {
             return;
         }
 
-        String report = serviceControl.generateExpiringPointsReport(withinDays);
+        String report = buildExpiringPointsReport(
+                serviceControl.generateExpiringReport(withinDays));
         if (displayReport(report, "No points are expiring within the selected period.")) {
             scanner.nextLine();
-            offerPdfExport(scanner, "Expiring Points Alert", report,
+            offerPdfExport("Expiring Points Alert", report,
                     ChartType.EXPIRING_POINTS);
         }
     }
 
-    private static void displayBusinessCycleSummary(Scanner scanner,
-            LoyaltyServiceControl serviceControl) {
+    private void displayBusinessCycleSummary() {
         scanner.nextLine();
-        LocalDate startDate = readDate(scanner, "Enter cycle start date (YYYY-MM-DD): ");
+        LocalDate startDate = readDate("Enter cycle start date (YYYY-MM-DD): ");
         if (startDate == null) {
             return;
         }
-        LocalDate endDate = readDate(scanner, "Enter cycle end date (YYYY-MM-DD): ");
+        LocalDate endDate = readDate("Enter cycle end date (YYYY-MM-DD): ");
         if (endDate == null) {
             return;
         }
@@ -690,15 +496,21 @@ public final class LoyaltyUI {
             return;
         }
 
-        String report = serviceControl.generateBusinessCycleSummary(
-                startDate, endDate, tierId, minimumPoint);
+        ArrayList<Member> rankedMembers =
+                serviceControl.generateRankingReport(minimumPoint, tierId);
+        ArrayList<PointTransaction> transactions =
+                serviceControl.generateTransactionReport(startDate, endDate);
+        ArrayList<RedemptionRequest> requests =
+                serviceControl.generateRequestReport(startDate, endDate);
+        String report = buildBusinessCycleSummary(startDate, endDate,
+                tierId, minimumPoint, rankedMembers, transactions, requests);
         System.out.println(report);
         scanner.nextLine();
-        offerPdfExport(scanner, "Business Cycle Summary Report", report,
+        offerPdfExport("Business Cycle Summary Report", report,
                 ChartType.BUSINESS_SUMMARY);
     }
 
-    private static LocalDate readDate(Scanner scanner, String prompt) {
+    private LocalDate readDate(String prompt) {
         String input = InputHelper.inputString(scanner, prompt);
         try {
             return LocalDate.parse(input);
@@ -708,7 +520,131 @@ public final class LoyaltyUI {
         }
     }
 
-    private static boolean displayReport(String report, String emptyMessage) {
+    private String buildExpiringPointsReport(
+            ArrayList<PointTransaction> transactions) {
+        if (transactions.isEmpty()) {
+            return "";
+        }
+
+        StringBuilder output = new StringBuilder();
+        String border = "+----------------+------------+-----------------+--------------+";
+        output.append("=== Expiring Points Alert ===\n");
+        output.append(border).append("\n");
+        output.append(String.format("| %-14s | %-10s | %15s | %-12s |%n",
+                "Transaction ID", "Member ID", "Points Expiring", "Expiry Date"));
+        output.append(border).append("\n");
+
+        Iterator<PointTransaction> iterator = transactions.iterator();
+        while (iterator.hasNext()) {
+            PointTransaction transaction = iterator.next();
+            output.append(String.format("| %-14.14s | %-10.10s | %15d | %-12s |%n",
+                    transaction.getTransactionId(), transaction.getMemberId(),
+                    transaction.getPointsRemaining(), transaction.getExpiryDate()));
+        }
+        output.append(border);
+        return output.toString();
+    }
+
+    private String buildBusinessCycleSummary(
+            LocalDate startDate, LocalDate endDate,
+            String tierId, int minimumPoint, ArrayList<Member> rankedMembers,
+            ArrayList<PointTransaction> transactions,
+            ArrayList<RedemptionRequest> requests) {
+        StringBuilder output = new StringBuilder();
+        output.append("=== Business Cycle Summary Report ===\n");
+        output.append("Cycle Period: ").append(startDate).append(" to ").append(endDate).append("\n");
+        output.append("Applied Filters: tier=")
+                .append(tierId == null || tierId.isBlank() ? "All" : tierId)
+                .append(", minimum point=").append(minimumPoint)
+                .append("\n\n");
+
+        appendMemberSummary(output, rankedMembers);
+        appendTransactionSummary(output, transactions);
+        appendRequestSummary(output, requests);
+        return output.toString();
+    }
+
+    private void appendMemberSummary(StringBuilder output,
+            ArrayList<Member> members) {
+        String border = "+------------+----------------------+------------+----------+";
+        output.append("=== Top Members by Current Points ===\n");
+        output.append(border).append("\n");
+        output.append(String.format("| %-10s | %-20s | %-10s | %8s |%n",
+                "Member ID", "Member Name", "Tier", "Points"));
+        output.append(border).append("\n");
+
+        if (members.isEmpty()) {
+            output.append(String.format("| %-10s | %-20s | %-10s | %8s |%n",
+                    "-", "No matching members", "-", "-"));
+        } else {
+            Iterator<Member> iterator = members.iterator();
+            while (iterator.hasNext()) {
+                Member member = iterator.next();
+                output.append(String.format("| %-10.10s | %-20.20s | %-10.10s | %8d |%n",
+                        member.getMemberId(), member.getName(),
+                        serviceControl.getTierNameById(member.getTierId()), member.getPoint()));
+            }
+        }
+        output.append(border).append("\n");
+    }
+
+    private void appendTransactionSummary(StringBuilder output,
+            ArrayList<PointTransaction> transactions) {
+        output.append("\n=== Transaction Summary ===\n");
+        output.append("Transactions in cycle: ")
+                .append(transactions.getNumberOfEntries()).append("\n");
+        output.append("Total points earned in cycle: ")
+                .append(serviceControl.calculateTotalPointsEarned(transactions)).append("\n");
+
+        String border = "+----------------+------------+----------------+-------------+";
+        output.append(border).append("\n");
+        output.append(String.format("| %-14s | %-10s | %-14s | %-11s |%n",
+                "Transaction ID", "Member ID", "Points Earned", "Earned Date"));
+        output.append(border).append("\n");
+
+        Iterator<PointTransaction> iterator = transactions.iterator();
+        while (iterator.hasNext()) {
+            PointTransaction transaction = iterator.next();
+            output.append(String.format("| %-14.14s | %-10.10s | %14d | %-11s |%n",
+                    transaction.getTransactionId(), transaction.getMemberId(),
+                    transaction.getPointsEarned(), transaction.getEarnedDate()));
+        }
+        output.append(border).append("\n");
+    }
+
+    private void appendRequestSummary(StringBuilder output,
+            ArrayList<RedemptionRequest> requests) {
+        int pending = serviceControl.countRequestsByStatus(requests, "Pending");
+        int approved = serviceControl.countRequestsByStatus(requests, "Approved");
+        int rejected = serviceControl.countRequestsByStatus(requests, "Rejected");
+
+        output.append("\n=== Point-Payment Redemption Request Summary ===\n");
+        output.append("Requests in cycle: ").append(requests.getNumberOfEntries()).append("\n");
+        output.append("Pending: ").append(pending)
+                .append(", Approved: ").append(approved)
+                .append(", Rejected: ").append(rejected).append("\n");
+
+        String border =
+                "+------------+------------+----------------------+------------------+--------------------+--------------------------------+";
+        output.append(border).append("\n");
+        output.append(String.format("| %-10s | %-10s | %-20s | %-16s | %-18s | %-30s |%n",
+                "Request ID", "Member ID", "Confirmation No.", "Points Requested",
+                "Request Date", "Status"));
+        output.append(border).append("\n");
+
+        Iterator<RedemptionRequest> iterator = requests.iterator();
+        while (iterator.hasNext()) {
+            RedemptionRequest request = iterator.next();
+            output.append(String.format(
+                    "| %-10.10s | %-10.10s | %-20.20s | %16d | %-18s | %-30.30s |%n",
+                    request.getRequestId(), request.getMemberId(),
+                    request.getConfirmationNumber(), request.getPointsRequested(),
+                    request.getRequestDate(), request.getStatus()));
+        }
+        output.append(border);
+    }
+
+    private boolean displayReport(String report, String emptyMessage) {
         if (report.isEmpty()) {
             MessageUI.displayInfo(emptyMessage);
             return false;
@@ -718,7 +654,7 @@ public final class LoyaltyUI {
         }
     }
 
-    private static void offerPdfExport(Scanner scanner, String title, String report,
+    private void offerPdfExport(String title, String report,
             ChartType chartType) {
         String selection = InputHelper.inputString(
                 scanner, "Generate chart PDF and open it? (Y/N): ");

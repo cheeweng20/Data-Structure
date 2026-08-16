@@ -7,24 +7,32 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.time.LocalDate;
-import java.util.Iterator;
-
-import LoyaltyAndRewardsService.control.LoyaltyServiceControl;
 import LoyaltyAndRewardsService.entity.RedemptionRequest;
+import adt.LinkedList;
+import adt.ListInterface;
 
 /**
  * @author Chee Weng
  */
 public class RequestDao {
-    private static final String FILE_NAME = "LoyaltyAndRewardsService/src/requests.csv";
+    private static final String DEFAULT_FILE_NAME =
+            "LoyaltyAndRewardsService/src/requests.csv";
+    private static final String HEADER =
+            "RequestId,MemberId,ConfirmationNumber,PointsRequested,RequestDate,Status";
+    private final String fileName;
 
-    public static void saveToRequestFile(LoyaltyServiceControl requestControl) {
-        try (PrintWriter writer = new PrintWriter(new FileWriter(FILE_NAME))) {
-            writer.println("RequestId,MemberId,RewardId,PointsRequested,RequestDate,Status");
+    public RequestDao() {
+        this(DEFAULT_FILE_NAME);
+    }
 
-            Iterator<RedemptionRequest> it = requestControl.getRequestIterator();
-            while (it.hasNext()) {
-                RedemptionRequest request = it.next();
+    public RequestDao(String fileName) {
+        this.fileName = fileName;
+    }
+
+    public void saveToFile(ListInterface<RedemptionRequest> requests) {
+        try (PrintWriter writer = new PrintWriter(new FileWriter(fileName))) {
+            writer.println(HEADER);
+            for (RedemptionRequest request : requests) {
                 writer.println(request.toCsvLine());
             }
         } catch (IOException e) {
@@ -32,8 +40,9 @@ public class RequestDao {
         }
     }
 
-    public static void loadFromRequestFile(LoyaltyServiceControl requestControl) {
-        try (BufferedReader reader = new BufferedReader(new FileReader(FILE_NAME))) {
+    public ListInterface<RedemptionRequest> retrieveFromFile() {
+        ListInterface<RedemptionRequest> requests = new LinkedList<>();
+        try (BufferedReader reader = new BufferedReader(new FileReader(fileName))) {
             reader.readLine(); // skip header
             String line;
             int lineNumber = 1;
@@ -45,28 +54,27 @@ public class RequestDao {
 
                 try {
                     String[] fields = line.split(",", -1);
-                    if (fields.length < 5) {
-                        throw new IllegalArgumentException("expected at least 5 columns");
+                    if (fields.length != 6) {
+                        throw new IllegalArgumentException("expected 6 columns");
                     }
 
-                    boolean hasRewardId = fields.length >= 6;
                     String requestId = fields[0].trim();
                     String memberId = fields[1].trim();
-                    String rewardId = hasRewardId ? fields[2].trim() : "";
-                    int pointsRequested = Integer.parseInt(
-                            fields[hasRewardId ? 3 : 2].trim());
-                    LocalDate requestDate = LocalDate.parse(
-                            fields[hasRewardId ? 4 : 3].trim());
-                    String status = fields[hasRewardId ? 5 : 4].trim();
+                    String confirmationNumber = fields[2].trim();
+                    int pointsRequested = Integer.parseInt(fields[3].trim());
+                    LocalDate requestDate = LocalDate.parse(fields[4].trim());
+                    String status = fields[5].trim();
 
-                    if (requestId.isEmpty() || memberId.isEmpty()
+                    if (!requestId.matches("R\\d+") || memberId.isEmpty()
+                            || confirmationNumber.isEmpty()
                             || pointsRequested <= 0 || status.isEmpty()) {
                         throw new IllegalArgumentException("invalid required request value");
                     }
 
                     RedemptionRequest request = new RedemptionRequest(
-                            requestId, memberId, rewardId, pointsRequested, requestDate, status);
-                    requestControl.addRequest(request);
+                            requestId, memberId, confirmationNumber,
+                            pointsRequested, requestDate, status);
+                    requests.add(request);
                 } catch (RuntimeException exception) {
                     System.out.println("Skipping invalid request record at line "
                             + lineNumber + ": " + exception.getMessage());
@@ -74,9 +82,10 @@ public class RequestDao {
             }
         } catch (FileNotFoundException e) {
             System.out.println("No existing request data found, creating new file.");
-            saveToRequestFile(requestControl);
+            saveToFile(requests);
         } catch (IOException e) {
             System.out.println("Error reading request file: " + e.getMessage());
         }
+        return requests;
     }
 }

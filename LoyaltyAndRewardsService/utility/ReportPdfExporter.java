@@ -21,7 +21,6 @@ import adt.ListInterface;
  */
 public final class ReportPdfExporter {
     public enum ChartType {
-        MEMBER_POINTS,
         EXPIRING_POINTS,
         BUSINESS_SUMMARY
     }
@@ -324,14 +323,11 @@ public final class ReportPdfExporter {
                 continue;
             }
 
-            int valueColumn = chartType == ChartType.MEMBER_POINTS ? 3 : 2;
-            Integer value = parseInteger(columns.getEntry(valueColumn + 1));
+            Integer value = parseInteger(columns.getEntry(3));
             if (value == null) {
                 continue;
             }
-            String label = chartType == ChartType.MEMBER_POINTS
-                    ? columns.getEntry(2) : columns.getEntry(1);
-            items.add(new ChartItem(label, value));
+            items.add(new ChartItem(columns.getEntry(1), value));
         }
         return items;
     }
@@ -428,14 +424,8 @@ public final class ReportPdfExporter {
     }
 
     private static String chartTitle(ChartType chartType) {
-        switch (chartType) {
-            case MEMBER_POINTS:
-                return "Member points comparison";
-            case EXPIRING_POINTS:
-                return "Points due to expire";
-            default:
-                return "Report chart";
-        }
+        return chartType == ChartType.EXPIRING_POINTS
+                ? "Points due to expire" : "Report chart";
     }
 
     private static byte[] buildPdf(ListInterface<String> pageStreams) throws IOException {

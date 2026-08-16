@@ -3,22 +3,32 @@ package LoyaltyAndRewardsService.dao;
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 
-import LoyaltyAndRewardsService.control.LoyaltyServiceControl;
 import LoyaltyAndRewardsService.entity.Tier;
+import adt.LinkedList;
+import adt.ListInterface;
 
 /**
  * @author Chee Weng
  */
 public class TierDao {
-    private static final String FILE_NAME = "LoyaltyAndRewardsService/src/tier.csv";
+    private static final String DEFAULT_FILE_NAME = "LoyaltyAndRewardsService/src/tier.csv";
+    private final String fileName;
 
-    // CSV File Reader and Writter
-    public static void loadFromTierFile(LoyaltyServiceControl tierLinkedList) {
-        try (BufferedReader reader = new BufferedReader(new FileReader(FILE_NAME))) {
+    public TierDao() {
+        this(DEFAULT_FILE_NAME);
+    }
+
+    public TierDao(String fileName) {
+        this.fileName = fileName;
+    }
+
+    // Loads fixed tier definitions used for automatic tier progression.
+    public ListInterface<Tier> retrieveFromFile() {
+        ListInterface<Tier> tiers = new LinkedList<>();
+        try (BufferedReader reader = new BufferedReader(new FileReader(fileName))) {
             reader.readLine(); // Skip file header
             String line;
             int lineNumber = 1;
@@ -43,38 +53,30 @@ public class TierDao {
                         throw new IllegalArgumentException("invalid tier value");
                     }
 
-                    tierLinkedList.addTierLevel(new Tier(
-                            tierId, tierLevel, minPoint, maxPoint));
+                    tiers.add(new Tier(tierId, tierLevel, minPoint, maxPoint));
                 } catch (RuntimeException exception) {
                     System.out.println("Skipping invalid tier record at line "
                             + lineNumber + ": " + exception.getMessage());
                 }
             }
         } catch (FileNotFoundException e) {
-            System.out.println("No existing tier data found, starting fresh.");
-            createTierCSVFile();
+            System.out.println("No existing tier data found, creating default tiers.");
+            createDefaultTierFile();
+            return retrieveFromFile();
 
         } catch (IOException e) {
             System.out.println("Error reading tier file: " + e.getMessage());
         }
+        return tiers;
     }
 
-    public static void saveToTierFile(LoyaltyServiceControl tierLinkedList) {
-        try (PrintWriter writer = new PrintWriter(new FileWriter(FILE_NAME))) {
+    private void createDefaultTierFile() {
+        try (PrintWriter writer = new PrintWriter(fileName)) {
             writer.println("TierId,TierLevel,MinPoint,MaxPoint");
-
-            for (int i = 1; i <= tierLinkedList.getTierCount(); i++) {
-                Tier tier = tierLinkedList.getTierEntry(i);
-                writer.println(tier.toCsvLine());
-            }
-        } catch (IOException e) {
-            System.out.println("Error saving tier file: " + e.getMessage());
-        }
-    }
-
-    private static void createTierCSVFile() {
-        try (PrintWriter writer = new PrintWriter(FILE_NAME)) {
-            writer.println("TierId,TierLevel,MinPoint,MaxPoint");
+            writer.println("T003,Classic,0,199");
+            writer.println("T002,Silver,200,499");
+            writer.println("T001,Gold,500,700");
+            writer.println("T004,Platinum,701,0");
 
             System.out.println("CSV File created success !");
         } catch (IOException e) {

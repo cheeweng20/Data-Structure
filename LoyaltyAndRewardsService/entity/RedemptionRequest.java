@@ -8,21 +8,17 @@ import java.time.LocalDate;
 public class RedemptionRequest implements Comparable<RedemptionRequest> {
     private String requestId;
     private String memberId;
-    private String rewardId;
+    private String confirmationNumber;
     private int pointsRequested;
     private LocalDate requestDate;
     private String status;
 
-    public RedemptionRequest(String requestId, String memberId, int pointsRequested, LocalDate requestDate,
-            String status) {
-        this(requestId, memberId, "", pointsRequested, requestDate, status);
-    }
-
-    public RedemptionRequest(String requestId, String memberId, String rewardId, int pointsRequested,
+    public RedemptionRequest(String requestId, String memberId, String confirmationNumber,
+            int pointsRequested,
             LocalDate requestDate, String status) {
         this.requestId = requestId;
         this.memberId = memberId;
-        this.rewardId = rewardId;
+        this.confirmationNumber = confirmationNumber;
         this.pointsRequested = pointsRequested;
         this.requestDate = requestDate;
         this.status = status;
@@ -40,8 +36,8 @@ public class RedemptionRequest implements Comparable<RedemptionRequest> {
         return pointsRequested;
     }
 
-    public String getRewardId() {
-        return rewardId;
+    public String getConfirmationNumber() {
+        return confirmationNumber;
     }
 
     public LocalDate getRequestDate() {
@@ -64,8 +60,8 @@ public class RedemptionRequest implements Comparable<RedemptionRequest> {
         this.pointsRequested = pointsRequested;
     }
 
-    public void setRewardId(String rewardId) {
-        this.rewardId = rewardId;
+    public void setConfirmationNumber(String confirmationNumber) {
+        this.confirmationNumber = confirmationNumber;
     }
 
     public void setRequestDate(LocalDate requestDate) {
@@ -82,7 +78,7 @@ public class RedemptionRequest implements Comparable<RedemptionRequest> {
     }
 
     public String toCsvLine(){
-        return requestId + "," + memberId + "," + rewardId + "," + pointsRequested + ","
+        return requestId + "," + memberId + "," + confirmationNumber + "," + pointsRequested + ","
                 + requestDate + "," + status;
     }
 }

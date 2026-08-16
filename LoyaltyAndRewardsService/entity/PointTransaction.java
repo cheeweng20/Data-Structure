@@ -12,20 +12,17 @@ public class PointTransaction implements Comparable<PointTransaction> {
     private int pointsRemaining;
     private LocalDate earnedDate;
     private LocalDate expiryDate;
-
-    public PointTransaction(String transactionId, String memberId, int pointsEarned, LocalDate earnedDate,
-            LocalDate expiryDate) {
-        this(transactionId, memberId, pointsEarned, pointsEarned, earnedDate, expiryDate);
-    }
+    private String sourceReference;
 
     public PointTransaction(String transactionId, String memberId, int pointsEarned, int pointsRemaining,
-            LocalDate earnedDate, LocalDate expiryDate) {
+            LocalDate earnedDate, LocalDate expiryDate, String sourceReference) {
         this.transactionId = transactionId;
         this.memberId = memberId;
         this.pointsEarned = pointsEarned;
         this.pointsRemaining = pointsRemaining;
         this.earnedDate = earnedDate;
         this.expiryDate = expiryDate;
+        this.sourceReference = sourceReference == null ? "" : sourceReference;
     }
 
     public String getTransactionId() {
@@ -76,6 +73,14 @@ public class PointTransaction implements Comparable<PointTransaction> {
         this.expiryDate = expiryDate;
     }
 
+    public String getSourceReference() {
+        return sourceReference;
+    }
+
+    public void setSourceReference(String sourceReference) {
+        this.sourceReference = sourceReference == null ? "" : sourceReference;
+    }
+
     @Override
     public int compareTo(PointTransaction other) {
         return expiryDate.compareTo(other.expiryDate);
@@ -83,6 +88,6 @@ public class PointTransaction implements Comparable<PointTransaction> {
 
     public String toCsvLine() {
         return transactionId + "," + memberId + "," + pointsEarned + "," + pointsRemaining +
-                "," + earnedDate + "," + expiryDate;
+                "," + earnedDate + "," + expiryDate + "," + sourceReference;
     }
 }

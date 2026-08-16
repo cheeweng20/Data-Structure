@@ -7,18 +7,30 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 
-import LoyaltyAndRewardsService.control.LoyaltyServiceControl;
 import LoyaltyAndRewardsService.entity.Member;
+import adt.LinkedList;
+import adt.ListInterface;
 
 /**
  * @author Chee Weng
  */
 public class MemberDao {
-    private static final String FILE_NAME = "LoyaltyAndRewardsService/src/member.csv";
+    private static final String DEFAULT_FILE_NAME =
+            "LoyaltyAndRewardsService/src/member.csv";
+    private final String fileName;
 
-        // CSV File Reader and Writer
-    public static void loadFromMemberFile(LoyaltyServiceControl memberList) {
-        try (BufferedReader reader = new BufferedReader(new FileReader(FILE_NAME))) {
+    public MemberDao() {
+        this(DEFAULT_FILE_NAME);
+    }
+
+    public MemberDao(String fileName) {
+        this.fileName = fileName;
+    }
+
+    // CSV File Reader and Writer
+    public ListInterface<Member> retrieveFromFile() {
+        ListInterface<Member> members = new LinkedList<>();
+        try (BufferedReader reader = new BufferedReader(new FileReader(fileName))) {
             reader.readLine(); // Skip file header
             String line;
             int lineNumber = 1;
@@ -30,30 +42,28 @@ public class MemberDao {
 
                 try {
                     String[] fields = line.split(",", -1);
-                    if (fields.length < 4) {
-                        throw new IllegalArgumentException("expected at least 4 columns");
+                    if (fields.length != 8) {
+                        throw new IllegalArgumentException("expected 8 columns");
                     }
 
                     String memberId = fields[0].trim();
                     String name = fields[1].trim();
-                    boolean hasContactFields = fields.length >= 6;
-                    String passport = hasContactFields ? fields[2].trim() : "";
-                    String phoneNumber = hasContactFields ? fields[3].trim() : "";
-                    int point = Integer.parseInt(fields[hasContactFields ? 4 : 2].trim());
-                    String tierId = fields[hasContactFields ? 5 : 3].trim();
-                    int notifiedTierIndex = hasContactFields ? 6 : 4;
-                    String lastNotifiedTierId = fields.length > notifiedTierIndex
-                            && !fields[notifiedTierIndex].isBlank()
-                            ? fields[notifiedTierIndex].trim()
-                            : tierId;
+                    String passport = fields[2].trim();
+                    String phoneNumber = fields[3].trim();
+                    int point = Integer.parseInt(fields[4].trim());
+                    int lifetimePointsEarned = Integer.parseInt(fields[5].trim());
+                    String tierId = fields[6].trim();
+                    String lastNotifiedTierId = fields[7].trim();
 
-                    if (memberId.isEmpty() || name.isEmpty() || tierId.isEmpty() || point < 0) {
+                    if (memberId.isEmpty() || name.isEmpty() || passport.isEmpty()
+                            || phoneNumber.isEmpty() || tierId.isEmpty()
+                            || lastNotifiedTierId.isEmpty() || point < 0
+                            || lifetimePointsEarned < point) {
                         throw new IllegalArgumentException("invalid required member value");
                     }
 
-                    memberList.addMember(
-                            new Member(memberId, name, passport, phoneNumber, point, tierId,
-                                    lastNotifiedTierId));
+                    members.add(new Member(memberId, name, passport, phoneNumber, point,
+                            lifetimePointsEarned, tierId, lastNotifiedTierId));
                 } catch (RuntimeException exception) {
                     System.out.println("Skipping invalid member record at line "
                             + lineNumber + ": " + exception.getMessage());
@@ -66,13 +76,13 @@ public class MemberDao {
         } catch (IOException e) {
             System.out.println("Error reading member file: " + e.getMessage());
         }
+        return members;
     }
 
-    public static void saveToMemberFile(LoyaltyServiceControl memberList) {
-        try (PrintWriter writer = new PrintWriter(new FileWriter(FILE_NAME))) {
-            writer.println("MemberId,Name,Passport,PhoneNumber,Point,TierId,LastNotifiedTierId");
-            for (int i = 1; i <= memberList.getMemberCount(); i++) {
-                Member member = memberList.getMemberEntry(i);
+    public void saveToFile(ListInterface<Member> members) {
+        try (PrintWriter writer = new PrintWriter(new FileWriter(fileName))) {
+            writer.println("MemberId,Name,Passport,PhoneNumber,Point,LifetimePointsEarned,TierId,LastNotifiedTierId");
+            for (Member member : members) {
                 writer.println(member.toCsvLine());
             }
         } catch (IOException e) {
@@ -80,9 +90,9 @@ public class MemberDao {
         }
     }
 
-    private static void createMemberCSVFile() {
-        try (PrintWriter writer = new PrintWriter(FILE_NAME)) {
-            writer.println("MemberId,Name,Passport,PhoneNumber,Point,TierId,LastNotifiedTierId");
+    private void createMemberCSVFile() {
+        try (PrintWriter writer = new PrintWriter(fileName)) {
+            writer.println("MemberId,Name,Passport,PhoneNumber,Point,LifetimePointsEarned,TierId,LastNotifiedTierId");
 
             System.out.println("CSV File created success !");
         } catch (IOException e) {

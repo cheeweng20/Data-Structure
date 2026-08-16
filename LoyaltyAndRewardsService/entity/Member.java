@@ -9,30 +9,19 @@ public class Member implements Comparable<Member> {
     private String passport;
     private String phoneNumber;
     private int point;
+    private int lifetimePointsEarned;
     private String tierId;
     private String lastNotifiedTierId;
 
-    public Member(String memberId,String name, int point,String tierId) {
-        this(memberId, name, "", "", point, tierId, tierId);
-    }
-
-    public Member(String memberId, String name, int point, String tierId,
+    public Member(String memberId, String name, String passport, String phoneNumber,
+            int point, int lifetimePointsEarned, String tierId,
             String lastNotifiedTierId) {
-        this(memberId, name, "", "", point, tierId, lastNotifiedTierId);
-    }
-
-    public Member(String memberId, String name, String passport, String phoneNumber,
-            int point, String tierId) {
-        this(memberId, name, passport, phoneNumber, point, tierId, tierId);
-    }
-
-    public Member(String memberId, String name, String passport, String phoneNumber,
-            int point, String tierId, String lastNotifiedTierId) {
         this.memberId = memberId;
         this.name = name;
         this.passport = passport;
         this.phoneNumber = phoneNumber;
         this.point = point;
+        this.lifetimePointsEarned = lifetimePointsEarned;
         this.tierId = tierId;
         this.lastNotifiedTierId = lastNotifiedTierId;
     }
@@ -55,6 +44,10 @@ public class Member implements Comparable<Member> {
 
     public int getPoint() {
         return point;
+    }
+
+    public int getLifetimePointsEarned() {
+        return lifetimePointsEarned;
     }
 
     public String getTierId() {
@@ -85,6 +78,16 @@ public class Member implements Comparable<Member> {
         this.point = point;
     }
 
+    public void setLifetimePointsEarned(int lifetimePointsEarned) {
+        this.lifetimePointsEarned = Math.max(lifetimePointsEarned, 0);
+    }
+
+    public void addLifetimePointsEarned(int points) {
+        if (points > 0) {
+            lifetimePointsEarned += points;
+        }
+    }
+
     public void setTierId(String tierId) {
         this.tierId = tierId;
     }
@@ -100,7 +103,7 @@ public class Member implements Comparable<Member> {
 
     public String toCsvLine(){
         return memberId + "," + name + "," + passport + "," + phoneNumber + ","
-                + point + "," + tierId + ","
+                + point + "," + lifetimePointsEarned + "," + tierId + ","
                 + lastNotifiedTierId;
     }
     
