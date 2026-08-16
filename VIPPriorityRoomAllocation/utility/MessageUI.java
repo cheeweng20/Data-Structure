@@ -1,4 +1,4 @@
-package WalkInRegistrationAndReservation.utility;
+package VIPPriorityRoomAllocation.utility;
 
 // Displays messages shared by the reservation boundary classes.
 /**

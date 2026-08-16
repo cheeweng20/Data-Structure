@@ -1,7 +1,7 @@
-package WalkInRegistrationAndReservation.dao;
+package VIPPriorityRoomAllocation.dao;
 
-import WalkInRegistrationAndReservation.entity.Room;
-import WalkInRegistrationAndReservation.entity.Room.RoomStatus;
+import VIPPriorityRoomAllocation.entity.Room;
+import VIPPriorityRoomAllocation.entity.Room.RoomStatus;
 import adt.ArrayList;
 import adt.ListInterface;
 import java.io.BufferedReader;
@@ -12,18 +12,18 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 
-// Loads and saves room records using CSV files.
+// Loads and saves single-type room records using CSV files.
 /**
  * @author Wan Yin
  */
 public class RoomDAO {
 
     private static final int INITIAL_CAPACITY = 100;
-    private static final String HEADER = "RoomNumber,RoomType,Capacity,PricePerNight,Status";
+    private static final String HEADER = "RoomNumber,PricePerNight,Status";
     private final String fileName;
 
     public RoomDAO() {
-        this("WalkInRegistrationAndReservation/src/rooms.csv");
+        this("VIPPriorityRoomAllocation/src/rooms.csv");
     }
 
     public RoomDAO(String fileName) {
@@ -31,10 +31,10 @@ public class RoomDAO {
     }
 
     public ListInterface<Room> retrieveFromFile() {
-        ListInterface<Room> rooms = new ArrayList<>(INITIAL_CAPACITY);
+        ListInterface<Room> rooms = new ArrayList<>(INITIAL_CAPACITY); // stores loaded room records
 
         try (BufferedReader reader = new BufferedReader(new FileReader(fileName))) {
-            reader.readLine();
+            reader.readLine(); // skip CSV header
             String line;
 
             while ((line = reader.readLine()) != null) {
@@ -42,31 +42,18 @@ public class RoomDAO {
                     continue;
                 }
 
-                String[] fields = line.split(",", -1);
-                if (fields.length < 4) {
-                    continue;
+                String[] fields = line.split(",", -1); // keep empty CSV columns
+                if (fields.length < 3) {
+                    continue; // skip invalid rows
                 }
 
-                String roomNumber = fields[0];
-                String roomType = fields[1];
-                int capacity;
-                double pricePerNight;
-                RoomStatus status;
-
-                if (fields.length >= 5) {
-                    capacity = Integer.parseInt(fields[2]);
-                    pricePerNight = Double.parseDouble(fields[3]);
-                    status = RoomStatus.valueOf(fields[4]);
-                } else {
-                    capacity = 0;
-                    pricePerNight = Double.parseDouble(fields[2]);
-                    status = RoomStatus.valueOf(fields[3]);
-                }
-
-                rooms.add(new Room(roomNumber, roomType, capacity, pricePerNight, status));
+                rooms.add(new Room(
+                        fields[0],
+                        Double.parseDouble(fields[1]),
+                        RoomStatus.valueOf(fields[2]))); // create Room object from CSV row
             }
         } catch (FileNotFoundException ex) {
-            createRoomCSVFile();
+            createRoomCSVFile(); // create new CSV when running module for the first time
         } catch (IOException | IllegalArgumentException ex) {
             throw new IllegalStateException("Unable to load rooms.", ex);
         }
@@ -75,14 +62,13 @@ public class RoomDAO {
     }
 
     public void saveToFile(ListInterface<Room> rooms) {
-        createParentDirectory();
+        createParentDirectory(); // make sure src folder exists before writing
 
         try (PrintWriter writer = new PrintWriter(new FileWriter(fileName))) {
-            writer.println(HEADER);
+            writer.println(HEADER); // always rewrite CSV with correct column order
 
             for (int i = 1; i <= rooms.getNumberOfEntries(); i++) {
-                Room room = rooms.getEntry(i);
-                writer.println(toCsvLine(room));
+                writer.println(toCsvLine(rooms.getEntry(i))); // one room becomes one CSV row
             }
         } catch (IOException ex) {
             throw new IllegalStateException("Unable to save rooms.", ex);
@@ -91,14 +77,12 @@ public class RoomDAO {
 
     private String toCsvLine(Room room) {
         return room.getRoomNumber() + ","
-                + room.getRoomType() + ","
-                + room.getCapacity() + ","
                 + room.getPricePerNight() + ","
                 + room.getStatus();
     }
 
     private void createRoomCSVFile() {
-        createParentDirectory();
+        createParentDirectory(); // create folder first if missing
 
         try (PrintWriter writer = new PrintWriter(fileName)) {
             writer.println(HEADER);

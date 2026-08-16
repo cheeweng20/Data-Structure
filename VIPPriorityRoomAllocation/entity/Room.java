@@ -1,26 +1,22 @@
-package WalkInRegistrationAndReservation.entity;
+package VIPPriorityRoomAllocation.entity;
 
-import java.io.Serializable;
 import java.util.Objects;
 
-// Stores room details used during reservation and room assignment.
+// Stores a single-type hotel room used during priority allocation.
 /**
  * @author Wan Yin
  */
-public class Room implements Serializable {
-
-    private static final long serialVersionUID = 1L;
+public class Room {
+    public static final String ROOM_TYPE = "Standard Room";
 
     public enum RoomStatus {
         AVAILABLE,
         RESERVED,
         OCCUPIED,
-        NEEDS_CLEANING // connect to the cleaning task
+        NEEDS_CLEANING
     }
 
     private String roomNumber;
-    private String roomType;
-    private int capacity;
     private double pricePerNight;
     private RoomStatus status;
 
@@ -28,20 +24,8 @@ public class Room implements Serializable {
         status = RoomStatus.AVAILABLE;
     }
 
-    public Room(String roomNumber, String roomType, double pricePerNight) {
-        this(roomNumber, roomType, 0, pricePerNight, RoomStatus.AVAILABLE);
-    }
-
-    public Room(String roomNumber, String roomType, double pricePerNight,
-            RoomStatus status) {
-        this(roomNumber, roomType, 0, pricePerNight, status);
-    }
-
-    public Room(String roomNumber, String roomType, int capacity,
-            double pricePerNight, RoomStatus status) {
+    public Room(String roomNumber, double pricePerNight, RoomStatus status) {
         this.roomNumber = roomNumber;
-        this.roomType = roomType;
-        this.capacity = capacity;
         this.pricePerNight = pricePerNight;
         this.status = status;
     }
@@ -52,22 +36,6 @@ public class Room implements Serializable {
 
     public void setRoomNumber(String roomNumber) {
         this.roomNumber = roomNumber;
-    }
-
-    public String getRoomType() {
-        return roomType;
-    }
-
-    public void setRoomType(String roomType) {
-        this.roomType = roomType;
-    }
-
-    public int getCapacity() {
-        return capacity;
-    }
-
-    public void setCapacity(int capacity) {
-        this.capacity = capacity;
     }
 
     public double getPricePerNight() {
@@ -105,8 +73,7 @@ public class Room implements Serializable {
 
     @Override
     public String toString() {
-        return String.format(
-                "Room: %s | Type: %s | Capacity: %d | Rate: RM %.2f | Status: %s",
-                roomNumber, roomType, capacity, pricePerNight, status);
+        return String.format("Room: %s | Type: %s | Rate: RM %.2f | Status: %s",
+                roomNumber, ROOM_TYPE, pricePerNight, status);
     }
 }

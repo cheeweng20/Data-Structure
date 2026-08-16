@@ -1,11 +1,11 @@
 package FrontDeskService.control;
 
 import FrontDeskService.adt.ConfirmationSearchTree;
-import WalkInRegistrationAndReservation.dao.ReservationDAO;
-import WalkInRegistrationAndReservation.dao.RoomDAO;
-import WalkInRegistrationAndReservation.entity.Reservation;
-import WalkInRegistrationAndReservation.entity.Room;
-import WalkInRegistrationAndReservation.entity.Room.RoomStatus;
+import VIPPriorityRoomAllocation.dao.ReservationDAO;
+import VIPPriorityRoomAllocation.dao.RoomDAO;
+import VIPPriorityRoomAllocation.entity.Reservation;
+import VIPPriorityRoomAllocation.entity.Room;
+import VIPPriorityRoomAllocation.entity.Room.RoomStatus;
 import adt.ArrayList;
 import adt.ListInterface;
 import java.time.LocalDate;
@@ -34,14 +34,12 @@ public class FrontDeskControl {
         return confirmationIndex.search(confirmationNumber);
     }
 
-    public ListInterface<Room> findAvailableRooms(String roomType, int minimumCapacity) {
+    public ListInterface<Room> findAvailableRooms() {
         ListInterface<Room> result = new ArrayList<>();
         Iterator<Room> iterator = rooms.iterator();
         while (iterator.hasNext()) {
             Room room = iterator.next();
-            boolean matchesType = roomType.isEmpty() || room.getRoomType().equalsIgnoreCase(roomType);
-            if (room.getStatus() == RoomStatus.AVAILABLE && matchesType
-                    && room.getCapacity() >= minimumCapacity) {
+            if (room.getStatus() == RoomStatus.AVAILABLE) {
                 result.add(room);
             }
         }

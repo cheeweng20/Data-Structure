@@ -1,65 +1,48 @@
-package WalkInRegistrationAndReservation.entity;
+package VIPPriorityRoomAllocation.entity;
 
-import java.io.Serializable;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
-//Stores standard or walk-in reservation and its room assignment.
+// Stores a VIP priority reservation and its automatic room assignment.
 /**
  * @author Wan Yin
  */
-public class Reservation implements Serializable, Comparable<Reservation> {
-
-    private static final long serialVersionUID = 1L;
+public class Reservation implements Comparable<Reservation> {
 
     private String confirmationNumber;
     private Guest guest;
-    private String requestedRoomType;
-    private Room assignedRoom;
+    private Room assignedRoom; 
     private LocalDate checkInDate;
     private LocalDate checkOutDate;
     private LocalDateTime bookingDateTime;
-    private int numberOfGuests;
-    private BookingType bookingType;
     private String paymentMethod;
     private String paymentStatus;
     private ReservationStatus status;
 
     public Reservation() {
-        bookingDateTime = LocalDateTime.now();
-        status = ReservationStatus.PENDING;
+        bookingDateTime = LocalDateTime.now(); // used to break ties when tier is same
+        paymentMethod = "";
+        paymentStatus = "UNPAID";
+        status = ReservationStatus.PENDING; // new request waits in the priority heap first
     }
 
-    public Reservation(String confirmationNumber, Guest guest, String requestedRoomType, LocalDate checkInDate,
-            LocalDate checkOutDate, int numberOfGuests, BookingType bookingType) {
-        this(confirmationNumber, guest, requestedRoomType, null, checkInDate,
-                checkOutDate, LocalDateTime.now(), numberOfGuests, bookingType,
-                "", "UNPAID", ReservationStatus.PENDING);
+    public Reservation(String confirmationNumber, Guest guest,
+            LocalDate checkInDate, LocalDate checkOutDate) {
+        this(confirmationNumber, guest, null, checkInDate, checkOutDate, // null means no room assigned yet
+                LocalDateTime.now(), "", "UNPAID", ReservationStatus.PENDING);
     }
 
-    public Reservation(String confirmationNumber, Guest guest, String requestedRoomType, Room assignedRoom,
+    public Reservation(String confirmationNumber, Guest guest, Room assignedRoom,
             LocalDate checkInDate, LocalDate checkOutDate,
-            LocalDateTime bookingDateTime, int numberOfGuests, BookingType bookingType, ReservationStatus status) {
-        this(confirmationNumber, guest, requestedRoomType, assignedRoom,
-                checkInDate, checkOutDate, bookingDateTime, numberOfGuests,
-                bookingType, "", "UNPAID", status);
-    }
-
-    public Reservation(String confirmationNumber, Guest guest, String requestedRoomType,
-            Room assignedRoom, LocalDate checkInDate, LocalDate checkOutDate,
-            LocalDateTime bookingDateTime, int numberOfGuests,
-            BookingType bookingType, String paymentMethod,
+            LocalDateTime bookingDateTime, String paymentMethod,
             String paymentStatus, ReservationStatus status) {
         this.confirmationNumber = confirmationNumber;
         this.guest = guest;
-        this.requestedRoomType = requestedRoomType;
         this.assignedRoom = assignedRoom;
         this.checkInDate = checkInDate;
         this.checkOutDate = checkOutDate;
         this.bookingDateTime = bookingDateTime;
-        this.numberOfGuests = numberOfGuests;
-        this.bookingType = bookingType;
         this.paymentMethod = paymentMethod;
         this.paymentStatus = paymentStatus;
         this.status = status;
@@ -79,14 +62,6 @@ public class Reservation implements Serializable, Comparable<Reservation> {
 
     public void setGuest(Guest guest) {
         this.guest = guest;
-    }
-
-    public String getRequestedRoomType() {
-        return requestedRoomType;
-    }
-
-    public void setRequestedRoomType(String requestedRoomType) {
-        this.requestedRoomType = requestedRoomType;
     }
 
     public Room getAssignedRoom() {
@@ -119,22 +94,6 @@ public class Reservation implements Serializable, Comparable<Reservation> {
 
     public void setBookingDateTime(LocalDateTime bookingDateTime) {
         this.bookingDateTime = bookingDateTime;
-    }
-
-    public int getNumberOfGuests() {
-        return numberOfGuests;
-    }
-
-    public void setNumberOfGuests(int numberOfGuests) {
-        this.numberOfGuests = numberOfGuests;
-    }
-
-    public BookingType getBookingType() {
-        return bookingType;
-    }
-
-    public void setBookingType(BookingType bookingType) {
-        this.bookingType = bookingType;
     }
 
     public String getPaymentMethod() {
@@ -170,7 +129,7 @@ public class Reservation implements Serializable, Comparable<Reservation> {
             return false;
         }
         Reservation other = (Reservation) object;
-        return Objects.equals(confirmationNumber, other.confirmationNumber);
+        return Objects.equals(confirmationNumber, other.confirmationNumber); //same reservation num=same reservation
     }
 
     @Override
@@ -179,27 +138,32 @@ public class Reservation implements Serializable, Comparable<Reservation> {
     }
 
     @Override
-    // COMPARE via the booking time
     public int compareTo(Reservation other) {
-        int bookingDateTimeCompare = bookingDateTime.compareTo(other.bookingDateTime);
+        int tierCompare = Integer.compare(
+                getGuest().getLoyaltyTier().getPriorityScore(), // higher tier score has higher heap priority
+                other.getGuest().getLoyaltyTier().getPriorityScore());
+
+        if (tierCompare != 0) {
+            return tierCompare; // different tier: decide by loyalty tier first
+        }
+
+        int bookingDateTimeCompare = other.bookingDateTime.compareTo(bookingDateTime); // same tier: earlier request first
         if (bookingDateTimeCompare != 0) {
             return bookingDateTimeCompare;
         }
-        //if both same then just use the confirmation no 
-        return confirmationNumber.compareToIgnoreCase(other.confirmationNumber);
+
+        return other.confirmationNumber.compareToIgnoreCase(confirmationNumber); // final backup if tier and time are same
     }
 
     @Override
     public String toString() {
-        String roomNumber = assignedRoom == null
-                ? "Not assigned"
-                : assignedRoom.getRoomNumber();
+        String roomNumber = assignedRoom == null ? "Not assigned" : assignedRoom.getRoomNumber();
         String guestName = guest == null ? "Unknown" : guest.getFullName();
+        String tier = guest == null ? "Unknown" : guest.getLoyaltyTier().toString();
 
         return String.format(
-                "Confirmation: %s | Guest: %s | Room type: %s | Room: %s | "
-                        + "Check-in: %s | Check-out: %s | Type: %s | Payment: %s | Status: %s",
-                confirmationNumber, guestName, requestedRoomType, roomNumber,
-                checkInDate, checkOutDate, bookingType, paymentStatus, status);
+                "Confirmation: %s | Guest: %s | Tier: %s | Room: %s | Check-in: %s | Check-out: %s | Status: %s",
+                confirmationNumber, guestName, tier, roomNumber,
+                checkInDate, checkOutDate, status);
     }
 }

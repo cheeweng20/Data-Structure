@@ -4,12 +4,16 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
-public class MaxHeapPriorityQueue<T> implements PriorityQueueInterface<T> {
+public class MaxHeapPriorityQueue<T extends Comparable<T>> implements PriorityQueueInterface<T> {
 
   private T[] heap;
   private int numberOfEntries;
   private final Comparator<? super T> comparator;
   private static final int DEFAULT_CAPACITY = 25;
+
+  public MaxHeapPriorityQueue() {
+    this(DEFAULT_CAPACITY, null);
+  }
 
   public MaxHeapPriorityQueue(Comparator<? super T> comparator) {
     this(DEFAULT_CAPACITY, comparator);
@@ -20,18 +24,20 @@ public class MaxHeapPriorityQueue<T> implements PriorityQueueInterface<T> {
     if (initialCapacity < 1) {
       throw new IllegalArgumentException("Initial capacity must be greater than zero.");
     }
-    heap = (T[]) new Object[initialCapacity + 1];
+    heap = (T[]) new Comparable[initialCapacity + 1];
     numberOfEntries = 0;
     this.comparator = comparator;
   }
 
   @Override
+  //add new 
   public void enqueue(T newEntry) {
     ensureCapacity();
     heap[++numberOfEntries] = newEntry;
     reheapUp(numberOfEntries);
   }
 
+  //remove the highest priority entry from the queue and return it
   @Override
   public T dequeue() {
     if (isEmpty()) {
@@ -46,6 +52,7 @@ public class MaxHeapPriorityQueue<T> implements PriorityQueueInterface<T> {
     return front;
   }
 
+  //view(Without remove))
   @Override
   public T getFront() {
     return isEmpty() ? null : heap[1];
@@ -70,6 +77,7 @@ public class MaxHeapPriorityQueue<T> implements PriorityQueueInterface<T> {
   }
 
   @Override
+  //display all pending queue(Based on the priority)
   public Iterator<T> getIterator() {
     return new PriorityIterator();
   }
@@ -119,7 +127,7 @@ public class MaxHeapPriorityQueue<T> implements PriorityQueueInterface<T> {
   @SuppressWarnings("unchecked")
   private void doubleArray() {
     T[] oldHeap = heap;
-    heap = (T[]) new Object[oldHeap.length * 2];
+    heap = (T[]) new Comparable[oldHeap.length * 2];
 
     for (int i = 1; i < oldHeap.length; i++) {
       heap[i] = oldHeap[i];
@@ -127,7 +135,7 @@ public class MaxHeapPriorityQueue<T> implements PriorityQueueInterface<T> {
   }
 
   private int compare(T left, T right) {
-    return comparator.compare(left, right);
+    return comparator == null ? left.compareTo(right) : comparator.compare(left, right);
   }
 
   private void swap(int firstIndex, int secondIndex) {
@@ -141,7 +149,7 @@ public class MaxHeapPriorityQueue<T> implements PriorityQueueInterface<T> {
     private final MaxHeapPriorityQueue<T> snapshot;
 
     private PriorityIterator() {
-      snapshot = new MaxHeapPriorityQueue<>(Math.max(1, numberOfEntries), comparator);
+      snapshot = new MaxHeapPriorityQueue<T>(Math.max(1, numberOfEntries), comparator);
       for (int i = 1; i <= numberOfEntries; i++) {
         snapshot.enqueue(heap[i]);
       }

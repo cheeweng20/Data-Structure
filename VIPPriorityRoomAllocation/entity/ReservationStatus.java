@@ -1,4 +1,4 @@
-package WalkInRegistrationAndReservation.entity;
+package VIPPriorityRoomAllocation.entity;
 
 // reservation status
 /**
@@ -9,6 +9,5 @@ public enum ReservationStatus {
     CONFIRMED,
     REJECTED,
     CHECKED_IN,
-    CHECKED_OUT,
-    CANCELLED
+    CHECKED_OUT
 }

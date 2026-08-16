@@ -2,8 +2,8 @@ package FrontDeskService.boundary;
 
 import FrontDeskService.control.FrontDeskControl;
 import FrontDeskService.utility.FrontDeskValidator;
-import WalkInRegistrationAndReservation.entity.Reservation;
-import WalkInRegistrationAndReservation.entity.Room;
+import VIPPriorityRoomAllocation.entity.Reservation;
+import VIPPriorityRoomAllocation.entity.Room;
 import adt.ListInterface;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
@@ -53,21 +53,18 @@ public class FrontDeskUI {
     }
 
     private void checkAvailability() {
-        System.out.print("Room type (leave blank for all): ");
-        String roomType = scanner.nextLine().trim();
-        int capacity = promptPositiveInteger("Minimum number of guests: ");
-        ListInterface<Room> rooms = control.findAvailableRooms(roomType, capacity);
+        ListInterface<Room> rooms = control.findAvailableRooms();
         if (rooms.isEmpty()) {
-            System.out.println("No matching available room was found.");
+            System.out.println("No available standard room was found.");
             return;
         }
         System.out.println("\nAvailable rooms (sorted by nightly rate)");
-        System.out.printf("%-8s %-14s %-10s %-12s%n", "Room", "Type", "Capacity", "Rate (RM)");
+        System.out.printf("%-8s %-14s %-12s%n", "Room", "Type", "Rate (RM)");
         Iterator<Room> iterator = rooms.iterator();
         while (iterator.hasNext()) {
             Room room = iterator.next();
-            System.out.printf("%-8s %-14s %-10d %-12.2f%n", room.getRoomNumber(),
-                    room.getRoomType(), room.getCapacity(), room.getPricePerNight());
+            System.out.printf("%-8s %-14s %-12.2f%n", room.getRoomNumber(),
+                    Room.ROOM_TYPE, room.getPricePerNight());
         }
     }
 
@@ -135,7 +132,7 @@ public class FrontDeskUI {
         System.out.println("Confirmation no. : " + reservation.getConfirmationNumber());
         System.out.println("Guest name       : " + reservation.getGuest().getFullName());
         System.out.println("Guest ID         : " + reservation.getGuest().getGuestId());
-        System.out.println("Phone / email    : " + reservation.getGuest().getPhoneNumber() + " / " + reservation.getGuest().getEmail());
+        System.out.println("Phone number     : " + reservation.getGuest().getPhoneNumber());
         System.out.println("Stay             : " + reservation.getCheckInDate() + " to " + reservation.getCheckOutDate());
         System.out.println("Assigned room    : " + (reservation.getAssignedRoom() == null ? "Unassigned" : reservation.getAssignedRoom().getRoomNumber()));
         System.out.println("Reservation      : " + reservation.getStatus());
