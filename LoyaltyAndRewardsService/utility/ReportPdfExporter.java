@@ -8,12 +8,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import adt.ArrayList;
+import adt.ListInterface;
 
 /**
  * Creates a dependency-free PDF copy of a console report and adds a simple chart.
@@ -35,8 +34,8 @@ public final class ReportPdfExporter {
 
     public static Path export(String title, String report, ChartType chartType)
             throws IOException {
-        List<ReportChart> charts = extractCharts(report, chartType);
-        List<String> pageStreams = createPageStreams(title, report, charts);
+        ListInterface<ReportChart> charts = extractCharts(report, chartType);
+        ListInterface<String> pageStreams = createPageStreams(title, report, charts);
 
         Path outputDirectory = Path.of("output", "pdf");
         Files.createDirectories(outputDirectory);
@@ -55,14 +54,14 @@ public final class ReportPdfExporter {
         return true;
     }
 
-    private static List<String> createPageStreams(String title, String report,
-            List<ReportChart> charts) {
-        List<String> streams = new ArrayList<>();
+    private static ListInterface<String> createPageStreams(String title, String report,
+            ListInterface<ReportChart> charts) {
+        ListInterface<String> streams = new ArrayList<>();
         int pageNumber = 1;
         PageCanvas page = createPage(title, pageNumber, charts);
         int tablePhase = -1;
         int tableRowIndex = 0;
-        List<String> tableHeader = null;
+        ListInterface<String> tableHeader = null;
 
         for (String rawLine : report.split("\\R", -1)) {
             String line = rawLine.trim();
@@ -91,19 +90,19 @@ public final class ReportPdfExporter {
                 }
                 if (page.y - 27 < 42) {
                     streams.add(page.stream.toString());
-                    page = createPage(title, ++pageNumber, List.of());
+                    page = createPage(title, ++pageNumber, new ArrayList<>());
                 }
                 drawSectionHeading(page.stream, heading, page.y);
                 page.y -= 28;
                 continue;
             }
 
-            List<String> columns = parseTableColumns(line);
+            ListInterface<String> columns = parseTableColumns(line);
             if (!columns.isEmpty()) {
                 boolean isHeader = tablePhase == 0;
                 if (page.y - 19 < 42) {
                     streams.add(page.stream.toString());
-                    page = createPage(title, ++pageNumber, List.of());
+                    page = createPage(title, ++pageNumber, new ArrayList<>());
                     if (!isHeader && tablePhase == 2 && tableHeader != null) {
                         drawTableRow(page.stream, tableHeader, page.y, true, 0);
                         page.y -= 19;
@@ -123,7 +122,7 @@ public final class ReportPdfExporter {
 
             if (page.y - 21 < 42) {
                 streams.add(page.stream.toString());
-                page = createPage(title, ++pageNumber, List.of());
+                page = createPage(title, ++pageNumber, new ArrayList<>());
             }
             drawSummaryRow(page.stream, line, page.y);
             page.y -= 21;
@@ -135,7 +134,7 @@ public final class ReportPdfExporter {
     }
 
     private static PageCanvas createPage(String title, int pageNumber,
-            List<ReportChart> charts) {
+            ListInterface<ReportChart> charts) {
         StringBuilder stream = new StringBuilder();
         drawPageBackground(stream, title, pageNumber);
         if (pageNumber == 1) {
@@ -183,11 +182,11 @@ public final class ReportPdfExporter {
         }
     }
 
-    private static void drawTableRow(StringBuilder stream, List<String> columns,
+    private static void drawTableRow(StringBuilder stream, ListInterface<String> columns,
             double y, boolean header, int rowIndex) {
         double tableX = 44;
         double tableWidth = 756;
-        double cellWidth = tableWidth / columns.size();
+        double cellWidth = tableWidth / columns.getNumberOfEntries();
         if (header) {
             stream.append("0.09 0.23 0.40 rg ").append(tableX).append(' ')
                     .append(y - 5).append(' ').append(tableWidth).append(" 18 re f\n");
@@ -199,12 +198,12 @@ public final class ReportPdfExporter {
                     .append(tableWidth).append(" 18 re f\n");
         }
 
-        for (int index = 0; index < columns.size(); index++) {
+        for (int index = 0; index < columns.getNumberOfEntries(); index++) {
             double cellX = tableX + index * cellWidth;
             int maximumCharacters = Math.max(4, (int) ((cellWidth - 14) / 4.0));
             appendText(stream, header ? "F3" : "F1", 7.5, cellX + 7, y,
                     header ? 1 : 0.18, header ? 1 : 0.22, header ? 1 : 0.28,
-                    abbreviate(columns.get(index), maximumCharacters));
+                    abbreviate(columns.getEntry(index + 1), maximumCharacters));
             if (index > 0) {
                 stream.append(header ? "0.35 0.48 0.62 RG " : "0.82 0.85 0.89 RG ")
                         .append("0.4 w ").append(cellX).append(' ').append(y - 5)
@@ -227,15 +226,16 @@ public final class ReportPdfExporter {
                 "Loyalty and Rewards Service");
     }
 
-    private static void drawCharts(StringBuilder stream, List<ReportChart> charts) {
-        if (charts.size() == 1) {
-            drawFullWidthChart(stream, charts.get(0));
+    private static void drawCharts(StringBuilder stream, ListInterface<ReportChart> charts) {
+        if (charts.getNumberOfEntries() == 1) {
+            drawFullWidthChart(stream, charts.getEntry(1));
             return;
         }
 
         double[] panelPositions = {38, 299, 560};
-        for (int index = 0; index < Math.min(charts.size(), panelPositions.length); index++) {
-            drawDashboardChart(stream, charts.get(index), panelPositions[index]);
+        for (int index = 0;
+                index < Math.min(charts.getNumberOfEntries(), panelPositions.length); index++) {
+            drawDashboardChart(stream, charts.getEntry(index + 1), panelPositions[index]);
         }
     }
 
@@ -254,10 +254,10 @@ public final class ReportPdfExporter {
             maximum = Math.max(maximum, item.value);
         }
 
-        int displayedItems = Math.min(chart.items.size(), 8);
+        int displayedItems = Math.min(chart.items.getNumberOfEntries(), 8);
         double y = 463;
         for (int index = 0; index < displayedItems; index++) {
-            ChartItem item = chart.items.get(index);
+            ChartItem item = chart.items.getEntry(index + 1);
             double barWidth = 480.0 * item.value / maximum;
             appendText(stream, "F1", 8, 52, y + 2, 0.20, 0.24, 0.30,
                     abbreviate(item.label, 22));
@@ -286,10 +286,10 @@ public final class ReportPdfExporter {
             maximum = Math.max(maximum, item.value);
         }
 
-        int displayedItems = Math.min(chart.items.size(), 6);
+        int displayedItems = Math.min(chart.items.getNumberOfEntries(), 6);
         double y = 458;
         for (int index = 0; index < displayedItems; index++) {
-            ChartItem item = chart.items.get(index);
+            ChartItem item = chart.items.getEntry(index + 1);
             double barWidth = 102.0 * item.value / maximum;
             appendText(stream, "F1", 7, panelX + 13, y + 1, 0.20, 0.24, 0.30,
                     abbreviate(item.label, 11));
@@ -302,42 +302,42 @@ public final class ReportPdfExporter {
         }
     }
 
-    private static List<ReportChart> extractCharts(String report, ChartType chartType) {
+    private static ListInterface<ReportChart> extractCharts(String report, ChartType chartType) {
         if (chartType == ChartType.BUSINESS_SUMMARY) {
             return extractBusinessSummaryCharts(report);
         }
 
-        List<ReportChart> charts = new ArrayList<>();
+        ListInterface<ReportChart> charts = new ArrayList<>();
         charts.add(new ReportChart(chartTitle(chartType),
                 extractSimpleChartItems(report, chartType)));
         return charts;
     }
 
-    private static List<ChartItem> extractSimpleChartItems(String report, ChartType chartType) {
-        List<ChartItem> items = new ArrayList<>();
+    private static ListInterface<ChartItem> extractSimpleChartItems(String report, ChartType chartType) {
+        ListInterface<ChartItem> items = new ArrayList<>();
         String[] lines = report.split("\\R");
         for (String line : lines) {
-            List<String> columns = parseTableColumns(line);
-            if (columns.size() != 4) {
+            ListInterface<String> columns = parseTableColumns(line);
+            if (columns.getNumberOfEntries() != 4) {
                 continue;
             }
 
             int valueColumn = chartType == ChartType.MEMBER_POINTS ? 3 : 2;
-            Integer value = parseInteger(columns.get(valueColumn));
+            Integer value = parseInteger(columns.getEntry(valueColumn + 1));
             if (value == null) {
                 continue;
             }
             String label = chartType == ChartType.MEMBER_POINTS
-                    ? columns.get(1) : columns.get(0);
+                    ? columns.getEntry(2) : columns.getEntry(1);
             items.add(new ChartItem(label, value));
         }
         return items;
     }
 
-    private static List<ReportChart> extractBusinessSummaryCharts(String report) {
-        List<ChartItem> memberPoints = new ArrayList<>();
-        Map<String, Integer> transactionPointsByDate = new LinkedHashMap<>();
-        List<ChartItem> requestStatuses = new ArrayList<>();
+    private static ListInterface<ReportChart> extractBusinessSummaryCharts(String report) {
+        ListInterface<ChartItem> memberPoints = new ArrayList<>();
+        ListInterface<DatedPointTotal> transactionPointsByDate = new ArrayList<>();
+        ListInterface<ChartItem> requestStatuses = new ArrayList<>();
         int section = 0;
 
         for (String line : report.split("\\R")) {
@@ -354,22 +354,20 @@ public final class ReportPdfExporter {
                 continue;
             }
 
-            List<String> columns = parseTableColumns(line);
-            if (columns.size() != 4) {
+            ListInterface<String> columns = parseTableColumns(line);
+            if (columns.getNumberOfEntries() != 4) {
                 continue;
             }
 
             if (section == 1) {
-                Integer points = parseInteger(columns.get(3));
+                Integer points = parseInteger(columns.getEntry(4));
                 if (points != null) {
-                    memberPoints.add(new ChartItem(columns.get(1), points));
+                    memberPoints.add(new ChartItem(columns.getEntry(2), points));
                 }
             } else if (section == 2) {
-                Integer points = parseInteger(columns.get(2));
+                Integer points = parseInteger(columns.getEntry(3));
                 if (points != null) {
-                    String earnedDate = columns.get(3);
-                    transactionPointsByDate.put(earnedDate,
-                            transactionPointsByDate.getOrDefault(earnedDate, 0) + points);
+                    addPointsForDate(transactionPointsByDate, columns.getEntry(4), points);
                 }
             }
         }
@@ -383,20 +381,31 @@ public final class ReportPdfExporter {
             requestStatuses.add(new ChartItem("Rejected", Integer.parseInt(matcher.group(3))));
         }
 
-        List<ChartItem> transactionPoints = new ArrayList<>();
-        for (Map.Entry<String, Integer> entry : transactionPointsByDate.entrySet()) {
-            transactionPoints.add(new ChartItem(entry.getKey(), entry.getValue()));
+        ListInterface<ChartItem> transactionPoints = new ArrayList<>();
+        for (DatedPointTotal entry : transactionPointsByDate) {
+            transactionPoints.add(new ChartItem(entry.date, entry.points));
         }
 
-        List<ReportChart> charts = new ArrayList<>();
+        ListInterface<ReportChart> charts = new ArrayList<>();
         charts.add(new ReportChart("Top member points", memberPoints));
         charts.add(new ReportChart("Points earned by date", transactionPoints));
         charts.add(new ReportChart("Redemption status", requestStatuses));
         return charts;
     }
 
-    private static List<String> parseTableColumns(String line) {
-        List<String> columns = new ArrayList<>();
+    private static void addPointsForDate(ListInterface<DatedPointTotal> totals,
+            String date, int points) {
+        for (DatedPointTotal total : totals) {
+            if (total.date.equals(date)) {
+                total.points += points;
+                return;
+            }
+        }
+        totals.add(new DatedPointTotal(date, points));
+    }
+
+    private static ListInterface<String> parseTableColumns(String line) {
+        ListInterface<String> columns = new ArrayList<>();
         if (!line.trim().startsWith("|")) {
             return columns;
         }
@@ -427,10 +436,10 @@ public final class ReportPdfExporter {
         }
     }
 
-    private static byte[] buildPdf(List<String> pageStreams) throws IOException {
-        int pageCount = pageStreams.size();
+    private static byte[] buildPdf(ListInterface<String> pageStreams) throws IOException {
+        int pageCount = pageStreams.getNumberOfEntries();
         int objectCount = 5 + pageCount * 2;
-        List<byte[]> objects = new ArrayList<>();
+        ListInterface<byte[]> objects = new ArrayList<>();
 
         objects.add(bytes("<< /Type /Catalog /Pages 2 0 R >>"));
         StringBuilder kids = new StringBuilder();
@@ -451,7 +460,7 @@ public final class ReportPdfExporter {
                     + "/Contents " + contentObject + " 0 R >>";
             objects.add(bytes(pageObject));
 
-            byte[] streamBytes = bytes(pageStreams.get(index));
+            byte[] streamBytes = bytes(pageStreams.getEntry(index + 1));
             ByteArrayOutputStream content = new ByteArrayOutputStream();
             content.write(bytes("<< /Length " + streamBytes.length + " >>\nstream\n"));
             content.write(streamBytes);
@@ -462,11 +471,11 @@ public final class ReportPdfExporter {
         ByteArrayOutputStream pdf = new ByteArrayOutputStream();
         pdf.write(bytes("%PDF-1.4\n%1234\n"));
         long[] offsets = new long[objectCount + 1];
-        for (int index = 0; index < objects.size(); index++) {
+        for (int index = 0; index < objects.getNumberOfEntries(); index++) {
             int objectNumber = index + 1;
             offsets[objectNumber] = pdf.size();
             pdf.write(bytes(objectNumber + " 0 obj\n"));
-            pdf.write(objects.get(index));
+            pdf.write(objects.getEntry(index + 1));
             pdf.write(bytes("\nendobj\n"));
         }
 
@@ -525,11 +534,21 @@ public final class ReportPdfExporter {
 
     private static final class ReportChart {
         private final String title;
-        private final List<ChartItem> items;
+        private final ListInterface<ChartItem> items;
 
-        private ReportChart(String title, List<ChartItem> items) {
+        private ReportChart(String title, ListInterface<ChartItem> items) {
             this.title = title;
             this.items = items;
+        }
+    }
+
+    private static final class DatedPointTotal {
+        private final String date;
+        private int points;
+
+        private DatedPointTotal(String date, int points) {
+            this.date = date;
+            this.points = points;
         }
     }
 

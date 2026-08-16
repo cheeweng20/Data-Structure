@@ -5,8 +5,8 @@ import java.util.Iterator;
 
 import adt.ArrayList;
 import adt.LinkedList;
-import adt.MaxHeapPriorityQueue;
-import adt.PriorityQueueInterface;
+import adt.LinkedQueue;
+import adt.QueueInterface;
 import adt.SortedArrayList;
 
 import LoyaltyAndRewardsService.dao.MemberDao;
@@ -30,7 +30,7 @@ public class LoyaltyServiceControl {
     private LinkedList<Tier> tierLinkedList;
     private LinkedList<Member> memberList;
     private LinkedList<PointTransaction> transactionList;
-    private PriorityQueueInterface<RedemptionRequest> requestQueue;
+    private QueueInterface<RedemptionRequest> requestQueue;
     private LinkedList<RedemptionRequest> requestHistory;
     private LinkedList<Reward> rewardList;
     private int nextRequestNumber;
@@ -41,7 +41,7 @@ public class LoyaltyServiceControl {
         tierLinkedList = new LinkedList<>();
         memberList = new LinkedList<>();
         transactionList = new LinkedList<>();
-        requestQueue = new MaxHeapPriorityQueue<>(this::compareRequestPriority);
+        requestQueue = new LinkedQueue<>();
         requestHistory = new LinkedList<>();
         rewardList = new LinkedList<>();
         nextRequestNumber = 1;
@@ -653,7 +653,13 @@ public class LoyaltyServiceControl {
     }
 
     public int getPendingRequestCount() {
-        return requestQueue.getNumberOfEntries();
+        int count = 0;
+        Iterator<RedemptionRequest> iterator = requestQueue.getIterator();
+        while (iterator.hasNext()) {
+            iterator.next();
+            count++;
+        }
+        return count;
     }
 
     public String getNextRequestTable() {
@@ -962,22 +968,6 @@ public class LoyaltyServiceControl {
     }
 
     // ==================== Redemption Request Helpers ====================
-
-    /**
-     * Gives older requests higher heap priority. Requests submitted on the same
-     * date retain their FIFO order through the monotonically increasing request
-     * number.
-     */
-    private int compareRequestPriority(RedemptionRequest first, RedemptionRequest second) {
-        int requestDateCompare = second.getRequestDate().compareTo(first.getRequestDate());
-        if (requestDateCompare != 0) {
-            return requestDateCompare;
-        }
-
-        int firstRequestNumber = Integer.parseInt(first.getRequestId().substring(1));
-        int secondRequestNumber = Integer.parseInt(second.getRequestId().substring(1));
-        return Integer.compare(secondRequestNumber, firstRequestNumber);
-    }
 
     private boolean createPendingRequest(String memberId, String rewardId, int pointsRequested) {
         Member currentMember = getMemberById(memberId);
