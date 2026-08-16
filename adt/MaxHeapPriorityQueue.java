@@ -24,7 +24,7 @@ public class MaxHeapPriorityQueue<T extends Comparable<T>> implements PriorityQu
     if (initialCapacity < 1) {
       throw new IllegalArgumentException("Initial capacity must be greater than zero.");
     }
-    heap = (T[]) new Object[initialCapacity + 1];
+    heap = (T[]) new Comparable[initialCapacity + 1];
     numberOfEntries = 0;
     this.comparator = comparator;
   }
@@ -127,7 +127,7 @@ public class MaxHeapPriorityQueue<T extends Comparable<T>> implements PriorityQu
   @SuppressWarnings("unchecked")
   private void doubleArray() {
     T[] oldHeap = heap;
-    heap = (T[]) new Object[oldHeap.length * 2];
+    heap = (T[]) new Comparable[oldHeap.length * 2];
 
     for (int i = 1; i < oldHeap.length; i++) {
       heap[i] = oldHeap[i];

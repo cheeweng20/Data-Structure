@@ -10,9 +10,15 @@ import VIPPriorityRoomAllocation.entity.ReservationStatus;
 import VIPPriorityRoomAllocation.entity.Room;
 import VIPPriorityRoomAllocation.utility.InputValidator;
 import VIPPriorityRoomAllocation.utility.MessageUI;
+import VIPPriorityRoomAllocation.utility.ReportPdfExporter;
+import VIPPriorityRoomAllocation.utility.ReportPdfExporter.ChartType;
 import adt.ArrayList;
 import adt.ListInterface;
+import adt.SortedArrayList;
+import adt.SortedListInterface;
 import common.src.InputHelper;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
@@ -211,6 +217,8 @@ public class ReservationUI {
         MessageUI.displaySuccess("Allocation completed.");
         System.out.println("Confirmed : " + result.getConfirmedCount());
         System.out.println("Rejected  : " + result.getRejectedCount());
+
+        displaySuccessfulRoomAllocations();
     }
 
 
@@ -393,6 +401,48 @@ public class ReservationUI {
         System.out.println("Total reservations: " + reservations.getNumberOfEntries());
     }
 
+    private void displaySuccessfulRoomAllocations() {
+        SortedListInterface<Reservation> successfulReservations = new SortedArrayList<>(
+                (left, right) -> left.compareTo(right) * -1); // sorted list shows successful guests by highest loyalty priority first
+        Iterator<Reservation> iterator = reservationManager.getReservations().iterator();
+
+        while (iterator.hasNext()) {
+            Reservation reservation = iterator.next();
+            if (reservation.getStatus() == ReservationStatus.CONFIRMED
+                    && reservation.getAssignedRoom() != null) {
+                successfulReservations.add(reservation);
+            }
+        }
+
+        if (successfulReservations.isEmpty()) {
+            MessageUI.displayInfo("No successful room allocation found.");
+            return;
+        }
+
+        String border = "+-----+------------+--------------------+-----------+----------+------------+-------------+";
+        System.out.println("\n--- Successful Room Allocations ---");
+        System.out.println(border);
+        System.out.printf("| %-3s | %-10s | %-18s | %-9s | %-8s | %-10s | %-11s |%n",
+                "No.", "Res ID", "Guest Name", "Tier", "Room", "Check-In", "Status");
+        System.out.println(border);
+
+        for (int i = 1; i <= successfulReservations.getNumberOfEntries(); i++) {
+            Reservation reservation = successfulReservations.getEntry(i);
+            System.out.printf("| %-3d | %-10s | %-18.18s | %-9s | %-8s | %-10s | %-11s |%n",
+                    i,
+                    reservation.getConfirmationNumber(),
+                    reservation.getGuest().getFullName(),
+                    reservation.getGuest().getLoyaltyTier(),
+                    reservation.getAssignedRoom().getRoomNumber(),
+                    reservation.getCheckInDate(),
+                    reservation.getStatus());
+        }
+
+        System.out.println(border);
+        System.out.println("Total successful allocations: "
+                + successfulReservations.getNumberOfEntries());
+    }
+
     
     // show all reservations 
     private void displayReservationDetails(Reservation reservation) {
@@ -454,10 +504,27 @@ public class ReservationUI {
 
     private void displayMonthlyReservationSummary() {
         YearMonth reportMonth = promptReportMonth();
-        ListInterface<Reservation> reportReservations = new ArrayList<>();
+        String report = buildMonthlyReservationSummary(reportMonth);
+
+        if (displayReport(report, "No reservation records found for " + reportMonth + ".")) {
+            offerPdfExport("Monthly Reservation Summary", report, ChartType.RESERVATION_STATUS);
+        }
+    }
+
+    private void displayMonthlyRoomAllocationReport() {
+        YearMonth reportMonth = promptReportMonth();
+        String report = buildMonthlyRoomAllocationReport(reportMonth);
+
+        if (displayReport(report, "No allocated room records found for " + reportMonth + ".")) {
+            offerPdfExport("Monthly Room Allocation Report", report, ChartType.TIER_ALLOCATION);
+        }
+    }
+
+    private String buildMonthlyReservationSummary(YearMonth reportMonth) {
+        SortedListInterface<Reservation> reportReservations = new SortedArrayList<>(
+                (left, right) -> left.getBookingDateTime().compareTo(right.getBookingDateTime())); // sorted list arranges report by booking time
         Iterator<Reservation> iterator = reservationManager.getReservations().iterator();
-        int confirmedCount = 0;
-        int rejectedCount = 0;
+        int[] statusCounts = new int[ReservationStatus.values().length];
         double estimatedRevenue = 0.00;
 
         while (iterator.hasNext()) {
@@ -467,33 +534,47 @@ public class ReservationUI {
             }
 
             reportReservations.add(reservation);
-            if (reservation.getStatus() == ReservationStatus.CONFIRMED
-                    || reservation.getStatus() == ReservationStatus.CHECKED_IN) {
-                confirmedCount++;
+            statusCounts[reservation.getStatus().ordinal()]++;
+            if (reservation.getAssignedRoom() != null
+                    && reservation.getStatus() != ReservationStatus.REJECTED) {
                 estimatedRevenue += calculateReservationAmount(reservation);
-            } else if (reservation.getStatus() == ReservationStatus.REJECTED) {
-                rejectedCount++;
             }
         }
 
-        sortReservationsByBookingDateTime(reportReservations);
-        System.out.println("\n--- Monthly Reservation Summary: " + reportMonth + " ---");
-        System.out.println("Total Reservations : " + reportReservations.getNumberOfEntries());
-        System.out.println("Confirmed/Active   : " + confirmedCount);
-        System.out.println("Rejected           : " + rejectedCount);
-        System.out.printf("Estimated Revenue  : RM%.2f%n", estimatedRevenue);
-
-        printMonthlyReportHeader();
-        for (int i = 1; i <= reportReservations.getNumberOfEntries(); i++) {
-            printMonthlyReportLine(reportReservations.getEntry(i));
+        if (reportReservations.isEmpty()) {
+            return "";
         }
-        printMonthlyReportBorder();
+
+        StringBuilder report = new StringBuilder();
+        report.append("=== Monthly Reservation Summary: ").append(reportMonth).append(" ===\n");
+        report.append("Total Reservations : ").append(reportReservations.getNumberOfEntries()).append('\n');
+        report.append("Allocated Rooms    : ")
+                .append(statusCounts[ReservationStatus.CONFIRMED.ordinal()]
+                        + statusCounts[ReservationStatus.CHECKED_IN.ordinal()]
+                        + statusCounts[ReservationStatus.CHECKED_OUT.ordinal()])
+                .append('\n');
+        report.append("Checked-Out        : ")
+                .append(statusCounts[ReservationStatus.CHECKED_OUT.ordinal()])
+                .append('\n');
+        report.append("Rejected           : ")
+                .append(statusCounts[ReservationStatus.REJECTED.ordinal()]).append('\n');
+        report.append(String.format("Total Revenue      : RM%.2f%n%n", estimatedRevenue));
+        appendMonthlyReportHeader(report);
+
+        for (int i = 1; i <= reportReservations.getNumberOfEntries(); i++) {
+            appendMonthlyReportLine(report, reportReservations.getEntry(i));
+        }
+        appendMonthlyReportBorder(report);
+        appendStatusChartData(report, statusCounts);
+        return report.toString();
     }
 
-    private void displayMonthlyRoomAllocationReport() {
-        YearMonth reportMonth = promptReportMonth();
-        ListInterface<Reservation> reportReservations = new ArrayList<>();
+    private String buildMonthlyRoomAllocationReport(YearMonth reportMonth) {
+        SortedListInterface<Reservation> reportReservations = new SortedArrayList<>(
+                (left, right) -> left.getAssignedRoom().getRoomNumber()
+                        .compareToIgnoreCase(right.getAssignedRoom().getRoomNumber())); // sorted list arranges allocated rooms by room number
         Iterator<Reservation> iterator = reservationManager.getReservations().iterator();
+        int[] tierCounts = new int[LoyaltyTier.values().length];
 
         while (iterator.hasNext()) {
             Reservation reservation = iterator.next();
@@ -502,19 +583,71 @@ public class ReservationUI {
                     && reservation.getAssignedRoom() != null
                     && reservation.getStatus() != ReservationStatus.REJECTED) {
                 reportReservations.add(reservation);
+                tierCounts[reservation.getGuest().getLoyaltyTier().ordinal()]++;
             }
         }
 
-        sortReservationsByRoomNumber(reportReservations);
-        System.out.println("\n--- Monthly Room Allocation Report: " + reportMonth + " ---");
-        printAllocationReportHeader();
+        if (reportReservations.isEmpty()) {
+            return "";
+        }
+
+        StringBuilder report = new StringBuilder();
+        report.append("=== Monthly Room Allocation Report: ").append(reportMonth).append(" ===\n");
+        report.append("Total Allocated Reservations : ")
+                .append(reportReservations.getNumberOfEntries()).append('\n');
+        report.append("Room Type                    : ").append(Room.ROOM_TYPE).append("\n\n");
+        appendAllocationReportHeader(report);
 
         for (int i = 1; i <= reportReservations.getNumberOfEntries(); i++) {
-            printAllocationReportLine(reportReservations.getEntry(i));
+            appendAllocationReportLine(report, reportReservations.getEntry(i));
         }
-        printAllocationReportBorder();
-        System.out.println("Total Allocated Reservations : " + reportReservations.getNumberOfEntries());
-        System.out.println("Room Type                    : " + Room.ROOM_TYPE);
+        appendAllocationReportBorder(report);
+        appendTierChartData(report, tierCounts);
+        return report.toString();
+    }
+
+    private boolean displayReport(String report, String emptyMessage) {
+        if (report.isEmpty()) {
+            MessageUI.displayInfo(emptyMessage);
+            return false;
+        }
+
+        System.out.println(removeChartData(report));
+        return true;
+    }
+
+    private void offerPdfExport(String title, String report, ChartType chartType) {
+        String selection = InputHelper.inputString(
+                scanner, "Generate chart PDF and open it? (Y/N): ");
+        if (!selection.equalsIgnoreCase("Y") && !selection.equalsIgnoreCase("Yes")) {
+            return;
+        }
+
+        Path pdfPath;
+        try {
+            pdfPath = ReportPdfExporter.export(title, report, chartType);
+        } catch (IOException ex) {
+            MessageUI.displayError("Unable to generate PDF: " + ex.getMessage());
+            return;
+        }
+
+        MessageUI.displaySuccess("PDF generated: " + pdfPath);
+        try {
+            if (!ReportPdfExporter.open(pdfPath)) {
+                MessageUI.displayInfo("Open the PDF manually from the path shown above.");
+            }
+        } catch (IOException ex) {
+            MessageUI.displayInfo("The PDF was generated but could not be opened automatically: "
+                    + ex.getMessage());
+        }
+    }
+
+    private String removeChartData(String report) {
+        int chartDataIndex = report.indexOf("=== Reservation Status Chart Data ===");
+        if (chartDataIndex < 0) {
+            chartDataIndex = report.indexOf("=== Loyalty Tier Allocation Chart Data ===");
+        }
+        return chartDataIndex < 0 ? report : report.substring(0, chartDataIndex).trim();
     }
 
     private YearMonth promptReportMonth() {
@@ -539,85 +672,73 @@ public class ReservationUI {
         return nights * room.getPricePerNight();
     }
 
-    private void printMonthlyReportHeader() {
-        printMonthlyReportBorder();
-        System.out.printf("| %-10s | %-18s | %-9s | %-16s | %-10s | %-7s | %-12s |%n",
-                "Res ID", "Guest Name", "Tier", "Booking Time", "Check-In", "Room", "Amount");
-        printMonthlyReportBorder();
+    private void appendMonthlyReportHeader(StringBuilder report) {
+        appendMonthlyReportBorder(report);
+        report.append(String.format("| %-10s | %-18s | %-9s | %-16s | %-10s | %-7s | %-12s |%n",
+                "Res ID", "Guest Name", "Tier", "Booking Time", "Check-In", "Room", "Amount"));
+        appendMonthlyReportBorder(report);
     }
 
-    private void printMonthlyReportLine(Reservation reservation) {
+    private void appendMonthlyReportLine(StringBuilder report, Reservation reservation) {
         Room room = reservation.getAssignedRoom();
         String roomNumber = room == null ? "-" : room.getRoomNumber();
         String amount = room == null ? "-" : String.format("RM%.2f", calculateReservationAmount(reservation));
         String bookingTime = reservation.getBookingDateTime()
                 .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
 
-        System.out.printf("| %-10s | %-18.18s | %-9s | %-16s | %-10s | %-7s | %-12s |%n",
+        report.append(String.format("| %-10s | %-18.18s | %-9s | %-16s | %-10s | %-7s | %-12s |%n",
                 reservation.getConfirmationNumber(),
                 reservation.getGuest().getFullName(),
                 reservation.getGuest().getLoyaltyTier(),
                 bookingTime,
                 reservation.getCheckInDate(),
                 roomNumber,
-                amount);
+                amount));
     }
 
-    private void printMonthlyReportBorder() {
-        System.out.println(
-                "+------------+--------------------+-----------+------------------+------------+---------+--------------+");
+    private void appendMonthlyReportBorder(StringBuilder report) {
+        report.append("+------------+--------------------+-----------+------------------+------------+---------+--------------+\n");
     }
 
-    private void printAllocationReportHeader() {
-        printAllocationReportBorder();
-        System.out.printf("| %-12s | %-18s | %-9s | %-12s | %-12s | %-12s |%n",
-                "Res ID", "Guest Name", "Tier", "Room No.", "Check-In", "Status");
-        printAllocationReportBorder();
+    private void appendAllocationReportHeader(StringBuilder report) {
+        appendAllocationReportBorder(report);
+        report.append(String.format("| %-12s | %-18s | %-9s | %-12s | %-12s | %-12s |%n",
+                "Res ID", "Guest Name", "Tier", "Room No.", "Check-In", "Status"));
+        appendAllocationReportBorder(report);
     }
 
-    private void printAllocationReportLine(Reservation reservation) {
+    private void appendAllocationReportLine(StringBuilder report, Reservation reservation) {
         Room room = reservation.getAssignedRoom();
         String roomNumber = room == null ? "-" : room.getRoomNumber();
 
-        System.out.printf("| %-12s | %-18.18s | %-9s | %-12s | %-12s | %-12s |%n",
+        report.append(String.format("| %-12s | %-18.18s | %-9s | %-12s | %-12s | %-12s |%n",
                 reservation.getConfirmationNumber(),
                 reservation.getGuest().getFullName(),
                 reservation.getGuest().getLoyaltyTier(),
                 roomNumber,
                 reservation.getCheckInDate(),
-                reservation.getStatus());
+                reservation.getStatus()));
     }
 
-    private void printAllocationReportBorder() {
-        System.out.println("+--------------+--------------------+-----------+--------------+--------------+--------------+");
+    private void appendAllocationReportBorder(StringBuilder report) {
+        report.append("+--------------+--------------------+-----------+--------------+--------------+--------------+\n");
     }
 
-    private void sortReservationsByBookingDateTime(ListInterface<Reservation> reservations) {
-        for (int i = 1; i < reservations.getNumberOfEntries(); i++) {
-            for (int j = 1; j <= reservations.getNumberOfEntries() - i; j++) {
-                Reservation current = reservations.getEntry(j);
-                Reservation next = reservations.getEntry(j + 1);
-
-                if (current.compareTo(next) > 0) {
-                    reservations.replace(j, next);
-                    reservations.replace(j + 1, current);
-                }
-            }
+    private void appendStatusChartData(StringBuilder report, int[] statusCounts) {
+        report.append("\n=== Reservation Status Chart Data ===\n");
+        report.append(String.format("| %-14s | %-5s |%n", "Label", "Value"));
+        for (ReservationStatus status : ReservationStatus.values()) {
+            report.append(String.format("| %-14s | %-5d |%n",
+                    status, statusCounts[status.ordinal()]));
         }
     }
 
-    private void sortReservationsByRoomNumber(ListInterface<Reservation> reservations) {
-        for (int i = 1; i < reservations.getNumberOfEntries(); i++) {
-            for (int j = 1; j <= reservations.getNumberOfEntries() - i; j++) {
-                Reservation current = reservations.getEntry(j);
-                Reservation next = reservations.getEntry(j + 1);
-
-                if (current.getAssignedRoom().getRoomNumber()
-                        .compareToIgnoreCase(next.getAssignedRoom().getRoomNumber()) > 0) {
-                    reservations.replace(j, next);
-                    reservations.replace(j + 1, current);
-                }
-            }
+    private void appendTierChartData(StringBuilder report, int[] tierCounts) {
+        report.append("\n=== Loyalty Tier Allocation Chart Data ===\n");
+        report.append(String.format("| %-14s | %-5s |%n", "Label", "Value"));
+        for (LoyaltyTier tier : LoyaltyTier.values()) {
+            report.append(String.format("| %-14s | %-5d |%n",
+                    tier, tierCounts[tier.ordinal()]));
         }
     }
 
