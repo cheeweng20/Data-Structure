@@ -1,17 +1,16 @@
-package WalkInRegistrationAndReservation.control;
+package VIPPriorityRoomAllocation.control;
 
-import WalkInRegistrationAndReservation.dao.LoyaltyLookupDAO;
-import WalkInRegistrationAndReservation.dao.LoyaltyLookupDAO.LoyaltyProfile;
-import WalkInRegistrationAndReservation.dao.ReservationDAO;
-import WalkInRegistrationAndReservation.dao.RoomDAO;
-import WalkInRegistrationAndReservation.entity.BookingType;
-import WalkInRegistrationAndReservation.entity.Guest;
-import WalkInRegistrationAndReservation.entity.LoyaltyTier;
-import WalkInRegistrationAndReservation.entity.Reservation;
-import WalkInRegistrationAndReservation.entity.ReservationStatus;
-import WalkInRegistrationAndReservation.entity.Room;
-import WalkInRegistrationAndReservation.entity.Room.RoomStatus;
-import WalkInRegistrationAndReservation.utility.ConfirmationNumberGenerator;
+import VIPPriorityRoomAllocation.dao.LoyaltyLookupDAO;
+import VIPPriorityRoomAllocation.dao.LoyaltyLookupDAO.LoyaltyProfile;
+import VIPPriorityRoomAllocation.dao.ReservationDAO;
+import VIPPriorityRoomAllocation.dao.RoomDAO;
+import VIPPriorityRoomAllocation.entity.BookingType;
+import VIPPriorityRoomAllocation.entity.Guest;
+import VIPPriorityRoomAllocation.entity.Reservation;
+import VIPPriorityRoomAllocation.entity.ReservationStatus;
+import VIPPriorityRoomAllocation.entity.Room;
+import VIPPriorityRoomAllocation.entity.Room.RoomStatus;
+import VIPPriorityRoomAllocation.utility.ConfirmationNumberGenerator;
 import adt.ArrayList;
 import adt.ArrayStack;
 import adt.ListInterface;
@@ -47,7 +46,7 @@ public class ReservationManager {
         this.loyaltyLookupDAO = loyaltyLookupDAO;
         reservations = reservationDAO.retrieveFromFile();
         rooms = roomDAO.retrieveFromFile();
-        pendingPriorityReservations = new MaxHeapPriorityQueue<>(this::compareReservationPriority);
+        pendingPriorityReservations = new MaxHeapPriorityQueue<>();
         cancellationHistory = new ArrayStack<>();
         rebuildPendingPriorityQueue();
     }
@@ -346,23 +345,6 @@ public class ReservationManager {
         }
 
         return confirmationNumber;
-    }
-
-    private int compareReservationPriority(Reservation first, Reservation second) {
-        int tierCompare = Integer.compare(
-                first.getGuest().getLoyaltyTier().getPriorityScore(),
-                second.getGuest().getLoyaltyTier().getPriorityScore());
-
-        if (tierCompare != 0) {
-            return tierCompare;
-        }
-
-        int bookingTimeCompare = second.getBookingDateTime().compareTo(first.getBookingDateTime());
-        if (bookingTimeCompare != 0) {
-            return bookingTimeCompare;
-        }
-
-        return second.getConfirmationNumber().compareToIgnoreCase(first.getConfirmationNumber());
     }
 
     public static class AllocationResult {

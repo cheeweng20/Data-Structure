@@ -2,8 +2,8 @@ package FrontDeskService.boundary;
 
 import FrontDeskService.control.FrontDeskControl;
 import FrontDeskService.utility.FrontDeskValidator;
-import WalkInRegistrationAndReservation.entity.Reservation;
-import WalkInRegistrationAndReservation.entity.Room;
+import VIPPriorityRoomAllocation.entity.Reservation;
+import VIPPriorityRoomAllocation.entity.Room;
 import adt.ListInterface;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;

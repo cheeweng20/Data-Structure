@@ -1,11 +1,11 @@
 package FrontDeskService.control;
 
 import FrontDeskService.adt.ConfirmationSearchTree;
-import WalkInRegistrationAndReservation.dao.ReservationDAO;
-import WalkInRegistrationAndReservation.dao.RoomDAO;
-import WalkInRegistrationAndReservation.entity.Reservation;
-import WalkInRegistrationAndReservation.entity.Room;
-import WalkInRegistrationAndReservation.entity.Room.RoomStatus;
+import VIPPriorityRoomAllocation.dao.ReservationDAO;
+import VIPPriorityRoomAllocation.dao.RoomDAO;
+import VIPPriorityRoomAllocation.entity.Reservation;
+import VIPPriorityRoomAllocation.entity.Room;
+import VIPPriorityRoomAllocation.entity.Room.RoomStatus;
 import adt.ArrayList;
 import adt.ListInterface;
 import java.time.LocalDate;

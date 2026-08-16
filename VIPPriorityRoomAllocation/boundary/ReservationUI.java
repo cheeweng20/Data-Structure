@@ -1,14 +1,14 @@
-package WalkInRegistrationAndReservation.boundary;
+package VIPPriorityRoomAllocation.boundary;
 
-import WalkInRegistrationAndReservation.control.ReservationManager;
-import WalkInRegistrationAndReservation.control.ReservationManager.AllocationResult;
-import WalkInRegistrationAndReservation.dao.LoyaltyLookupDAO.LoyaltyProfile;
-import WalkInRegistrationAndReservation.entity.Guest;
-import WalkInRegistrationAndReservation.entity.LoyaltyTier;
-import WalkInRegistrationAndReservation.entity.Reservation;
-import WalkInRegistrationAndReservation.entity.ReservationStatus;
-import WalkInRegistrationAndReservation.entity.Room;
-import WalkInRegistrationAndReservation.utility.InputValidator;
+import VIPPriorityRoomAllocation.control.ReservationManager;
+import VIPPriorityRoomAllocation.control.ReservationManager.AllocationResult;
+import VIPPriorityRoomAllocation.dao.LoyaltyLookupDAO.LoyaltyProfile;
+import VIPPriorityRoomAllocation.entity.Guest;
+import VIPPriorityRoomAllocation.entity.LoyaltyTier;
+import VIPPriorityRoomAllocation.entity.Reservation;
+import VIPPriorityRoomAllocation.entity.ReservationStatus;
+import VIPPriorityRoomAllocation.entity.Room;
+import VIPPriorityRoomAllocation.utility.InputValidator;
 import adt.ArrayList;
 import adt.ListInterface;
 import java.time.LocalDate;

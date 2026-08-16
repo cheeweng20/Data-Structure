@@ -4,12 +4,16 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
-public class MaxHeapPriorityQueue<T> implements PriorityQueueInterface<T> {
+public class MaxHeapPriorityQueue<T extends Comparable<T>> implements PriorityQueueInterface<T> {
 
   private T[] heap;
   private int numberOfEntries;
   private final Comparator<? super T> comparator;
   private static final int DEFAULT_CAPACITY = 25;
+
+  public MaxHeapPriorityQueue() {
+    this(DEFAULT_CAPACITY, null);
+  }
 
   public MaxHeapPriorityQueue(Comparator<? super T> comparator) {
     this(DEFAULT_CAPACITY, comparator);
@@ -127,7 +131,7 @@ public class MaxHeapPriorityQueue<T> implements PriorityQueueInterface<T> {
   }
 
   private int compare(T left, T right) {
-    return comparator.compare(left, right);
+    return comparator == null ? left.compareTo(right) : comparator.compare(left, right);
   }
 
   private void swap(int firstIndex, int secondIndex) {
@@ -141,7 +145,7 @@ public class MaxHeapPriorityQueue<T> implements PriorityQueueInterface<T> {
     private final MaxHeapPriorityQueue<T> snapshot;
 
     private PriorityIterator() {
-      snapshot = new MaxHeapPriorityQueue<>(Math.max(1, numberOfEntries), comparator);
+      snapshot = new MaxHeapPriorityQueue<T>(Math.max(1, numberOfEntries), comparator);
       for (int i = 1; i <= numberOfEntries; i++) {
         snapshot.enqueue(heap[i]);
       }

@@ -3,7 +3,7 @@ import java.util.Scanner;
 import FrontDeskService.FrontDeskService;
 import HousekeepingAndTaskLog.HousekeepingAndTaskLog;
 import LoyaltyAndRewardsService.LoyaltyAndRewardsService;
-import WalkInRegistrationAndReservation.WalkInRegistrationAndReservation;
+import VIPPriorityRoomAllocation.VIPPriorityRoomAllocation;
 import common.src.Logo;
 
 public class Main {
@@ -40,7 +40,7 @@ public class Main {
 
             switch (userSelection) {
                 case 1:
-                    WalkInRegistrationAndReservation.WalkInRegistrationAndReservationMain(input);
+                    VIPPriorityRoomAllocation.VIPPriorityRoomAllocationMain(input);
                     break;
                 case 2:
                     HousekeepingAndTaskLog.HousekeepingAndTaskLogMain(input);

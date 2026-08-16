@@ -1,4 +1,4 @@
-package WalkInRegistrationAndReservation.entity;
+package VIPPriorityRoomAllocation.entity;
 
 import java.io.Serializable;
 import java.time.LocalDate;
@@ -154,11 +154,20 @@ public class Reservation implements Serializable, Comparable<Reservation> {
 
     @Override
     public int compareTo(Reservation other) {
-        int bookingDateTimeCompare = bookingDateTime.compareTo(other.bookingDateTime);
+        int tierCompare = Integer.compare(
+                getGuest().getLoyaltyTier().getPriorityScore(),
+                other.getGuest().getLoyaltyTier().getPriorityScore());
+
+        if (tierCompare != 0) {
+            return tierCompare;
+        }
+
+        int bookingDateTimeCompare = other.bookingDateTime.compareTo(bookingDateTime);
         if (bookingDateTimeCompare != 0) {
             return bookingDateTimeCompare;
         }
-        return confirmationNumber.compareToIgnoreCase(other.confirmationNumber);
+
+        return other.confirmationNumber.compareToIgnoreCase(confirmationNumber);
     }
 
     @Override

@@ -1,4 +1,4 @@
-package WalkInRegistrationAndReservation.entity;
+package VIPPriorityRoomAllocation.entity;
 
 import java.io.Serializable;
 import java.util.Objects;

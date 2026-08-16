@@ -1,4 +1,4 @@
-package WalkInRegistrationAndReservation.entity;
+package VIPPriorityRoomAllocation.entity;
 
 // reservation status
 /**

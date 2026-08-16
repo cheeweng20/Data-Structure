@@ -1,7 +1,7 @@
-package WalkInRegistrationAndReservation.dao;
+package VIPPriorityRoomAllocation.dao;
 
-import WalkInRegistrationAndReservation.entity.Room;
-import WalkInRegistrationAndReservation.entity.Room.RoomStatus;
+import VIPPriorityRoomAllocation.entity.Room;
+import VIPPriorityRoomAllocation.entity.Room.RoomStatus;
 import adt.ArrayList;
 import adt.ListInterface;
 import java.io.BufferedReader;
@@ -23,7 +23,7 @@ public class RoomDAO {
     private final String fileName;
 
     public RoomDAO() {
-        this("WalkInRegistrationAndReservation/src/rooms.csv");
+        this("VIPPriorityRoomAllocation/src/rooms.csv");
     }
 
     public RoomDAO(String fileName) {

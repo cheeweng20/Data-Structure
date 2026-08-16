@@ -1,12 +1,12 @@
-package WalkInRegistrationAndReservation.dao;
+package VIPPriorityRoomAllocation.dao;
 
-import WalkInRegistrationAndReservation.entity.BookingType;
-import WalkInRegistrationAndReservation.entity.Guest;
-import WalkInRegistrationAndReservation.entity.LoyaltyTier;
-import WalkInRegistrationAndReservation.entity.Reservation;
-import WalkInRegistrationAndReservation.entity.ReservationStatus;
-import WalkInRegistrationAndReservation.entity.Room;
-import WalkInRegistrationAndReservation.entity.Room.RoomStatus;
+import VIPPriorityRoomAllocation.entity.BookingType;
+import VIPPriorityRoomAllocation.entity.Guest;
+import VIPPriorityRoomAllocation.entity.LoyaltyTier;
+import VIPPriorityRoomAllocation.entity.Reservation;
+import VIPPriorityRoomAllocation.entity.ReservationStatus;
+import VIPPriorityRoomAllocation.entity.Room;
+import VIPPriorityRoomAllocation.entity.Room.RoomStatus;
 import adt.ArrayList;
 import adt.ListInterface;
 import java.io.BufferedReader;
@@ -32,7 +32,7 @@ public class ReservationDAO {
     private final String fileName;
 
     public ReservationDAO() {
-        this("WalkInRegistrationAndReservation/src/reservations.csv");
+        this("VIPPriorityRoomAllocation/src/reservations.csv");
     }
 
     public ReservationDAO(String fileName) {

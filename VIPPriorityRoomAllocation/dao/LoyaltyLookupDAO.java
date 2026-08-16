@@ -1,6 +1,6 @@
-package WalkInRegistrationAndReservation.dao;
+package VIPPriorityRoomAllocation.dao;
 
-import WalkInRegistrationAndReservation.entity.LoyaltyTier;
+import VIPPriorityRoomAllocation.entity.LoyaltyTier;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;

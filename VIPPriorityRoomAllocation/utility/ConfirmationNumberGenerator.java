@@ -1,4 +1,4 @@
-package WalkInRegistrationAndReservation.utility;
+package VIPPriorityRoomAllocation.utility;
 
 import java.security.SecureRandom;
 
