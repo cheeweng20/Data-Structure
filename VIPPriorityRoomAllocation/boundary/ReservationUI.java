@@ -9,13 +9,14 @@ import VIPPriorityRoomAllocation.entity.Reservation;
 import VIPPriorityRoomAllocation.entity.ReservationStatus;
 import VIPPriorityRoomAllocation.entity.Room;
 import VIPPriorityRoomAllocation.utility.InputValidator;
+import VIPPriorityRoomAllocation.utility.MessageUI;
 import adt.ArrayList;
 import adt.ListInterface;
+import common.src.InputHelper;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.time.temporal.ChronoUnit;
 import java.util.Iterator;
 import java.util.Scanner;
 
@@ -41,7 +42,7 @@ public class ReservationUI {
 
         while (!exit) {
             displayMenu();
-            String choice = scanner.nextLine().trim();
+            String choice = InputHelper.inputString(scanner, "Select an option: ").trim();
 
             switch (choice) {
                 case "1":
@@ -63,19 +64,16 @@ public class ReservationUI {
                     searchReservation();
                     break;
                 case "7":
-                    displayCancellationMenu();
-                    break;
-                case "8":
                     displayReservations(reservationManager.getReservations());
                     break;
-                case "9":
+                case "8":
                     displayReportMenu();
                     break;
                 case "0":
                     exit = true;
                     break;
                 default:
-                    System.out.println("Invalid option. Please try again.");
+                    MessageUI.displayError("Invalid option. Please try again.");
             }
         }
     }
@@ -85,29 +83,28 @@ public class ReservationUI {
                 + ".-----.----------------------------------------.\n"
                 + "| No. |                Function                |\n"
                 + ":-----+----------------------------------------:\n"
-                + "| 1.  | Submit Reservation Request             |\n"
+                + "| 1.  | Add New Reservation Request            |\n"
                 + ":-----+----------------------------------------:\n"
-                + "| 2.  | View Pending Priority Reservations     |\n"
+                + "| 2.  | View Priority Waiting Queue            |\n"
                 + ":-----+----------------------------------------:\n"
-                + "| 3.  | Allocate Available Rooms               |\n"
+                + "| 3.  | Allocate Rooms by Priority             |\n"
                 + ":-----+----------------------------------------:\n"
-                + "| 4.  | Check-In Confirmed Reservation         |\n"
+                + "| 4.  | Check-In Guest                         |\n"
                 + ":-----+----------------------------------------:\n"
                 + "| 5.  | Guest Check-Out                        |\n"
                 + ":-----+----------------------------------------:\n"
                 + "| 6.  | Search Reservation                     |\n"
                 + ":-----+----------------------------------------:\n"
-                + "| 7.  | Manage Reservation Cancellation        |\n"
+                + "| 7.  | View All Reservations                  |\n"
                 + ":-----+----------------------------------------:\n"
-                + "| 8.  | View All Reservations                  |\n"
-                + ":-----+----------------------------------------:\n"
-                + "| 9.  | View Reports                           |\n"
+                + "| 8.  | View Reports                           |\n"
                 + ":-----+----------------------------------------:\n"
                 + "| 0.  | Back                                   |\n"
                 + "'-----'----------------------------------------'");
-        System.out.print("Select an option: ");
     }
 
+
+    // add new reservation request
     private void submitReservationRequest() {
         System.out.println("\n--- Submit Reservation Request ---");
         Guest guest = inputGuest();
@@ -125,33 +122,33 @@ public class ReservationUI {
         System.out.println("Allocation       : Automatic by loyalty priority");
 
         if (!confirmYes("Submit this reservation request? (Y/N): ")) {
-            System.out.println("Reservation request cancelled.");
+            MessageUI.displayInfo("Reservation request cancelled.");
             return;
         }
 
         Reservation reservation = reservationManager.submitPriorityReservationRequest(
                 guest, checkInDate, checkOutDate);
 
-        System.out.println("\nReservation request submitted successfully.");
+        MessageUI.displaySuccess("Reservation request submitted successfully.");
         System.out.println("Request Number : " + reservation.getConfirmationNumber());
         System.out.println("Status         : " + reservation.getStatus());
         System.out.println("Pending Count  : " + reservationManager.getPendingPriorityReservationCount());
     }
 
     private Guest inputGuest() {
-        String guestId = promptRequiredText("Member ID / IC / Passport: ");
-        LoyaltyProfile profile = reservationManager.findLoyaltyProfile(guestId);
+        String guestId = promptRequiredText("Member ID : ");
+        LoyaltyProfile profile = reservationManager.findLoyaltyProfile(guestId);  // use the guestID
         String fullName;
         LoyaltyTier loyaltyTier;
 
         if (profile == null) {
-            System.out.println("No loyalty member record found. Guest will be treated as CLASSIC.");
+            MessageUI.displayInfo("No loyalty member record found. Guest will be treated as CLASSIC.");
             fullName = promptFullName();
             loyaltyTier = LoyaltyTier.CLASSIC;
         } else {
             fullName = profile.getName();
             loyaltyTier = profile.getLoyaltyTier();
-            System.out.println("Loyalty member found.");
+            MessageUI.displaySuccess("Loyalty member found.");
             System.out.println("Member Name      : " + fullName);
             System.out.println("Loyalty Tier     : " + loyaltyTier);
         }
@@ -160,11 +157,12 @@ public class ReservationUI {
         return new Guest(guestId, fullName, phoneNumber, loyaltyTier);
     }
 
+    //put the reservation inside the  waiting queue
     private void displayPendingPriorityReservations() {
         Iterator<Reservation> iterator = reservationManager.getPendingPriorityReservationIterator();
 
         if (!iterator.hasNext()) {
-            System.out.println("No pending priority reservation requests.");
+            MessageUI.displayInfo("No pending priority reservation requests.");
             return;
         }
 
@@ -192,11 +190,12 @@ public class ReservationUI {
                 + reservationManager.getPendingPriorityReservationCount());
     }
 
+    //allocate room to guest based on priority level
     private void allocateAvailableRooms() {
-        int pendingCount = reservationManager.getPendingPriorityReservationCount();
+        int pendingCount = reservationManager.getPendingPriorityReservationCount(); //show how many prequest pending
 
         if (pendingCount == 0) {
-            System.out.println("No pending priority reservation requests.");
+            MessageUI.displayInfo("No pending priority reservation requests.");
             return;
         }
 
@@ -204,34 +203,36 @@ public class ReservationUI {
         System.out.println("Pending Requests : " + pendingCount);
 
         if (!confirmYes("Allocate available rooms by loyalty priority? (Y/N): ")) {
-            System.out.println("Allocation cancelled.");
+            MessageUI.displayInfo("Allocation cancelled.");
             return;
         }
 
         AllocationResult result = reservationManager.allocateAvailableRooms();
-        System.out.println("\nAllocation completed.");
+        MessageUI.displaySuccess("Allocation completed.");
         System.out.println("Confirmed : " + result.getConfirmedCount());
         System.out.println("Rejected  : " + result.getRejectedCount());
     }
 
+
+    //guest checkin 
     private void checkInPriorityReservation() {
         System.out.println("\n--- Check-In Confirmed Reservation ---");
         String searchValue = promptRequiredText("Enter reservation ID / Member ID / Guest Name: ");
         Reservation reservation = reservationManager.findReservation(searchValue);
 
         if (reservation == null) {
-            System.out.println("Reservation not found.");
+            MessageUI.displayError("Reservation not found.");
             return;
         }
 
         if (reservation.getStatus() != ReservationStatus.CONFIRMED) {
-            System.out.println("Only confirmed reservations can be checked in.");
-            System.out.println("Current status: " + reservation.getStatus());
+            MessageUI.displayError("Only confirmed reservations can be checked in.");
+            MessageUI.displayInfo("Current status: " + reservation.getStatus());
             return;
         }
 
         if (reservation.getCheckInDate().isAfter(LocalDate.now())) {
-            System.out.println("Check-in date is " + reservation.getCheckInDate()
+            MessageUI.displayError("Check-in date is " + reservation.getCheckInDate()
                     + ". Guest cannot check in yet.");
             return;
         }
@@ -239,7 +240,7 @@ public class ReservationUI {
         displayReservationDetails(reservation);
 
         if (!confirmYes("Confirm guest check-in? (Y/N): ")) {
-            System.out.println("Check-in cancelled.");
+            MessageUI.displayInfo("Check-in cancelled.");
             return;
         }
 
@@ -248,19 +249,21 @@ public class ReservationUI {
             paymentMethod = promptPaymentMethod();
 
             if (!confirmYes("Confirm payment? (Y/N): ")) {
-                System.out.println("Payment cancelled. Check-in not completed.");
+                MessageUI.displayInfo("Payment cancelled. Check-in not completed.");
                 return;
             }
         }
 
         if (reservationManager.checkInPriorityReservation(searchValue, paymentMethod)) {
-            System.out.println("Check-in successful.");
+            MessageUI.displaySuccess("Check-in successful.");
             displayReservationDetails(reservationManager.findReservation(searchValue));
         } else {
-            System.out.println("Check-in failed.");
+            MessageUI.displayError("Check-in failed.");
         }
     }
 
+
+    //guest checkout
     private void checkOutReservation() {
         System.out.println("\n--- Guest Check-Out ---");
         Reservation reservation = selectReservationBySearch();
@@ -270,32 +273,33 @@ public class ReservationUI {
         }
 
         if (reservation.getStatus() != ReservationStatus.CHECKED_IN) {
-            System.out.println("Only checked-in reservations can be checked out.");
-            System.out.println("Current status: " + reservation.getStatus());
+            MessageUI.displayError("Only checked-in reservations can be checked out.");
+            MessageUI.displayInfo("Current status: " + reservation.getStatus());
             return;
         }
 
         displayReservationDetails(reservation);
 
         if (!confirmYes("Confirm guest check-out? (Y/N): ")) {
-            System.out.println("Check-out cancelled.");
+            MessageUI.displayInfo("Check-out cancelled.");
             return;
         }
 
         if (reservationManager.checkOutReservation(reservation.getConfirmationNumber())) {
-            System.out.println("Guest checked out successfully.");
+            MessageUI.displaySuccess("Guest checked out successfully.");
             displayReservationDetails(reservation);
         } else {
-            System.out.println("Check-out failed.");
+            MessageUI.displayError("Check-out failed.");
         }
     }
 
+    //search reservation 
     private void searchReservation() {
         System.out.println("\n--- Search Reservation ---");
         ListInterface<Reservation> matches = findReservationsByPrompt();
 
         if (matches.isEmpty()) {
-            System.out.println("Reservation not found.");
+            MessageUI.displayError("Reservation not found.");
             return;
         }
 
@@ -304,86 +308,11 @@ public class ReservationUI {
         }
     }
 
-    private void displayCancellationMenu() {
-        boolean back = false;
-
-        while (!back) {
-            System.out.println("\n--- Reservation Cancellation ---\n"
-                    + "1. Cancel Reservation\n"
-                    + "2. Undo Last Cancellation\n"
-                    + "0. Back");
-            System.out.print("Select an option: ");
-            String choice = scanner.nextLine().trim();
-
-            switch (choice) {
-                case "1":
-                    cancelReservation();
-                    break;
-                case "2":
-                    undoLastCancellation();
-                    break;
-                case "0":
-                    back = true;
-                    break;
-                default:
-                    System.out.println("Invalid option. Please try again.");
-            }
-        }
-    }
-
-    private void cancelReservation() {
-        Reservation reservation = selectReservationBySearch();
-
-        if (reservation == null) {
-            return;
-        }
-
-        if (!reservationManager.canCancelReservation(reservation)) {
-            System.out.println("Only future confirmed reservations with reserved rooms can be cancelled.");
-            return;
-        }
-
-        displayReservationDetails(reservation);
-
-        if (!confirmYes("Cancel this reservation? (Y/N): ")) {
-            System.out.println("Cancellation aborted.");
-            return;
-        }
-
-        if (reservationManager.cancelReservation(reservation.getConfirmationNumber())) {
-            System.out.println("Reservation cancelled successfully.");
-        } else {
-            System.out.println("Reservation cancellation failed.");
-        }
-    }
-
-    private void undoLastCancellation() {
-        Reservation reservation = reservationManager.getLastCancelledReservation();
-
-        if (reservation == null) {
-            System.out.println("No cancellation is available to undo in this session.");
-            return;
-        }
-
-        displayReservationDetails(reservation);
-
-        if (!confirmYes("Undo this cancellation? (Y/N): ")) {
-            System.out.println("Undo cancelled.");
-            return;
-        }
-
-        if (reservationManager.undoLastCancellation()) {
-            System.out.println("Cancellation undone successfully.");
-        } else {
-            System.out.println("Unable to undo cancellation because the original room is no longer available.");
-        }
-    }
-
     private Reservation selectReservationBySearch() {
         ListInterface<Reservation> matches = findReservationsByPrompt();
 
         if (matches.isEmpty()) {
-            System.out.println("Reservation not found.");
+            MessageUI.displayError("Reservation not found.");
             return null;
         }
 
@@ -423,13 +352,14 @@ public class ReservationUI {
             if (selection <= matches.getNumberOfEntries()) {
                 return matches.getEntry(selection);
             }
-            System.out.println("Please select a number from 1 to " + matches.getNumberOfEntries() + ".");
+            MessageUI.displayError("Please select a number from 1 to "
+                    + matches.getNumberOfEntries() + ".");
         }
     }
 
     public void displayReservations(ListInterface<Reservation> reservations) {
         if (reservations.isEmpty()) {
-            System.out.println("No reservation record found.");
+            MessageUI.displayInfo("No reservation record found.");
             return;
         }
 
@@ -463,11 +393,13 @@ public class ReservationUI {
         System.out.println("Total reservations: " + reservations.getNumberOfEntries());
     }
 
+    
+    // show all reservations 
     private void displayReservationDetails(Reservation reservation) {
         Guest guest = reservation.getGuest();
         Room room = reservation.getAssignedRoom();
-        long numberOfNights = ChronoUnit.DAYS.between(
-                reservation.getCheckInDate(), reservation.getCheckOutDate());
+        long numberOfNights = reservation.getCheckOutDate().toEpochDay()
+                - reservation.getCheckInDate().toEpochDay();
         double totalPrice = room == null ? 0.00 : numberOfNights * room.getPricePerNight();
 
         System.out.println("\n--- Reservation Details ---");
@@ -492,6 +424,8 @@ public class ReservationUI {
         System.out.println("Status           : " + reservation.getStatus());
     }
 
+    //MENU NEED TO MAKE THE CHANGES 
+
     private void displayReportMenu() {
         boolean back = false;
 
@@ -500,8 +434,7 @@ public class ReservationUI {
                     + "1. Monthly Reservation Summary\n"
                     + "2. Monthly Room Allocation Report\n"
                     + "0. Back");
-            System.out.print("Select an option: ");
-            String choice = scanner.nextLine().trim();
+            String choice = InputHelper.inputString(scanner, "Select an option: ").trim();
 
             switch (choice) {
                 case "1":
@@ -514,7 +447,7 @@ public class ReservationUI {
                     back = true;
                     break;
                 default:
-                    System.out.println("Invalid option. Please try again.");
+                    MessageUI.displayError("Invalid option. Please try again.");
             }
         }
     }
@@ -567,8 +500,7 @@ public class ReservationUI {
 
             if (YearMonth.from(reservation.getCheckInDate()).equals(reportMonth)
                     && reservation.getAssignedRoom() != null
-                    && reservation.getStatus() != ReservationStatus.REJECTED
-                    && reservation.getStatus() != ReservationStatus.CANCELLED) {
+                    && reservation.getStatus() != ReservationStatus.REJECTED) {
                 reportReservations.add(reservation);
             }
         }
@@ -587,11 +519,11 @@ public class ReservationUI {
 
     private YearMonth promptReportMonth() {
         while (true) {
-            System.out.print("Enter report month (yyyy-MM): ");
+            String input = InputHelper.inputString(scanner, "Enter report month (yyyy-MM): ").trim();
             try {
-                return YearMonth.parse(scanner.nextLine().trim());
+                return YearMonth.parse(input);
             } catch (DateTimeParseException ex) {
-                System.out.println("Invalid month. Please use yyyy-MM format.");
+                MessageUI.displayError("Invalid month. Please use yyyy-MM format.");
             }
         }
     }
@@ -602,7 +534,8 @@ public class ReservationUI {
             return 0.00;
         }
 
-        long nights = ChronoUnit.DAYS.between(reservation.getCheckInDate(), reservation.getCheckOutDate());
+        long nights = reservation.getCheckOutDate().toEpochDay()
+                - reservation.getCheckInDate().toEpochDay();
         return nights * room.getPricePerNight();
     }
 
@@ -696,7 +629,7 @@ public class ReservationUI {
                 return checkInDate;
             }
 
-            System.out.println("Check-in date cannot be before today.");
+            MessageUI.displayError("Check-in date cannot be before today.");
         }
     }
 
@@ -708,46 +641,43 @@ public class ReservationUI {
                 return checkOutDate;
             }
 
-            System.out.println("Check-out date must be after check-in date.");
+            MessageUI.displayError("Check-out date must be after check-in date.");
         }
     }
 
     private LocalDate promptDate(String prompt) {
         while (true) {
-            System.out.print(prompt);
-            String input = scanner.nextLine().trim();
+            String input = InputHelper.inputString(scanner, prompt).trim();
 
             try {
                 return LocalDate.parse(input);
             } catch (DateTimeParseException ex) {
-                System.out.println("Dates must use yyyy-MM-dd format.");
+                MessageUI.displayError("Dates must use yyyy-MM-dd format.");
             }
         }
     }
 
     private String promptFullName() {
         while (true) {
-            System.out.print("Full name: ");
-            String fullName = scanner.nextLine().trim();
+            String fullName = InputHelper.inputString(scanner, "Full name: ").trim();
 
             if (InputValidator.isValidName(fullName)) {
                 return fullName;
             }
 
-            System.out.println("Invalid name. Use 2-50 letters only; spaces, apostrophe, hyphen, and dot are allowed.");
+            MessageUI.displayError("Invalid name. Use 2-50 letters only; spaces, apostrophe, hyphen, and dot are allowed.");
         }
     }
 
     private String promptPhoneNumber() {
         while (true) {
-            System.out.print("Phone number: ");
-            String phoneNumber = scanner.nextLine().trim();
+            String phoneNumber = InputHelper.inputString(scanner, "Phone number: ").trim();
 
             if (InputValidator.isValidPhoneNumber(phoneNumber)) {
                 return phoneNumber;
             }
 
-            System.out.println("Invalid phone number. Please enter 7 to 20 digits.");
+            MessageUI.displayError("Invalid phone number. Please enter 7 to 20 digits.");
         }
     }
 
@@ -758,8 +688,7 @@ public class ReservationUI {
             System.out.println("2. Credit / Debit Card");
             System.out.println("3. Touch n Go");
             System.out.println("4. Online Banking");
-            System.out.print("Select payment method: ");
-            String choice = scanner.nextLine().trim();
+            String choice = InputHelper.inputString(scanner, "Select payment method: ").trim();
 
             switch (choice) {
                 case "1":
@@ -771,28 +700,26 @@ public class ReservationUI {
                 case "4":
                     return "Online Banking";
                 default:
-                    System.out.println("Invalid payment method. Please select 1 to 4.");
+                    MessageUI.displayError("Invalid payment method. Please select 1 to 4.");
             }
         }
     }
 
     private String promptRequiredText(String prompt) {
         while (true) {
-            System.out.print(prompt);
-            String value = scanner.nextLine().trim();
+            String value = InputHelper.inputString(scanner, prompt).trim();
 
             if (InputValidator.isNonBlank(value)) {
                 return value;
             }
 
-            System.out.println("This field is required.");
+            MessageUI.displayError("This field is required.");
         }
     }
 
     private int promptPositiveInteger(String prompt) {
         while (true) {
-            System.out.print(prompt);
-            String input = scanner.nextLine().trim();
+            String input = InputHelper.inputString(scanner, prompt).trim();
 
             try {
                 int value = Integer.parseInt(input);
@@ -803,14 +730,13 @@ public class ReservationUI {
                 // Re-prompt below.
             }
 
-            System.out.println("Please enter a positive number.");
+            MessageUI.displayError("Please enter a positive number.");
         }
     }
 
     private boolean confirmYes(String prompt) {
         while (true) {
-            System.out.print(prompt);
-            String input = scanner.nextLine().trim();
+            String input = InputHelper.inputString(scanner, prompt).trim();
 
             if (input.equalsIgnoreCase("Y")) {
                 return true;
@@ -820,7 +746,7 @@ public class ReservationUI {
                 return false;
             }
 
-            System.out.println("Please enter Y or N.");
+            MessageUI.displayError("Please enter Y or N.");
         }
     }
 

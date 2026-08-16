@@ -9,13 +9,13 @@ import java.security.SecureRandom;
 
 public final class ConfirmationNumberGenerator {
 
-    private static final SecureRandom RANDOM = new SecureRandom();
+    private static final SecureRandom RANDOM = new SecureRandom(); // safer random number generator
 
     private ConfirmationNumberGenerator() {
     }
 
     public static String generate() {
-        int number = 10_000_000 + RANDOM.nextInt(90_000_000);
-        return Integer.toString(number);
+        int number = 10_000_000 + RANDOM.nextInt(90_000_000); // keeps number within 8 digits
+        return Integer.toString(number); // convert number to reservation ID text
     }
 }

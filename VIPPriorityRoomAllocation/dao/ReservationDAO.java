@@ -1,6 +1,5 @@
 package VIPPriorityRoomAllocation.dao;
 
-import VIPPriorityRoomAllocation.entity.BookingType;
 import VIPPriorityRoomAllocation.entity.Guest;
 import VIPPriorityRoomAllocation.entity.LoyaltyTier;
 import VIPPriorityRoomAllocation.entity.Reservation;
@@ -28,7 +27,7 @@ public class ReservationDAO {
     private static final int INITIAL_CAPACITY = 100;
     private static final String HEADER = "ConfirmationNumber,GuestId,GuestName,PhoneNumber,LoyaltyTier,"
             + "AssignedRoomNumber,AssignedRoomPrice,AssignedRoomStatus,CheckInDate,CheckOutDate,"
-            + "BookingDateTime,BookingType,PaymentMethod,PaymentStatus,Status";
+            + "BookingDateTime,PaymentMethod,PaymentStatus,Status";
     private final String fileName;
 
     public ReservationDAO() {
@@ -40,10 +39,10 @@ public class ReservationDAO {
     }
 
     public ListInterface<Reservation> retrieveFromFile() {
-        ListInterface<Reservation> reservations = new ArrayList<>(INITIAL_CAPACITY);
+        ListInterface<Reservation> reservations = new ArrayList<>(INITIAL_CAPACITY); // stores loaded CSV records
 
         try (BufferedReader reader = new BufferedReader(new FileReader(fileName))) {
-            reader.readLine();
+            reader.readLine(); // skip CSV header
             String line;
 
             while ((line = reader.readLine()) != null) {
@@ -51,9 +50,9 @@ public class ReservationDAO {
                     continue;
                 }
 
-                String[] fields = line.split(",", -1);
-                if (fields.length < 15) {
-                    continue;
+                String[] fields = line.split(",", -1); // keep empty room/payment columns
+                if (fields.length < 14) {
+                    continue; // skip invalid rows
                 }
 
                 Guest guest = new Guest(
@@ -61,7 +60,7 @@ public class ReservationDAO {
                         fields[2],
                         fields[3],
                         parseLoyaltyTier(fields[4]));
-                Room assignedRoom = parseAssignedRoom(fields);
+                Room assignedRoom = parseAssignedRoom(fields); // null if room has not been allocated
 
                 reservations.add(new Reservation(
                         fields[0],
@@ -70,13 +69,12 @@ public class ReservationDAO {
                         LocalDate.parse(fields[8]),
                         LocalDate.parse(fields[9]),
                         LocalDateTime.parse(fields[10]),
-                        BookingType.valueOf(fields[11]),
+                        fields[11],
                         fields[12],
-                        fields[13],
-                        ReservationStatus.valueOf(fields[14])));
+                        ReservationStatus.valueOf(fields[13])));
             }
         } catch (FileNotFoundException ex) {
-            createReservationCSVFile();
+            createReservationCSVFile(); // create new CSV when running module for the first time
         } catch (IOException | IllegalArgumentException ex) {
             throw new IllegalStateException("Unable to load reservations.", ex);
         }
@@ -85,13 +83,13 @@ public class ReservationDAO {
     }
 
     public void saveToFile(ListInterface<Reservation> reservations) {
-        createParentDirectory();
+        createParentDirectory(); // make sure src folder exists before writing
 
         try (PrintWriter writer = new PrintWriter(new FileWriter(fileName))) {
-            writer.println(HEADER);
+            writer.println(HEADER); // always rewrite CSV with the correct column order
 
             for (int i = 1; i <= reservations.getNumberOfEntries(); i++) {
-                writer.println(toCsvLine(reservations.getEntry(i)));
+                writer.println(toCsvLine(reservations.getEntry(i))); // one reservation becomes one CSV row
             }
         } catch (IOException ex) {
             throw new IllegalStateException("Unable to save reservations.", ex);
@@ -100,25 +98,25 @@ public class ReservationDAO {
 
     private Room parseAssignedRoom(String[] fields) {
         if (fields[5].isEmpty()) {
-            return null;
+            return null; // pending or rejected reservation has no room assigned
         }
 
         double price = fields[6].isEmpty() ? 0.00 : Double.parseDouble(fields[6]);
         RoomStatus roomStatus = fields[7].isEmpty()
-                ? RoomStatus.RESERVED
+                ? RoomStatus.RESERVED // default when old row has room number but no status
                 : RoomStatus.valueOf(fields[7]);
         return new Room(fields[5], price, roomStatus);
     }
 
     private LoyaltyTier parseLoyaltyTier(String value) {
-        return LoyaltyTier.fromTierName(value);
+        return LoyaltyTier.fromTierName(value); // convert CSV text into enum
     }
 
     private String toCsvLine(Reservation reservation) {
         Guest guest = reservation.getGuest();
         Room assignedRoom = reservation.getAssignedRoom();
 
-        String assignedRoomNumber = "";
+        String assignedRoomNumber = ""; // empty values are saved when no room is allocated yet
         String assignedRoomPrice = "";
         String assignedRoomStatus = "";
 
@@ -139,14 +137,13 @@ public class ReservationDAO {
                 + reservation.getCheckInDate() + ","
                 + reservation.getCheckOutDate() + ","
                 + reservation.getBookingDateTime() + ","
-                + reservation.getBookingType() + ","
                 + reservation.getPaymentMethod() + ","
                 + reservation.getPaymentStatus() + ","
                 + reservation.getStatus();
     }
 
     private void createReservationCSVFile() {
-        createParentDirectory();
+        createParentDirectory(); // create folder first if missing
 
         try (PrintWriter writer = new PrintWriter(fileName)) {
             writer.println(HEADER);

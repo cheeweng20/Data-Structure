@@ -12,7 +12,7 @@ public class LoyaltyLookupDAO {
     private final String tierFileName;
 
     public LoyaltyLookupDAO() {
-        this("LoyaltyAndRewardsService/src/member.csv",
+        this("LoyaltyAndRewardsService/src/member.csv", // Chee Weng member data
                 "LoyaltyAndRewardsService/src/tier.csv");
     }
 
@@ -23,11 +23,11 @@ public class LoyaltyLookupDAO {
 
     public LoyaltyProfile findProfile(String memberId) {
         if (memberId == null || memberId.trim().isEmpty()) {
-            return null;
+            return null; // no ID entered, so no loyalty profile can be found
         }
 
         try (BufferedReader reader = new BufferedReader(new FileReader(memberFileName))) {
-            reader.readLine();
+            reader.readLine(); // skip CSV header
             String line;
 
             while ((line = reader.readLine()) != null) {
@@ -35,27 +35,27 @@ public class LoyaltyLookupDAO {
                     continue;
                 }
 
-                String[] fields = line.split(",", -1);
+                String[] fields = line.split(",", -1); // keep empty CSV columns
                 if (fields.length < 4 || !fields[0].equalsIgnoreCase(memberId.trim())) {
-                    continue;
+                    continue; // skip rows that are not the selected member
                 }
 
-                int points = Integer.parseInt(fields[2]);
+                int points = Integer.parseInt(fields[2]); // member points decide the tier
                 return new LoyaltyProfile(fields[0], fields[1], findTierByPoints(points));
             }
         } catch (IOException | NumberFormatException ex) {
-            return null;
+            return null; // if loyalty file cannot be read, treat as no member found
         }
 
         return null;
     }
 
     private LoyaltyTier findTierByPoints(int points) {
-        LoyaltyTier matchedTier = LoyaltyTier.CLASSIC;
-        int highestMinimumPoint = -1;
+        LoyaltyTier matchedTier = LoyaltyTier.CLASSIC; // default tier if no range matches
+        int highestMinimumPoint = -1; // keeps the strongest matching tier range
 
         try (BufferedReader reader = new BufferedReader(new FileReader(tierFileName))) {
-            reader.readLine();
+            reader.readLine(); // skip CSV header
             String line;
 
             while ((line = reader.readLine()) != null) {
@@ -70,16 +70,16 @@ public class LoyaltyLookupDAO {
 
                 int minimumPoint = Integer.parseInt(fields[2]);
                 int maximumPoint = Integer.parseInt(fields[3]);
-                boolean noUpperLimit = maximumPoint == 0;
+                boolean noUpperLimit = maximumPoint == 0; // 0 means this tier has no max point
                 boolean withinRange = points >= minimumPoint && (noUpperLimit || points <= maximumPoint);
 
                 if (withinRange && minimumPoint > highestMinimumPoint) {
-                    matchedTier = LoyaltyTier.fromTierName(fields[1]);
+                    matchedTier = LoyaltyTier.fromTierName(fields[1]); // convert CSV tier text to enum
                     highestMinimumPoint = minimumPoint;
                 }
             }
         } catch (IOException | NumberFormatException ex) {
-            return LoyaltyTier.CLASSIC;
+            return LoyaltyTier.CLASSIC; // fallback keeps allocation running safely
         }
 
         return matchedTier;

@@ -1,15 +1,12 @@
 package VIPPriorityRoomAllocation.entity;
 
-import java.io.Serializable;
 import java.util.Objects;
 
 // Stores a single-type hotel room used during priority allocation.
 /**
  * @author Wan Yin
  */
-public class Room implements Serializable {
-
-    private static final long serialVersionUID = 1L;
+public class Room {
     public static final String ROOM_TYPE = "Standard Room";
 
     public enum RoomStatus {

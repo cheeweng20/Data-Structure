@@ -1,15 +1,12 @@
 package VIPPriorityRoomAllocation.entity;
 
-import java.io.Serializable;
 import java.util.Objects;
 
 // Stores the guest profile used for priority room allocation.
 /**
  * @author Wan Yin
  */
-public class Guest implements Serializable {
-
-    private static final long serialVersionUID = 1L;
+public class Guest {
 
     private String guestId;
     private String fullName;

@@ -4,7 +4,6 @@ import VIPPriorityRoomAllocation.dao.LoyaltyLookupDAO;
 import VIPPriorityRoomAllocation.dao.LoyaltyLookupDAO.LoyaltyProfile;
 import VIPPriorityRoomAllocation.dao.ReservationDAO;
 import VIPPriorityRoomAllocation.dao.RoomDAO;
-import VIPPriorityRoomAllocation.entity.BookingType;
 import VIPPriorityRoomAllocation.entity.Guest;
 import VIPPriorityRoomAllocation.entity.Reservation;
 import VIPPriorityRoomAllocation.entity.ReservationStatus;
@@ -12,11 +11,9 @@ import VIPPriorityRoomAllocation.entity.Room;
 import VIPPriorityRoomAllocation.entity.Room.RoomStatus;
 import VIPPriorityRoomAllocation.utility.ConfirmationNumberGenerator;
 import adt.ArrayList;
-import adt.ArrayStack;
 import adt.ListInterface;
 import adt.MaxHeapPriorityQueue;
 import adt.PriorityQueueInterface;
-import adt.StackInterface;
 import java.time.LocalDate;
 import java.util.Iterator;
 
@@ -33,7 +30,6 @@ public class ReservationManager {
     private final ListInterface<Reservation> reservations;
     private final ListInterface<Room> rooms;
     private final PriorityQueueInterface<Reservation> pendingPriorityReservations;
-    private final StackInterface<String> cancellationHistory;
 
     public ReservationManager() {
         this(new ReservationDAO(), new RoomDAO(), new LoyaltyLookupDAO());
@@ -44,17 +40,18 @@ public class ReservationManager {
         this.reservationDAO = reservationDAO;
         this.roomDAO = roomDAO;
         this.loyaltyLookupDAO = loyaltyLookupDAO;
-        reservations = reservationDAO.retrieveFromFile();
-        rooms = roomDAO.retrieveFromFile();
-        pendingPriorityReservations = new MaxHeapPriorityQueue<>();
-        cancellationHistory = new ArrayStack<>();
-        rebuildPendingPriorityQueue();
+        reservations = reservationDAO.retrieveFromFile();    // load reservation from the files
+        rooms = roomDAO.retrieveFromFile();                     // load room 
+        pendingPriorityReservations = new MaxHeapPriorityQueue<>();   //create empty queue 
+        rebuildPendingPriorityQueue(); //put all reservation ((Pending) into the queue
     }
 
+    //Loyalty cheking
     public LoyaltyProfile findLoyaltyProfile(String guestId) {
         return loyaltyLookupDAO.findProfile(guestId);
     }
 
+    //create a new reservation and add it to the pending priority queue
     public Reservation submitPriorityReservationRequest(Guest guest,
             LocalDate checkInDate, LocalDate checkOutDate) {
         Reservation reservation = new Reservation(generateUniqueConfirmationNumber(), guest,
@@ -66,6 +63,7 @@ public class ReservationManager {
         return reservation;
     }
 
+    //view all pending priority reservations
     public Iterator<Reservation> getPendingPriorityReservationIterator() {
         return pendingPriorityReservations.getIterator();
     }
@@ -74,6 +72,7 @@ public class ReservationManager {
         return pendingPriorityReservations.getNumberOfEntries();
     }
 
+    //allocate the room
     public AllocationResult allocateAvailableRooms() {
         int confirmedCount = 0;
         int rejectedCount = 0;
@@ -97,6 +96,7 @@ public class ReservationManager {
         return new AllocationResult(confirmedCount, rejectedCount);
     }
 
+    //checkin room->needs payment
     public boolean checkInPriorityReservation(String searchValue, String paymentMethod) {
         Reservation reservation = findReservation(searchValue);
 
@@ -130,6 +130,7 @@ public class ReservationManager {
         return true;
     }
 
+    //check out room->needs cleaning 
     public boolean checkOutReservation(String confirmationNumber) {
         Reservation reservation = findByConfirmationNumber(confirmationNumber);
 
@@ -150,7 +151,8 @@ public class ReservationManager {
         saveData();
         return true;
     }
-
+    
+    // search reservations 
     public Reservation findReservation(String searchValue) {
         if (searchValue == null) {
             return null;
@@ -215,76 +217,6 @@ public class ReservationManager {
         return matches;
     }
 
-    public boolean cancelReservation(String confirmationNumber) {
-        Reservation reservation = findByConfirmationNumber(confirmationNumber);
-
-        if (!canCancelReservation(reservation)) {
-            return false;
-        }
-
-        reservation.setStatus(ReservationStatus.CANCELLED);
-
-        Room assignedRoom = reservation.getAssignedRoom();
-        if (assignedRoom != null) {
-            Room savedRoom = findRoomByNumber(assignedRoom.getRoomNumber());
-            if (savedRoom != null) {
-                savedRoom.setStatus(RoomStatus.AVAILABLE);
-                reservation.setAssignedRoom(savedRoom);
-            }
-        }
-
-        cancellationHistory.push(reservation.getConfirmationNumber());
-        saveData();
-        return true;
-    }
-
-    public boolean canCancelReservation(Reservation reservation) {
-        if (reservation == null
-                || reservation.getStatus() != ReservationStatus.CONFIRMED
-                || reservation.getCheckInDate() == null
-                || reservation.getCheckInDate().isBefore(LocalDate.now())
-                || reservation.getAssignedRoom() == null) {
-            return false;
-        }
-
-        Room savedRoom = findRoomByNumber(reservation.getAssignedRoom().getRoomNumber());
-        return savedRoom != null && savedRoom.getStatus() == RoomStatus.RESERVED;
-    }
-
-    public Reservation getLastCancelledReservation() {
-        while (!cancellationHistory.isEmpty()) {
-            Reservation reservation = findByConfirmationNumber(cancellationHistory.peek());
-
-            if (reservation != null && reservation.getStatus() == ReservationStatus.CANCELLED) {
-                return reservation;
-            }
-
-            cancellationHistory.pop();
-        }
-
-        return null;
-    }
-
-    public boolean undoLastCancellation() {
-        Reservation reservation = getLastCancelledReservation();
-
-        if (reservation == null || reservation.getAssignedRoom() == null) {
-            return false;
-        }
-
-        Room savedRoom = findRoomByNumber(reservation.getAssignedRoom().getRoomNumber());
-        if (savedRoom == null || savedRoom.getStatus() != RoomStatus.AVAILABLE) {
-            return false;
-        }
-
-        savedRoom.setStatus(RoomStatus.RESERVED);
-        reservation.setAssignedRoom(savedRoom);
-        reservation.setStatus(ReservationStatus.CONFIRMED);
-        cancellationHistory.pop();
-        saveData();
-        return true;
-    }
-
     public Room findAvailableRoom() {
         Iterator<Room> iterator = rooms.iterator();
 
@@ -326,6 +258,7 @@ public class ReservationManager {
         return rooms;
     }
 
+    //Rebuild the pending priority queue from the reservations list
     private void rebuildPendingPriorityQueue() {
         Iterator<Reservation> iterator = reservations.iterator();
 
@@ -337,6 +270,7 @@ public class ReservationManager {
         }
     }
 
+    //create confirmation num, if duplicate-->generate a new one
     private String generateUniqueConfirmationNumber() {
         String confirmationNumber = ConfirmationNumberGenerator.generate();
 
@@ -347,6 +281,7 @@ public class ReservationManager {
         return confirmationNumber;
     }
 
+    //RESUT     
     public static class AllocationResult {
 
         private final int confirmedCount;

@@ -30,12 +30,14 @@ public class MaxHeapPriorityQueue<T extends Comparable<T>> implements PriorityQu
   }
 
   @Override
+  //add new 
   public void enqueue(T newEntry) {
     ensureCapacity();
     heap[++numberOfEntries] = newEntry;
     reheapUp(numberOfEntries);
   }
 
+  //remove the highest priority entry from the queue and return it
   @Override
   public T dequeue() {
     if (isEmpty()) {
@@ -50,6 +52,7 @@ public class MaxHeapPriorityQueue<T extends Comparable<T>> implements PriorityQu
     return front;
   }
 
+  //view(Without remove))
   @Override
   public T getFront() {
     return isEmpty() ? null : heap[1];
@@ -74,6 +77,7 @@ public class MaxHeapPriorityQueue<T extends Comparable<T>> implements PriorityQu
   }
 
   @Override
+  //display all pending queue(Based on the priority)
   public Iterator<T> getIterator() {
     return new PriorityIterator();
   }

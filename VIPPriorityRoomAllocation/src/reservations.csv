@@ -1,1 +1,1 @@
-ConfirmationNumber,GuestId,GuestName,PhoneNumber,LoyaltyTier,AssignedRoomNumber,AssignedRoomPrice,AssignedRoomStatus,CheckInDate,CheckOutDate,BookingDateTime,BookingType,PaymentMethod,PaymentStatus,Status
+ConfirmationNumber,GuestId,GuestName,PhoneNumber,LoyaltyTier,AssignedRoomNumber,AssignedRoomPrice,AssignedRoomStatus,CheckInDate,CheckOutDate,BookingDateTime,PaymentMethod,PaymentStatus,Status
