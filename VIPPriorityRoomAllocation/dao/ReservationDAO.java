@@ -27,7 +27,7 @@ public class ReservationDAO {
     private static final int INITIAL_CAPACITY = 100;
     private static final String HEADER = "ConfirmationNumber,GuestId,GuestName,PhoneNumber,LoyaltyTier,"
             + "AssignedRoomNumber,AssignedRoomPrice,AssignedRoomStatus,CheckInDate,CheckOutDate,"
-            + "BookingDateTime,PaymentMethod,PaymentStatus,Status";
+            + "BookingDateTime,PaymentMethod,PaymentStatus,Status,TemporaryCheckOutAt";
     private final String fileName;
 
     public ReservationDAO() {
@@ -62,7 +62,7 @@ public class ReservationDAO {
                         parseLoyaltyTier(fields[4]));
                 Room assignedRoom = parseAssignedRoom(fields); // null if room has not been allocated
 
-                reservations.add(new Reservation(
+                Reservation reservation = new Reservation(
                         fields[0],
                         guest,
                         assignedRoom,
@@ -71,7 +71,11 @@ public class ReservationDAO {
                         LocalDateTime.parse(fields[10]),
                         fields[11],
                         fields[12],
-                        ReservationStatus.valueOf(fields[13])));
+                        ReservationStatus.valueOf(fields[13]));
+                if (fields.length >= 15 && !fields[14].trim().isEmpty()) {
+                    reservation.setTemporaryCheckOutAt(LocalDateTime.parse(fields[14].trim()));
+                }
+                reservations.add(reservation);
             }
         } catch (FileNotFoundException ex) {
             createReservationCSVFile(); // create new CSV when running module for the first time
@@ -139,7 +143,9 @@ public class ReservationDAO {
                 + reservation.getBookingDateTime() + ","
                 + reservation.getPaymentMethod() + ","
                 + reservation.getPaymentStatus() + ","
-                + reservation.getStatus();
+                + reservation.getStatus() + ","
+                + (reservation.getTemporaryCheckOutAt() == null
+                        ? "" : reservation.getTemporaryCheckOutAt());
     }
 
     private void createReservationCSVFile() {

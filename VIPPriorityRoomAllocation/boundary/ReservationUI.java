@@ -61,18 +61,12 @@ public class ReservationUI {
                     allocateAvailableRooms();
                     break;
                 case "4":
-                    checkInPriorityReservation();
-                    break;
-                case "5":
-                    checkOutReservation();
-                    break;
-                case "6":
                     searchReservation();
                     break;
-                case "7":
+                case "5":
                     displayReservations(reservationManager.getReservations());
                     break;
-                case "8":
+                case "6":
                     displayReportMenu();
                     break;
                 case "0":
@@ -95,15 +89,11 @@ public class ReservationUI {
                 + ":-----+----------------------------------------:\n"
                 + "| 3.  | Allocate Rooms by Priority             |\n"
                 + ":-----+----------------------------------------:\n"
-                + "| 4.  | Check-In Guest                         |\n"
+                + "| 4.  | Search Reservation                     |\n"
                 + ":-----+----------------------------------------:\n"
-                + "| 5.  | Guest Check-Out                        |\n"
+                + "| 5.  | View All Reservations                  |\n"
                 + ":-----+----------------------------------------:\n"
-                + "| 6.  | Search Reservation                     |\n"
-                + ":-----+----------------------------------------:\n"
-                + "| 7.  | View All Reservations                  |\n"
-                + ":-----+----------------------------------------:\n"
-                + "| 8.  | View Reports                           |\n"
+                + "| 6.  | View Reports                           |\n"
                 + ":-----+----------------------------------------:\n"
                 + "| 0.  | Back                                   |\n"
                 + "'-----'----------------------------------------'");
@@ -232,85 +222,6 @@ public class ReservationUI {
     }
 
 
-    //guest checkin 
-    private void checkInPriorityReservation() {
-        System.out.println("\n--- Check-In Confirmed Reservation ---");
-        String searchValue = promptRequiredText("Enter reservation ID / Member ID / Guest Name: ");
-        Reservation reservation = reservationManager.findReservation(searchValue);
-
-        if (reservation == null) {
-            MessageUI.displayError("Reservation not found.");
-            return;
-        }
-
-        if (reservation.getStatus() != ReservationStatus.CONFIRMED) {
-            MessageUI.displayError("Only confirmed reservations can be checked in.");
-            MessageUI.displayInfo("Current status: " + reservation.getStatus());
-            return;
-        }
-
-        if (reservation.getCheckInDate().isAfter(LocalDate.now())) {
-            MessageUI.displayError("Check-in date is " + reservation.getCheckInDate()
-                    + ". Guest cannot check in yet.");
-            return;
-        }
-
-        displayReservationDetails(reservation);
-
-        if (!confirmYes("Confirm guest check-in? (Y/N): ")) {
-            MessageUI.displayInfo("Check-in cancelled.");
-            return;
-        }
-
-        String paymentMethod = reservation.getPaymentMethod();
-        if (!"PAID".equalsIgnoreCase(reservation.getPaymentStatus())) {
-            paymentMethod = promptPaymentMethod();
-
-            if (!confirmYes("Confirm payment? (Y/N): ")) {
-                MessageUI.displayInfo("Payment cancelled. Check-in not completed.");
-                return;
-            }
-        }
-
-        if (reservationManager.checkInPriorityReservation(searchValue, paymentMethod)) {
-            MessageUI.displaySuccess("Check-in successful.");
-            displayReservationDetails(reservationManager.findReservation(searchValue));
-        } else {
-            MessageUI.displayError("Check-in failed.");
-        }
-    }
-
-
-    //guest checkout
-    private void checkOutReservation() {
-        System.out.println("\n--- Guest Check-Out ---");
-        Reservation reservation = selectReservationBySearch();
-
-        if (reservation == null) {
-            return;
-        }
-
-        if (reservation.getStatus() != ReservationStatus.CHECKED_IN) {
-            MessageUI.displayError("Only checked-in reservations can be checked out.");
-            MessageUI.displayInfo("Current status: " + reservation.getStatus());
-            return;
-        }
-
-        displayReservationDetails(reservation);
-
-        if (!confirmYes("Confirm guest check-out? (Y/N): ")) {
-            MessageUI.displayInfo("Check-out cancelled.");
-            return;
-        }
-
-        if (reservationManager.checkOutReservation(reservation.getConfirmationNumber())) {
-            MessageUI.displaySuccess("Guest checked out successfully.");
-            displayReservationDetails(reservation);
-        } else {
-            MessageUI.displayError("Check-out failed.");
-        }
-    }
-
     //search reservation 
     private void searchReservation() {
         System.out.println("\n--- Search Reservation ---");
@@ -326,53 +237,9 @@ public class ReservationUI {
         }
     }
 
-    private Reservation selectReservationBySearch() {
-        ListInterface<Reservation> matches = findReservationsByPrompt();
-
-        if (matches.isEmpty()) {
-            MessageUI.displayError("Reservation not found.");
-            return null;
-        }
-
-        return selectReservation(matches);
-    }
-
     private ListInterface<Reservation> findReservationsByPrompt() {
         String searchValue = promptRequiredText("Enter reservation ID / Member ID / Guest Name: ");
         return reservationManager.findMatchingReservations(searchValue);
-    }
-
-    private Reservation selectReservation(ListInterface<Reservation> matches) {
-        if (matches.getNumberOfEntries() == 1) {
-            return matches.getEntry(1);
-        }
-
-        System.out.println("\n--- Matching Reservations ---");
-        String border = "+-----+--------------+----------------------+-----------+------------+";
-        System.out.println(border);
-        System.out.printf("| %-3s | %-12s | %-20s | %-9s | %-10s |%n",
-                "No.", "Reservation", "Guest", "Tier", "Status");
-        System.out.println(border);
-
-        for (int i = 1; i <= matches.getNumberOfEntries(); i++) {
-            Reservation reservation = matches.getEntry(i);
-            System.out.printf("| %-3d | %-12s | %-20.20s | %-9s | %-10s |%n",
-                    i,
-                    reservation.getConfirmationNumber(),
-                    reservation.getGuest().getFullName(),
-                    reservation.getGuest().getLoyaltyTier(),
-                    reservation.getStatus());
-        }
-        System.out.println(border);
-
-        while (true) {
-            int selection = promptPositiveInteger("Select reservation number: ");
-            if (selection <= matches.getNumberOfEntries()) {
-                return matches.getEntry(selection);
-            }
-            MessageUI.displayError("Please select a number from 1 to "
-                    + matches.getNumberOfEntries() + ".");
-        }
     }
 
     public void displayReservations(ListInterface<Reservation> reservations) {
@@ -815,30 +682,6 @@ public class ReservationUI {
         }
     }
 
-    private String promptPaymentMethod() {
-        while (true) {
-            System.out.println("\n--- Payment Method ---");
-            System.out.println("1. Cash");
-            System.out.println("2. Credit / Debit Card");
-            System.out.println("3. Touch n Go");
-            System.out.println("4. Online Banking");
-            String choice = InputHelper.inputString(scanner, "Select payment method: ").trim();
-
-            switch (choice) {
-                case "1":
-                    return "Cash";
-                case "2":
-                    return "Credit / Debit Card";
-                case "3":
-                    return "Touch n Go";
-                case "4":
-                    return "Online Banking";
-                default:
-                    MessageUI.displayError("Invalid payment method. Please select 1 to 4.");
-            }
-        }
-    }
-
     private String promptRequiredText(String prompt) {
         while (true) {
             String value = InputHelper.inputString(scanner, prompt).trim();
@@ -848,23 +691,6 @@ public class ReservationUI {
             }
 
             MessageUI.displayError("This field is required.");
-        }
-    }
-
-    private int promptPositiveInteger(String prompt) {
-        while (true) {
-            String input = InputHelper.inputString(scanner, prompt).trim();
-
-            try {
-                int value = Integer.parseInt(input);
-                if (value > 0) {
-                    return value;
-                }
-            } catch (NumberFormatException ex) {
-                // Re-prompt below.
-            }
-
-            MessageUI.displayError("Please enter a positive number.");
         }
     }
 

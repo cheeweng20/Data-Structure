@@ -15,6 +15,7 @@ import java.util.Iterator;
 
 public class HousekeepingControl {
 
+    private static final String LATE_CHECKOUT_REMARK_PREFIX = "Late Checkout | Confirmation: ";
     private final HousekeepingTaskDAO housekeepingTaskDAO;
     private final RoomDAO roomDAO;
     private final ListInterface<HousekeepingTask> tasks;
@@ -22,8 +23,16 @@ public class HousekeepingControl {
     private final StackInterface<StatusChange> rollbackLog;
 
     public HousekeepingControl() {
-        housekeepingTaskDAO = new HousekeepingTaskDAO();
-        roomDAO = new RoomDAO();
+        this(new HousekeepingTaskDAO(), new RoomDAO());
+    }
+
+    public HousekeepingControl(HousekeepingTaskDAO housekeepingTaskDAO, RoomDAO roomDAO) {
+        if (housekeepingTaskDAO == null || roomDAO == null) {
+            throw new IllegalArgumentException("Housekeeping task and room data access objects are required.");
+        }
+
+        this.housekeepingTaskDAO = housekeepingTaskDAO;
+        this.roomDAO = roomDAO;
         tasks = housekeepingTaskDAO.retrieveFromFile();
         rooms = roomDAO.retrieveFromFile();
         rollbackLog = new ArrayStack<>();
@@ -71,6 +80,50 @@ public class HousekeepingControl {
         task.setRemarks(reason);
         saveData();
         return true;
+    }
+
+    /**
+     * Creates or refreshes the blocked housekeeping task for a guest who has
+     * been granted a late checkout. The confirmation number in the remarks
+     * makes repeated notifications for the same stay idempotent.
+     *
+     * @return the persisted task, or {@code null} when the notification data
+     *         is invalid or the room does not exist
+     */
+    public HousekeepingTask notifyLateCheckout(String roomNumber, String confirmationNumber,
+            String guestName, LocalDateTime extendedCheckOutAt,
+            LocalDateTime expectedReadyAt, String reason) {
+        String normalizedRoomNumber = normalizeRequiredText(roomNumber);
+        String normalizedConfirmationNumber = normalizeRequiredText(confirmationNumber);
+        String normalizedGuestName = normalizeRequiredText(guestName);
+        String normalizedReason = normalizeRequiredText(reason);
+
+        if (normalizedRoomNumber == null || normalizedConfirmationNumber == null
+                || normalizedGuestName == null || normalizedReason == null
+                || extendedCheckOutAt == null || expectedReadyAt == null
+                || expectedReadyAt.isBefore(extendedCheckOutAt)
+                || !roomExists(normalizedRoomNumber)) {
+            return null;
+        }
+
+        HousekeepingTask task = findLateCheckoutTask(normalizedRoomNumber,
+                normalizedConfirmationNumber);
+        String remarks = buildLateCheckoutRemarks(normalizedConfirmationNumber,
+                normalizedGuestName, extendedCheckOutAt, normalizedReason);
+
+        if (task == null) {
+            task = new HousekeepingTask(generateTaskId(), normalizedRoomNumber,
+                    "Unassigned", TaskStatus.BLOCKED, LocalDateTime.now(), expectedReadyAt,
+                    remarks);
+            tasks.add(task);
+        } else {
+            task.setStatus(TaskStatus.BLOCKED);
+            task.setExpectedReadyAt(expectedReadyAt);
+            task.setRemarks(remarks);
+        }
+
+        saveData();
+        return task;
     }
 
     public StatusChange rollbackLastChange() {
@@ -173,6 +226,49 @@ public class HousekeepingControl {
 
     public void saveData() {
         housekeepingTaskDAO.saveToFile(tasks);
+    }
+
+    private HousekeepingTask findLateCheckoutTask(String roomNumber,
+            String confirmationNumber) {
+        Iterator<HousekeepingTask> iterator = tasks.iterator();
+        String confirmationMarker = LATE_CHECKOUT_REMARK_PREFIX
+                + sanitizeRemarkValue(confirmationNumber) + " |";
+
+        while (iterator.hasNext()) {
+            HousekeepingTask task = iterator.next();
+
+            if (task.getRoomNumber().equalsIgnoreCase(roomNumber)
+                    && task.getRemarks() != null
+                    && task.getRemarks().startsWith(confirmationMarker)) {
+                return task;
+            }
+        }
+
+        return null;
+    }
+
+    private String buildLateCheckoutRemarks(String confirmationNumber, String guestName,
+            LocalDateTime extendedCheckOutAt, String reason) {
+        return LATE_CHECKOUT_REMARK_PREFIX + sanitizeRemarkValue(confirmationNumber)
+                + " | Guest: " + sanitizeRemarkValue(guestName)
+                + " | Extended Checkout: " + extendedCheckOutAt
+                + " | Reason: " + sanitizeRemarkValue(reason);
+    }
+
+    private String normalizeRequiredText(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String normalizedValue = value.trim();
+        return normalizedValue.isEmpty() ? null : normalizedValue;
+    }
+
+    private String sanitizeRemarkValue(String value) {
+        return value.replace("|", "/")
+                .replace(",", ";")
+                .replace('\r', ' ')
+                .replace('\n', ' ');
     }
 
     private String generateTaskId() {

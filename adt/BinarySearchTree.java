@@ -1,20 +1,24 @@
-package FrontDeskService.adt;
+package adt;
 
 /**
- * Binary-search-tree ADT used by the Front Desk Service.
- * The key is an eight-digit confirmation number.
+ * A binary-search-tree implementation of a key-value search tree ADT.
  *
- * @author Front Desk Service team
+ * @param <K> the comparable key type
+ * @param <V> the value type
  */
-public class ConfirmationSearchTree<T> {
-    private Node root;
+public class BinarySearchTree<K extends Comparable<? super K>, V>
+        implements SearchTreeInterface<K, V> {
 
-    public void add(String key, T value) {
+    private Node<K, V> root;
+
+    @Override
+    public void add(K key, V value) {
         root = add(root, key, value);
     }
 
-    public T search(String key) {
-        Node current = root;
+    @Override
+    public V search(K key) {
+        Node<K, V> current = root;
         while (current != null) {
             int comparison = key.compareTo(current.key);
             if (comparison == 0) {
@@ -25,10 +29,11 @@ public class ConfirmationSearchTree<T> {
         return null;
     }
 
-    private Node add(Node node, String key, T value) {
+    private Node<K, V> add(Node<K, V> node, K key, V value) {
         if (node == null) {
-            return new Node(key, value);
+            return new Node<>(key, value);
         }
+
         int comparison = key.compareTo(node.key);
         if (comparison < 0) {
             node.left = add(node.left, key, value);
@@ -40,13 +45,13 @@ public class ConfirmationSearchTree<T> {
         return node;
     }
 
-    private class Node {
-        private final String key;
-        private T value;
-        private Node left;
-        private Node right;
+    private static class Node<K, V> {
+        private final K key;
+        private V value;
+        private Node<K, V> left;
+        private Node<K, V> right;
 
-        private Node(String key, T value) {
+        private Node(K key, V value) {
             this.key = key;
             this.value = value;
         }
