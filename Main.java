@@ -5,12 +5,13 @@ import HousekeepingAndTaskLog.HousekeepingAndTaskLog;
 import LoyaltyAndRewardsService.LoyaltyAndRewardsService;
 import VIPPriorityRoomAllocation.VIPPriorityRoomAllocation;
 import common.src.Logo;
+import common.src.ConsoleStyle;
 
 public class Main {
     private static void display() {
         Logo.displayMain();
 
-        System.out.println("\r\n" + //
+        System.out.println(ConsoleStyle.menu("\r\n" + //
                 ".------.----------------------------------------------------.\r\n" + //
                 "| No.  |                      Function                      |\r\n" + //
                 ":------+----------------------------------------------------:\r\n" + //
@@ -23,9 +24,9 @@ public class Main {
                 "|   4. | Loyalty and Rewards service                        |\r\n" + //
                 "'------'----------------------------------------------------'\r\n" + //
                 "\r\n" + //
-                "");
+                ""));
 
-        System.out.print("Enter a number to select function(0 to exit): ");
+        System.out.print(ConsoleStyle.prompt("Enter a number to select function (0 to exit): "));
     }
 
     public static void main(String[] args) {
@@ -52,7 +53,7 @@ public class Main {
                     LoyaltyAndRewardsService.LoyaltyAndRewardsServiceMain(input);
                     break;
                 case 0:
-                    System.out.println("Thank You for your using");
+                    System.out.println(ConsoleStyle.success("Thank you for using TARUMT Resort."));
                     exit = true;
                     break;
                 default:

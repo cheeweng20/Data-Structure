@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.Iterator;
 import java.util.Scanner;
+import common.src.ConsoleStyle;
 
 public class HousekeepingUI {
 
@@ -55,25 +56,25 @@ public class HousekeepingUI {
                     exit = true;
                     break;
                 default:
-                    System.out.println("Invalid option. Please try again.");
+                    printError("Invalid option. Please try again.");
             }
         }
     }
 
     private void displayMenu() {
-        System.out.println("\n--- Housekeeping and Task Log ---");
-        System.out.println("1. Add Cleaning Task");
-        System.out.println("2. Update Room Cleaning Status");
-        System.out.println("3. Roll Back Last Status Change");
-        System.out.println("4. Record Late Check-Out Delay");
-        System.out.println("5. Search Task by Room");
-        System.out.println("6. View Reports");
-        System.out.println("0. Back");
-        System.out.print("Select an option: ");
+        printTitle("Housekeeping and Task Log");
+        System.out.println(ConsoleStyle.menu("1. Add Cleaning Task\n"
+                + "2. Update Room Cleaning Status\n"
+                + "3. Roll Back Last Status Change\n"
+                + "4. Record Late Check-Out Delay\n"
+                + "5. Search Task by Room\n"
+                + "6. View Reports\n"
+                + "0. Back"));
+        printPrompt("Select an option: ");
     }
 
     private void addCleaningTask() {
-        System.out.println("\n--- Add Cleaning Task ---");
+        printTitle("Add Cleaning Task");
         String roomNumber = promptRoomNumber();
         String assignedStaff = promptRequiredText("Assigned staff: ");
         LocalDateTime expectedReadyAt = promptDateTime("Expected ready time (yyyy-MM-ddTHH:mm): ");
@@ -82,17 +83,17 @@ public class HousekeepingUI {
         HousekeepingTask task = housekeepingControl.addTask(roomNumber, assignedStaff,
                 expectedReadyAt, remarks);
 
-        System.out.println("Cleaning task added.");
+        printSuccess("Cleaning task added.");
         displayTaskDetails(task);
     }
 
     private void updateCleaningStatus() {
-        System.out.println("\n--- Update Cleaning Status ---");
+        printTitle("Update Cleaning Status");
         String taskId = promptRequiredText("Task ID: ");
         HousekeepingTask task = housekeepingControl.findTaskById(taskId);
 
         if (task == null) {
-            System.out.println("Task not found.");
+            printError("Task not found.");
             return;
         }
 
@@ -101,34 +102,34 @@ public class HousekeepingUI {
         String reason = promptText("Note: ");
 
         if (housekeepingControl.updateTaskStatus(taskId, newStatus, reason)) {
-            System.out.println("Status updated.");
+            printSuccess("Status updated.");
             displayTaskDetails(housekeepingControl.findTaskById(taskId));
         } else {
-            System.out.println("Status update failed.");
+            printError("Status update failed.");
         }
     }
 
     private void rollbackLastChange() {
-        System.out.println("\n--- Roll Back Last Status Change ---");
+        printTitle("Roll Back Last Status Change");
         StatusChange statusChange = housekeepingControl.rollbackLastChange();
 
         if (statusChange == null) {
-            System.out.println("No change is available to roll back.");
+            System.out.println(ConsoleStyle.info("No change is available to roll back."));
             return;
         }
 
-        System.out.println("Rolled back task " + statusChange.getTaskId()
+        printSuccess("Rolled back task " + statusChange.getTaskId()
                 + " from " + statusChange.getNewStatus()
                 + " to " + statusChange.getPreviousStatus() + ".");
     }
 
     private void recordLateCheckout() {
-        System.out.println("\n--- Record Late Check-Out Delay ---");
+        printTitle("Record Late Check-Out Delay");
         String taskId = promptRequiredText("Task ID: ");
         HousekeepingTask task = housekeepingControl.findTaskById(taskId);
 
         if (task == null) {
-            System.out.println("Task not found.");
+            printError("Task not found.");
             return;
         }
 
@@ -137,15 +138,15 @@ public class HousekeepingUI {
         String reason = promptRequiredText("Delay reason: ");
 
         if (housekeepingControl.recordLateCheckout(taskId, newExpectedReadyAt, reason)) {
-            System.out.println("Late check-out delay recorded.");
+            printSuccess("Late check-out delay recorded.");
             displayTaskDetails(housekeepingControl.findTaskById(taskId));
         } else {
-            System.out.println("Late check-out update failed.");
+            printError("Late check-out update failed.");
         }
     }
 
     private void searchByRoom() {
-        System.out.println("\n--- Search Task by Room ---");
+        printTitle("Search Task by Room");
         String roomNumber = promptRoomNumber();
         displayTasks(housekeepingControl.searchByRoom(roomNumber));
     }
@@ -154,12 +155,12 @@ public class HousekeepingUI {
         boolean back = false;
 
         while (!back) {
-            System.out.println("\n--- Housekeeping Reports ---");
-            System.out.println("1. Task Status Summary");
-            System.out.println("2. Overdue Cleaning Tasks");
-            System.out.println("3. List All Tasks");
-            System.out.println("0. Back");
-            System.out.print("Select an option: ");
+            printTitle("Housekeeping Reports");
+            System.out.println(ConsoleStyle.menu("1. Task Status Summary\n"
+                    + "2. Overdue Cleaning Tasks\n"
+                    + "3. List All Tasks\n"
+                    + "0. Back"));
+            printPrompt("Select an option: ");
             String choice = scanner.nextLine().trim();
 
             switch (choice) {
@@ -176,15 +177,15 @@ public class HousekeepingUI {
                     back = true;
                     break;
                 default:
-                    System.out.println("Invalid option. Please try again.");
+                    printError("Invalid option. Please try again.");
             }
         }
     }
 
     private void displayStatusSummaryReport() {
-        System.out.println("\n--- Task Status Summary Report ---");
-        System.out.printf("%-25s %8s%n", "Status", "Total");
-        System.out.println("-----------------------------------");
+        printTitle("Task Status Summary Report");
+        System.out.print(ConsoleStyle.tableHeader(String.format("%-25s %8s%n", "Status", "Total")));
+        System.out.println(ConsoleStyle.tableBorder("-----------------------------------"));
 
         for (TaskStatus status : TaskStatus.values()) {
             System.out.printf("%-25s %8d%n", status, housekeepingControl.countByStatus(status));
@@ -193,35 +194,35 @@ public class HousekeepingUI {
 
     private String promptRoomNumber() {
         while (true) {
-            System.out.print("Room number: ");
+            printPrompt("Room number: ");
             String roomNumber = scanner.nextLine().trim();
 
             if (HousekeepingValidator.isValidRoomNumber(roomNumber)) {
                 if (housekeepingControl.roomExists(roomNumber)) {
                     return roomNumber;
                 }
-                System.out.println("Room number does not exist.");
+                printError("Room number does not exist.");
             } else {
-                System.out.println("Invalid room number. Use letters, numbers, or hyphen only.");
+                printError("Invalid room number. Use letters, numbers, or hyphen only.");
             }
         }
     }
 
     private String promptRequiredText(String prompt) {
         while (true) {
-            System.out.print(prompt);
+            printPrompt(prompt);
             String value = scanner.nextLine().trim();
 
             if (HousekeepingValidator.isNonBlank(value)) {
                 return value;
             }
 
-            System.out.println("This field is required.");
+            printError("This field is required.");
         }
     }
 
     private String promptText(String prompt) {
-        System.out.print(prompt);
+        printPrompt(prompt);
         String value = scanner.nextLine().trim();
 
         if (HousekeepingValidator.isBlank(value)) {
@@ -233,7 +234,7 @@ public class HousekeepingUI {
 
     private LocalDateTime promptDateTime(String prompt) {
         while (true) {
-            System.out.print(prompt);
+            printPrompt(prompt);
             String input = scanner.nextLine().trim();
 
             try {
@@ -243,22 +244,22 @@ public class HousekeepingUI {
                     return dateTime;
                 }
 
-                System.out.println("Date and time cannot be in the past.");
+                printError("Date and time cannot be in the past.");
             } catch (DateTimeParseException ex) {
-                System.out.println("Use yyyy-MM-ddTHH:mm format. Example: 2026-07-30T14:30");
+                printError("Use yyyy-MM-ddTHH:mm format. Example: 2026-07-30T14:30");
             }
         }
     }
 
     private TaskStatus promptStatus() {
         while (true) {
-            System.out.println("\n--- Cleaning Status ---");
-            System.out.println("1. Dirty");
-            System.out.println("2. Cleaning In Progress");
-            System.out.println("3. Inspected");
-            System.out.println("4. Ready for Check-In");
-            System.out.println("5. Blocked");
-            System.out.print("Select status: ");
+            printTitle("Cleaning Status");
+            System.out.println(ConsoleStyle.menu("1. Dirty\n"
+                    + "2. Cleaning In Progress\n"
+                    + "3. Inspected\n"
+                    + "4. Ready for Check-In\n"
+                    + "5. Blocked"));
+            printPrompt("Select status: ");
             String choice = scanner.nextLine().trim();
 
             switch (choice) {
@@ -273,14 +274,14 @@ public class HousekeepingUI {
                 case "5":
                     return TaskStatus.BLOCKED;
                 default:
-                    System.out.println("Invalid status. Please try again.");
+                    printError("Invalid status. Please try again.");
             }
         }
     }
 
     private void displayTasks(ListInterface<HousekeepingTask> tasks) {
         if (tasks.isEmpty()) {
-            System.out.println("No housekeeping task record found.");
+            System.out.println(ConsoleStyle.info("No housekeeping task record found."));
             return;
         }
 
@@ -295,7 +296,7 @@ public class HousekeepingUI {
     }
 
     private void displayTaskDetails(HousekeepingTask task) {
-        System.out.println("\n--- Housekeeping Task Details ---");
+        printTitle("Housekeeping Task Details");
         System.out.println("Task ID           : " + task.getTaskId());
         System.out.println("Room Number       : " + task.getRoomNumber());
         System.out.println("Assigned Staff    : " + task.getAssignedStaff());
@@ -307,8 +308,9 @@ public class HousekeepingUI {
 
     private void printTableHeader() {
         printTableBorder();
-        System.out.printf("| %-8s | %-6s | %-16s | %-22s | %-16s |%n",
-                "Task ID", "Room", "Staff", "Status", "Ready Time");
+        System.out.print(ConsoleStyle.tableHeader(String.format(
+                "| %-8s | %-6s | %-16s | %-22s | %-16s |%n",
+                "Task ID", "Room", "Staff", "Status", "Ready Time")));
         printTableBorder();
     }
 
@@ -322,7 +324,24 @@ public class HousekeepingUI {
     }
 
     private void printTableBorder() {
-        System.out.println("+----------+--------+------------------+------------------------+------------------+");
+        System.out.println(ConsoleStyle.tableBorder(
+                "+----------+--------+------------------+------------------------+------------------+"));
+    }
+
+    private void printTitle(String title) {
+        System.out.println(ConsoleStyle.title("\n--- " + title + " ---"));
+    }
+
+    private void printPrompt(String prompt) {
+        System.out.print(ConsoleStyle.prompt(prompt));
+    }
+
+    private void printSuccess(String message) {
+        System.out.println(ConsoleStyle.successBadge() + " " + message);
+    }
+
+    private void printError(String message) {
+        System.out.println(ConsoleStyle.failedBadge() + " " + message);
     }
 
     public static void main(String[] args) {

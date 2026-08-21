@@ -1,5 +1,7 @@
 package VIPPriorityRoomAllocation.utility;
 
+import common.src.ConsoleStyle;
+
 // Displays messages shared by the reservation boundary classes.
 /**
  * @author Wan Yin
@@ -10,14 +12,14 @@ public final class MessageUI {
     }
 
     public static void displaySuccess(String message) {
-        System.out.println("[SUCCESS] " + message);
+        System.out.println(ConsoleStyle.successBadge() + " " + message);
     }
 
     public static void displayError(String message) {
-        System.out.println("[ERROR] " + message);
+        System.out.println(ConsoleStyle.failedBadge() + " " + message);
     }
 
     public static void displayInfo(String message) {
-        System.out.println("[INFO] " + message);
+        System.out.println(ConsoleStyle.infoBadge() + " " + message);
     }
 }

@@ -19,6 +19,7 @@ import LoyaltyAndRewardsService.utility.ReportPdfExporter.ChartType;
 import LoyaltyAndRewardsService.utility.Verification;
 import common.src.InputHelper;
 import common.src.Logo;
+import common.src.ConsoleStyle;
 
 /**
  * Handles all actor interaction for loyalty and rewards use cases.
@@ -67,7 +68,7 @@ public final class LoyaltyUI {
 
     private void displayMenu() {
         Logo.displayLoyaltyAndRewardsService();
-        System.out.println("\r\n" + //
+        System.out.println(ConsoleStyle.menu("\r\n" + //
                 ".-----.-------------------.\r\n" + //
                 "| No. |     Function      |\r\n" + //
                 ":-----+-------------------:\r\n" + //
@@ -78,8 +79,9 @@ public final class LoyaltyUI {
                 "|  3. | Report            |\r\n" + //
                 "'-----'-------------------'\r\n" + //
                 "\r\n" + //
-                "");
-        System.out.print("Enter Number of Function(0 to exit current program): ");
+                ""));
+        System.out.print(ConsoleStyle.prompt(
+                "Enter number of function (0 to exit current program): "));
     }
 
     private void displayStartupNotifications() {
@@ -90,7 +92,7 @@ public final class LoyaltyUI {
         int pendingRequestCount = serviceControl.getPendingRequestCount();
 
         System.out.println();
-        System.out.println("=== Loyalty Notifications ===");
+        System.out.println(ConsoleStyle.title("=== Loyalty Notifications ==="));
         if (serviceControl.getRecentlyExpiredPointTotal() > 0) {
             MessageUI.displayPointsExpired(serviceControl.getRecentlyExpiredPointTotal());
         }
@@ -131,7 +133,7 @@ public final class LoyaltyUI {
         boolean exit = false;
 
         while (!exit) {
-            System.out.println("\r\n"
+            System.out.println(ConsoleStyle.menu("\r\n"
                     + ".-----.----------------------.\r\n"
                     + "| No. |       Function       |\r\n"
                     + ":-----+----------------------:\r\n"
@@ -146,7 +148,7 @@ public final class LoyaltyUI {
                     + "| 5.  | Member List          |\r\n"
                     + ":-----+----------------------:\r\n"
                     + "| 6.  | Member Promotion     |\r\n"
-                    + "'-----'----------------------'\r\n");
+                    + "'-----'----------------------'\r\n"));
 
             int userEntry = InputHelper.inputInt(scanner, "Please enter a number (0 to exit): ");
             switch (userEntry) {
@@ -283,12 +285,12 @@ public final class LoyaltyUI {
         }
 
         String border = "+------------+----------------------+------------------+------------------+------------+------------+----------------+";
-        System.out.println(border);
-        System.out.printf(
+        System.out.println(ConsoleStyle.tableBorder(border));
+        System.out.print(ConsoleStyle.tableHeader(String.format(
                 "| %-10s | %-20s | %-16s | %-16s | %10s | %10s | %-14s |%n",
                 "Member ID", "Name", "Passport", "Phone Number", "Available", "Lifetime",
-                "Tier");
-        System.out.println(border);
+                "Tier")));
+        System.out.println(ConsoleStyle.tableBorder(border));
         for (int i = 1; i <= serviceControl.getMemberCount(); i++) {
             Member member = serviceControl.getMemberEntry(i);
             System.out.printf(
@@ -298,14 +300,14 @@ public final class LoyaltyUI {
                     member.getLifetimePointsEarned(),
                     serviceControl.getTierNameById(member.getTierId()));
         }
-        System.out.println(border);
+        System.out.println(ConsoleStyle.tableBorder(border));
     }
 
     private void requestOperator() {
         boolean exit = false;
 
         while (!exit) {
-            System.out.println("\r\n"
+            System.out.println(ConsoleStyle.menu("\r\n"
                     + ".-----.---------------------------.\r\n"
                     + "| No. |         Function          |\r\n"
                     + ":-----+---------------------------:\r\n"
@@ -314,7 +316,7 @@ public final class LoyaltyUI {
                     + "|  2. | View Pending Requests     |\r\n"
                     + ":-----+---------------------------:\r\n"
                     + "|  3. | View Request History      |\r\n"
-                    + "'-----'---------------------------'\r\n");
+                    + "'-----'---------------------------'\r\n"));
 
             int userEntry = InputHelper.inputInt(scanner, "Please enter a number (0 to exit): ");
             scanner.nextLine();
@@ -383,10 +385,11 @@ public final class LoyaltyUI {
     }
 
     private void printRequestTableHeader(String title) {
-        System.out.println("=== " + title + " ===");
+        System.out.println(ConsoleStyle.title("=== " + title + " ==="));
         printRequestTableBorder();
-        System.out.printf("| %-10s | %-10s | %-20s | %16s | %-10s | %-30s |%n",
-                "Request ID", "Member ID", "Confirmation No.", "Points", "Date", "Status");
+        System.out.print(ConsoleStyle.tableHeader(String.format(
+                "| %-10s | %-10s | %-20s | %16s | %-10s | %-30s |%n",
+                "Request ID", "Member ID", "Confirmation No.", "Points", "Date", "Status")));
         printRequestTableBorder();
     }
 
@@ -398,8 +401,8 @@ public final class LoyaltyUI {
     }
 
     private void printRequestTableBorder() {
-        System.out.println(
-                "+------------+------------+----------------------+------------------+------------+--------------------------------+");
+        System.out.println(ConsoleStyle.tableBorder(
+                "+------------+------------+----------------------+------------------+------------+--------------------------------+"));
     }
 
     private void displayTierTable() {
@@ -410,10 +413,11 @@ public final class LoyaltyUI {
         }
 
         String border = "+------------+----------------------+------------+------------+";
-        System.out.println(border);
-        System.out.printf("| %-10s | %-20s | %10s | %10s |%n",
-                "Tier ID", "Tier Level", "Min Points", "Max Points");
-        System.out.println(border);
+        System.out.println(ConsoleStyle.tableBorder(border));
+        System.out.print(ConsoleStyle.tableHeader(String.format(
+                "| %-10s | %-20s | %10s | %10s |%n",
+                "Tier ID", "Tier Level", "Min Points", "Max Points")));
+        System.out.println(ConsoleStyle.tableBorder(border));
         while (iterator.hasNext()) {
             Tier tier = iterator.next();
             String maxPoints = tier.getMaxPoint() == 0
@@ -421,21 +425,21 @@ public final class LoyaltyUI {
             System.out.printf("| %-10.10s | %-20.20s | %10d | %10s |%n",
                     tier.getTierId(), tier.getTierLevel(), tier.getMinPoint(), maxPoints);
         }
-        System.out.println(border);
+        System.out.println(ConsoleStyle.tableBorder(border));
     }
 
     private void reportOperator() {
         boolean exit = false;
 
         while (!exit) {
-            System.out.println("\r\n"
+            System.out.println(ConsoleStyle.menu("\r\n"
                     + ".-----.-----------------------------.\r\n"
                     + "| No. |          Function           |\r\n"
                     + ":-----+-----------------------------:\r\n"
                     + "|  1. | Expiring Points Alert       |\r\n"
                     + ":-----+-----------------------------:\r\n"
                     + "|  2. | Business Cycle Summary      |\r\n"
-                    + "'-----'-----------------------------'\r\n");
+                    + "'-----'-----------------------------'\r\n"));
 
             int selection = InputHelper.inputInt(scanner, "Enter a number (0 to exit): ");
             switch (selection) {

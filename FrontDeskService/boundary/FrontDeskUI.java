@@ -9,6 +9,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.Iterator;
 import java.util.Scanner;
+import common.src.ConsoleStyle;
 
 /** Console boundary for front-desk enquiries and reports.
  * @author Front Desk Service team
@@ -25,14 +26,14 @@ public class FrontDeskUI {
     public void start() {
         boolean exit = false;
         while (!exit) {
-            System.out.println("\n--- Front Desk Service ---");
-            System.out.println("1. Search Guest by Confirmation Number");
-            System.out.println("2. Check Room Availability");
-            System.out.println("3. View Billing Details");
-            System.out.println("4. Arrivals Report");
-            System.out.println("5. Outstanding Balance Report");
-            System.out.println("0. Back");
-            System.out.print("Select an option: ");
+            System.out.println(ConsoleStyle.title("\n--- Front Desk Service ---"));
+            System.out.println(ConsoleStyle.menu("1. Search Guest by Confirmation Number\n"
+                    + "2. Check Room Availability\n"
+                    + "3. View Billing Details\n"
+                    + "4. Arrivals Report\n"
+                    + "5. Outstanding Balance Report\n"
+                    + "0. Back"));
+            System.out.print(ConsoleStyle.prompt("Select an option: "));
             switch (scanner.nextLine().trim()) {
                 case "1": searchGuest(); break;
                 case "2": checkAvailability(); break;
@@ -40,7 +41,7 @@ public class FrontDeskUI {
                 case "4": arrivalsReport(); break;
                 case "5": outstandingBalanceReport(); break;
                 case "0": exit = true; break;
-                default: System.out.println("Invalid option. Please try again.");
+                default: System.out.println(ConsoleStyle.error("Invalid option. Please try again."));
             }
         }
     }
@@ -55,11 +56,12 @@ public class FrontDeskUI {
     private void checkAvailability() {
         ListInterface<Room> rooms = control.findAvailableRooms();
         if (rooms.isEmpty()) {
-            System.out.println("No available standard room was found.");
+            System.out.println(ConsoleStyle.info("No available standard room was found."));
             return;
         }
-        System.out.println("\nAvailable rooms (sorted by nightly rate)");
-        System.out.printf("%-8s %-14s %-12s%n", "Room", "Type", "Rate (RM)");
+        System.out.println(ConsoleStyle.title("\nAvailable rooms (sorted by nightly rate)"));
+        System.out.print(ConsoleStyle.tableHeader(
+                String.format("%-8s %-14s %-12s%n", "Room", "Type", "Rate (RM)")));
         Iterator<Room> iterator = rooms.iterator();
         while (iterator.hasNext()) {
             Room room = iterator.next();
@@ -73,7 +75,7 @@ public class FrontDeskUI {
         if (reservation == null) return;
         displayReservation(reservation);
         if (reservation.getAssignedRoom() == null) {
-            System.out.println("Billing is unavailable until a room has been assigned.");
+            System.out.println(ConsoleStyle.info("Billing is unavailable until a room has been assigned."));
             return;
         }
         System.out.printf("Total stay charge: RM %.2f%n", control.calculateBill(reservation));
@@ -83,39 +85,41 @@ public class FrontDeskUI {
 
     private void arrivalsReport() {
         LocalDate date = promptDate("Arrival date (yyyy-MM-dd): ");
-        System.out.print("Payment status (PAID, UNPAID, or ALL): ");
+        System.out.print(ConsoleStyle.prompt("Payment status (PAID, UNPAID, or ALL): "));
         String paymentStatus = scanner.nextLine().trim().toUpperCase();
         if (!paymentStatus.equals("PAID") && !paymentStatus.equals("UNPAID") && !paymentStatus.equals("ALL")) {
-            System.out.println("Use PAID, UNPAID, or ALL.");
+            System.out.println(ConsoleStyle.error("Use PAID, UNPAID, or ALL."));
             return;
         }
-        System.out.println("\nArrivals report for " + date + " (sorted by guest name)");
+        System.out.println(ConsoleStyle.title("\nArrivals report for " + date + " (sorted by guest name)"));
         displayReservationList(control.getArrivalsReport(date, paymentStatus));
     }
 
     private void outstandingBalanceReport() {
-        System.out.println("\nOutstanding balance report (sorted by amount, highest first)");
+        System.out.println(ConsoleStyle.title("\nOutstanding balance report (sorted by amount, highest first)"));
         displayReservationList(control.getOutstandingBalanceReport());
     }
 
     private Reservation findReservation() {
-        System.out.print("8-digit confirmation number: ");
+        System.out.print(ConsoleStyle.prompt("8-digit confirmation number: "));
         String confirmationNumber = scanner.nextLine().trim();
         if (!FrontDeskValidator.isConfirmationNumber(confirmationNumber)) {
-            System.out.println("Confirmation number must contain exactly 8 digits.");
+            System.out.println(ConsoleStyle.error("Confirmation number must contain exactly 8 digits."));
             return null;
         }
         Reservation reservation = control.findByConfirmationNumber(confirmationNumber);
-        if (reservation == null) System.out.println("Guest record not found.");
+        if (reservation == null) System.out.println(ConsoleStyle.error("Guest record not found."));
         return reservation;
     }
 
     private void displayReservationList(ListInterface<Reservation> reservations) {
         if (reservations.isEmpty()) {
-            System.out.println("No matching reservation found.");
+            System.out.println(ConsoleStyle.info("No matching reservation found."));
             return;
         }
-        System.out.printf("%-10s %-20s %-10s %-12s %-12s%n", "Confirm No.", "Guest", "Room", "Payment", "Bill (RM)");
+        System.out.print(ConsoleStyle.tableHeader(String.format(
+                "%-10s %-20s %-10s %-12s %-12s%n",
+                "Confirm No.", "Guest", "Room", "Payment", "Bill (RM)")));
         Iterator<Reservation> iterator = reservations.iterator();
         while (iterator.hasNext()) {
             Reservation reservation = iterator.next();
@@ -128,7 +132,7 @@ public class FrontDeskUI {
     }
 
     private void displayReservation(Reservation reservation) {
-        System.out.println("\n--- Guest Information ---");
+        System.out.println(ConsoleStyle.title("\n--- Guest Information ---"));
         System.out.println("Confirmation no. : " + reservation.getConfirmationNumber());
         System.out.println("Guest name       : " + reservation.getGuest().getFullName());
         System.out.println("Guest ID         : " + reservation.getGuest().getGuestId());
@@ -141,21 +145,21 @@ public class FrontDeskUI {
     private int promptPositiveInteger(String prompt) {
         while (true) {
             try {
-                System.out.print(prompt);
+                System.out.print(ConsoleStyle.prompt(prompt));
                 int value = Integer.parseInt(scanner.nextLine().trim());
                 if (value > 0) return value;
             } catch (NumberFormatException ex) { }
-            System.out.println("Enter a positive whole number.");
+            System.out.println(ConsoleStyle.error("Enter a positive whole number."));
         }
     }
 
     private LocalDate promptDate(String prompt) {
         while (true) {
             try {
-                System.out.print(prompt);
+                System.out.print(ConsoleStyle.prompt(prompt));
                 return LocalDate.parse(scanner.nextLine().trim());
             } catch (DateTimeParseException ex) {
-                System.out.println("Use yyyy-MM-dd format.");
+                System.out.println(ConsoleStyle.error("Use yyyy-MM-dd format."));
             }
         }
     }

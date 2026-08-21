@@ -17,6 +17,7 @@ import adt.ListInterface;
 import adt.SortedArrayList;
 import adt.SortedListInterface;
 import common.src.InputHelper;
+import common.src.ConsoleStyle;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -85,8 +86,9 @@ public class ReservationUI {
     }
 
     private void displayMenu() {
-        System.out.println("\n--- VIP & Loyalty Tier Priority Room Allocation ---\n"
-                + ".-----.----------------------------------------.\n"
+        printTitle("VIP & Loyalty Tier Priority Room Allocation");
+        System.out.println(ConsoleStyle.menu(
+                ".-----.----------------------------------------.\n"
                 + "| No. |                Function                |\n"
                 + ":-----+----------------------------------------:\n"
                 + "| 1.  | Add New Reservation Request            |\n"
@@ -106,18 +108,18 @@ public class ReservationUI {
                 + "| 8.  | View Reports                           |\n"
                 + ":-----+----------------------------------------:\n"
                 + "| 0.  | Back                                   |\n"
-                + "'-----'----------------------------------------'");
+                + "'-----'----------------------------------------'"));
     }
 
 
     // add new reservation request
     private void submitReservationRequest() {
-        System.out.println("\n--- Submit Reservation Request ---");
+        printTitle("Submit Reservation Request");
         Guest guest = inputGuest();
         LocalDate checkInDate = promptCheckInDate();
         LocalDate checkOutDate = promptCheckOutDate(checkInDate);
 
-        System.out.println("\n--- Review Reservation Request ---");
+        printTitle("Review Reservation Request");
         System.out.println("Guest ID         : " + guest.getGuestId());
         System.out.println("Guest Name       : " + guest.getFullName());
         System.out.println("Phone Number     : " + guest.getPhoneNumber());
@@ -182,12 +184,13 @@ public class ReservationUI {
             return;
         }
 
-        System.out.println("\n--- Pending Priority Reservations ---");
+        printTitle("Pending Priority Reservations");
         String border = "+----------+--------------+----------------------+-----------+------------+------------+";
-        System.out.println(border);
-        System.out.printf("| %-8s | %-12s | %-20s | %-9s | %-10s | %-10s |%n",
-                "Priority", "Request No.", "Guest Name", "Tier", "Check-In", "Status");
-        System.out.println(border);
+        printBorder(border);
+        System.out.print(ConsoleStyle.tableHeader(String.format(
+                "| %-8s | %-12s | %-20s | %-9s | %-10s | %-10s |%n",
+                "Priority", "Request No.", "Guest Name", "Tier", "Check-In", "Status")));
+        printBorder(border);
 
         int position = 1;
         while (iterator.hasNext()) {
@@ -201,7 +204,7 @@ public class ReservationUI {
                     reservation.getStatus());
         }
 
-        System.out.println(border);
+        printBorder(border);
         System.out.println("Total pending requests: "
                 + reservationManager.getPendingPriorityReservationCount());
     }
@@ -215,7 +218,7 @@ public class ReservationUI {
             return;
         }
 
-        System.out.println("\n--- Allocate Available Rooms ---");
+        printTitle("Allocate Available Rooms");
         System.out.println("Pending Requests : " + pendingCount);
 
         if (!confirmYes("Allocate available rooms by loyalty priority? (Y/N): ")) {
@@ -234,7 +237,7 @@ public class ReservationUI {
 
     //guest checkin 
     private void checkInPriorityReservation() {
-        System.out.println("\n--- Check-In Confirmed Reservation ---");
+        printTitle("Check-In Confirmed Reservation");
         String searchValue = promptRequiredText("Enter reservation ID / Member ID / Guest Name: ");
         Reservation reservation = reservationManager.findReservation(searchValue);
 
@@ -283,7 +286,7 @@ public class ReservationUI {
 
     //guest checkout
     private void checkOutReservation() {
-        System.out.println("\n--- Guest Check-Out ---");
+        printTitle("Guest Check-Out");
         Reservation reservation = selectReservationBySearch();
 
         if (reservation == null) {
@@ -313,7 +316,7 @@ public class ReservationUI {
 
     //search reservation 
     private void searchReservation() {
-        System.out.println("\n--- Search Reservation ---");
+        printTitle("Search Reservation");
         ListInterface<Reservation> matches = findReservationsByPrompt();
 
         if (matches.isEmpty()) {
@@ -347,12 +350,13 @@ public class ReservationUI {
             return matches.getEntry(1);
         }
 
-        System.out.println("\n--- Matching Reservations ---");
+        printTitle("Matching Reservations");
         String border = "+-----+--------------+----------------------+-----------+------------+";
-        System.out.println(border);
-        System.out.printf("| %-3s | %-12s | %-20s | %-9s | %-10s |%n",
-                "No.", "Reservation", "Guest", "Tier", "Status");
-        System.out.println(border);
+        printBorder(border);
+        System.out.print(ConsoleStyle.tableHeader(String.format(
+                "| %-3s | %-12s | %-20s | %-9s | %-10s |%n",
+                "No.", "Reservation", "Guest", "Tier", "Status")));
+        printBorder(border);
 
         for (int i = 1; i <= matches.getNumberOfEntries(); i++) {
             Reservation reservation = matches.getEntry(i);
@@ -363,7 +367,7 @@ public class ReservationUI {
                     reservation.getGuest().getLoyaltyTier(),
                     reservation.getStatus());
         }
-        System.out.println(border);
+        printBorder(border);
 
         while (true) {
             int selection = promptPositiveInteger("Select reservation number: ");
@@ -382,11 +386,12 @@ public class ReservationUI {
         }
 
         String border = "+-----+------------+--------------------+-----------+----------+------------+------------+-------------+";
-        System.out.println("\n--- All Reservations ---");
-        System.out.println(border);
-        System.out.printf("| %-3s | %-10s | %-18s | %-9s | %-8s | %-10s | %-10s | %-11s |%n",
-                "No.", "Res ID", "Guest Name", "Tier", "Room", "Check-In", "Payment", "Status");
-        System.out.println(border);
+        printTitle("All Reservations");
+        printBorder(border);
+        System.out.print(ConsoleStyle.tableHeader(String.format(
+                "| %-3s | %-10s | %-18s | %-9s | %-8s | %-10s | %-10s | %-11s |%n",
+                "No.", "Res ID", "Guest Name", "Tier", "Room", "Check-In", "Payment", "Status")));
+        printBorder(border);
 
         Iterator<Reservation> iterator = reservations.iterator();
         int number = 1;
@@ -407,7 +412,7 @@ public class ReservationUI {
                     reservation.getStatus());
         }
 
-        System.out.println(border);
+        printBorder(border);
         System.out.println("Total reservations: " + reservations.getNumberOfEntries());
     }
 
@@ -430,11 +435,12 @@ public class ReservationUI {
         }
 
         String border = "+-----+------------+--------------------+-----------+----------+------------+-------------+";
-        System.out.println("\n--- Successful Room Allocations ---");
-        System.out.println(border);
-        System.out.printf("| %-3s | %-10s | %-18s | %-9s | %-8s | %-10s | %-11s |%n",
-                "No.", "Res ID", "Guest Name", "Tier", "Room", "Check-In", "Status");
-        System.out.println(border);
+        printTitle("Successful Room Allocations");
+        printBorder(border);
+        System.out.print(ConsoleStyle.tableHeader(String.format(
+                "| %-3s | %-10s | %-18s | %-9s | %-8s | %-10s | %-11s |%n",
+                "No.", "Res ID", "Guest Name", "Tier", "Room", "Check-In", "Status")));
+        printBorder(border);
 
         for (int i = 1; i <= successfulReservations.getNumberOfEntries(); i++) {
             Reservation reservation = successfulReservations.getEntry(i);
@@ -448,7 +454,7 @@ public class ReservationUI {
                     reservation.getStatus());
         }
 
-        System.out.println(border);
+        printBorder(border);
         System.out.println("Total successful allocations: "
                 + successfulReservations.getNumberOfEntries());
     }
@@ -462,7 +468,7 @@ public class ReservationUI {
                 - reservation.getCheckInDate().toEpochDay();
         double totalPrice = room == null ? 0.00 : numberOfNights * room.getPricePerNight();
 
-        System.out.println("\n--- Reservation Details ---");
+        printTitle("Reservation Details");
         System.out.println("Reservation ID   : " + reservation.getConfirmationNumber());
         System.out.println("Guest ID         : " + guest.getGuestId());
         System.out.println("Guest Name       : " + guest.getFullName());
@@ -490,10 +496,10 @@ public class ReservationUI {
         boolean back = false;
 
         while (!back) {
-            System.out.println("\n--- Reservation Reports ---\n"
-                    + "1. Monthly Reservation Summary\n"
+            printTitle("Reservation Reports");
+            System.out.println(ConsoleStyle.menu("1. Monthly Reservation Summary\n"
                     + "2. Monthly Room Allocation Report\n"
-                    + "0. Back");
+                    + "0. Back"));
             String choice = InputHelper.inputString(scanner, "Select an option: ").trim();
 
             switch (choice) {
@@ -817,11 +823,11 @@ public class ReservationUI {
 
     private String promptPaymentMethod() {
         while (true) {
-            System.out.println("\n--- Payment Method ---");
-            System.out.println("1. Cash");
-            System.out.println("2. Credit / Debit Card");
-            System.out.println("3. Touch n Go");
-            System.out.println("4. Online Banking");
+            printTitle("Payment Method");
+            System.out.println(ConsoleStyle.menu("1. Cash\n"
+                    + "2. Credit / Debit Card\n"
+                    + "3. Touch n Go\n"
+                    + "4. Online Banking"));
             String choice = InputHelper.inputString(scanner, "Select payment method: ").trim();
 
             switch (choice) {
@@ -886,6 +892,14 @@ public class ReservationUI {
 
     public ReservationManager getReservationManager() {
         return reservationManager;
+    }
+
+    private void printTitle(String title) {
+        System.out.println(ConsoleStyle.title("\n--- " + title + " ---"));
+    }
+
+    private void printBorder(String border) {
+        System.out.println(ConsoleStyle.tableBorder(border));
     }
 
     public static void main(String[] args) {
