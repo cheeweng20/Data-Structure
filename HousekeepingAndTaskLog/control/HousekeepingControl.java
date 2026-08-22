@@ -4,8 +4,12 @@ import HousekeepingAndTaskLog.dao.HousekeepingTaskDAO;
 import HousekeepingAndTaskLog.entity.HousekeepingTask;
 import HousekeepingAndTaskLog.entity.StatusChange;
 import HousekeepingAndTaskLog.entity.TaskStatus;
+import VIPPriorityRoomAllocation.dao.ReservationDAO;
 import VIPPriorityRoomAllocation.dao.RoomDAO;
+import VIPPriorityRoomAllocation.entity.Reservation;
+import VIPPriorityRoomAllocation.entity.ReservationStatus;
 import VIPPriorityRoomAllocation.entity.Room;
+import VIPPriorityRoomAllocation.entity.Room.RoomStatus;
 import adt.ArrayList;
 import adt.ArrayStack;
 import adt.ListInterface;
@@ -15,38 +19,46 @@ import java.util.Iterator;
 
 public class HousekeepingControl {
 
-    private static final String LATE_CHECKOUT_REMARK_PREFIX = "Late Checkout | Confirmation: ";
+    private static final String CHECKED_OUT_REMARK_PREFIX = "Checked-out reservation: ";
     private final HousekeepingTaskDAO housekeepingTaskDAO;
     private final RoomDAO roomDAO;
+    private final ReservationDAO reservationDAO;
     private final ListInterface<HousekeepingTask> tasks;
     private final ListInterface<Room> rooms;
+    private final ListInterface<Reservation> reservations;
     private final StackInterface<StatusChange> rollbackLog;
 
     public HousekeepingControl() {
-        this(new HousekeepingTaskDAO(), new RoomDAO());
+        this(new HousekeepingTaskDAO(), new RoomDAO(), new ReservationDAO());
     }
 
     public HousekeepingControl(HousekeepingTaskDAO housekeepingTaskDAO, RoomDAO roomDAO) {
-        if (housekeepingTaskDAO == null || roomDAO == null) {
-            throw new IllegalArgumentException("Housekeeping task and room data access objects are required.");
+        this(housekeepingTaskDAO, roomDAO, new ReservationDAO());
+    }
+
+    public HousekeepingControl(HousekeepingTaskDAO housekeepingTaskDAO, RoomDAO roomDAO,
+            ReservationDAO reservationDAO) {
+        if (housekeepingTaskDAO == null || roomDAO == null || reservationDAO == null) {
+            throw new IllegalArgumentException("Housekeeping, room, and reservation data access objects are required.");
         }
 
         this.housekeepingTaskDAO = housekeepingTaskDAO;
         this.roomDAO = roomDAO;
+        this.reservationDAO = reservationDAO;
         tasks = housekeepingTaskDAO.retrieveFromFile();
         rooms = roomDAO.retrieveFromFile();
+        reservations = reservationDAO.retrieveFromFile();
         rollbackLog = new ArrayStack<>();
+        createTasksForCheckedOutReservations();
     }
 
-    public HousekeepingTask addTask(String roomNumber, String assignedStaff,
-            LocalDateTime expectedReadyAt, String remarks) {
+    public HousekeepingTask addTask(String roomNumber, String remarks) {
         if (!roomExists(roomNumber)) {
             return null;
         }
 
         HousekeepingTask task = new HousekeepingTask(generateTaskId(), roomNumber,
-                assignedStaff, TaskStatus.DIRTY, LocalDateTime.now(), expectedReadyAt,
-                remarks);
+                TaskStatus.DIRTY, LocalDateTime.now(), remarks);
         tasks.add(task);
         saveData();
         return task;
@@ -60,70 +72,10 @@ public class HousekeepingControl {
         }
 
         rollbackLog.push(new StatusChange(taskId, task.getStatus(), newStatus,
-                task.getExpectedReadyAt(), LocalDateTime.now(), reason));
+                LocalDateTime.now(), reason));
         task.setStatus(newStatus);
         saveData();
         return true;
-    }
-
-    public boolean recordLateCheckout(String taskId, LocalDateTime newExpectedReadyAt, String reason) {
-        HousekeepingTask task = findTaskById(taskId);
-
-        if (task == null || newExpectedReadyAt.isBefore(task.getExpectedReadyAt())) {
-            return false;
-        }
-
-        rollbackLog.push(new StatusChange(taskId, task.getStatus(), TaskStatus.BLOCKED,
-                task.getExpectedReadyAt(), LocalDateTime.now(), reason));
-        task.setStatus(TaskStatus.BLOCKED);
-        task.setExpectedReadyAt(newExpectedReadyAt);
-        task.setRemarks(reason);
-        saveData();
-        return true;
-    }
-
-    /**
-     * Creates or refreshes the blocked housekeeping task for a guest who has
-     * been granted a late checkout. The confirmation number in the remarks
-     * makes repeated notifications for the same stay idempotent.
-     *
-     * @return the persisted task, or {@code null} when the notification data
-     *         is invalid or the room does not exist
-     */
-    public HousekeepingTask notifyLateCheckout(String roomNumber, String confirmationNumber,
-            String guestName, LocalDateTime extendedCheckOutAt,
-            LocalDateTime expectedReadyAt, String reason) {
-        String normalizedRoomNumber = normalizeRequiredText(roomNumber);
-        String normalizedConfirmationNumber = normalizeRequiredText(confirmationNumber);
-        String normalizedGuestName = normalizeRequiredText(guestName);
-        String normalizedReason = normalizeRequiredText(reason);
-
-        if (normalizedRoomNumber == null || normalizedConfirmationNumber == null
-                || normalizedGuestName == null || normalizedReason == null
-                || extendedCheckOutAt == null || expectedReadyAt == null
-                || expectedReadyAt.isBefore(extendedCheckOutAt)
-                || !roomExists(normalizedRoomNumber)) {
-            return null;
-        }
-
-        HousekeepingTask task = findLateCheckoutTask(normalizedRoomNumber,
-                normalizedConfirmationNumber);
-        String remarks = buildLateCheckoutRemarks(normalizedConfirmationNumber,
-                normalizedGuestName, extendedCheckOutAt, normalizedReason);
-
-        if (task == null) {
-            task = new HousekeepingTask(generateTaskId(), normalizedRoomNumber,
-                    "Unassigned", TaskStatus.BLOCKED, LocalDateTime.now(), expectedReadyAt,
-                    remarks);
-            tasks.add(task);
-        } else {
-            task.setStatus(TaskStatus.BLOCKED);
-            task.setExpectedReadyAt(expectedReadyAt);
-            task.setRemarks(remarks);
-        }
-
-        saveData();
-        return task;
     }
 
     public StatusChange rollbackLastChange() {
@@ -136,7 +88,6 @@ public class HousekeepingControl {
 
         if (task != null) {
             task.setStatus(lastChange.getPreviousStatus());
-            task.setExpectedReadyAt(lastChange.getPreviousExpectedReadyAt());
             saveData();
         }
 
@@ -203,23 +154,6 @@ public class HousekeepingControl {
         return filterByStatus(status).getNumberOfEntries();
     }
 
-    public ListInterface<HousekeepingTask> getOverdueTasks() {
-        ListInterface<HousekeepingTask> result = new ArrayList<>();
-        LocalDateTime now = LocalDateTime.now();
-        Iterator<HousekeepingTask> iterator = tasks.iterator();
-
-        while (iterator.hasNext()) {
-            HousekeepingTask task = iterator.next();
-
-            if (task.getExpectedReadyAt().isBefore(now)
-                    && task.getStatus() != TaskStatus.READY_FOR_CHECK_IN) {
-                result.add(task);
-            }
-        }
-
-        return result;
-    }
-
     public ListInterface<HousekeepingTask> getTasks() {
         return tasks;
     }
@@ -228,47 +162,45 @@ public class HousekeepingControl {
         housekeepingTaskDAO.saveToFile(tasks);
     }
 
-    private HousekeepingTask findLateCheckoutTask(String roomNumber,
-            String confirmationNumber) {
+    private void createTasksForCheckedOutReservations() {
+        boolean taskCreated = false;
+        Iterator<Reservation> iterator = reservations.iterator();
+
+        while (iterator.hasNext()) {
+            Reservation reservation = iterator.next();
+
+            if (isCleaningRequired(reservation)
+                    && !hasTaskForReservation(reservation.getConfirmationNumber())) {
+                addTask(reservation.getAssignedRoom().getRoomNumber(),
+                        CHECKED_OUT_REMARK_PREFIX + reservation.getConfirmationNumber());
+                taskCreated = true;
+            }
+        }
+
+        if (taskCreated) {
+            saveData();
+        }
+    }
+
+    private boolean isCleaningRequired(Reservation reservation) {
+        return reservation.getStatus() == ReservationStatus.CHECKED_OUT
+                && reservation.getAssignedRoom() != null
+                && reservation.getAssignedRoom().getStatus() == RoomStatus.NEEDS_CLEANING;
+    }
+
+    private boolean hasTaskForReservation(String confirmationNumber) {
         Iterator<HousekeepingTask> iterator = tasks.iterator();
-        String confirmationMarker = LATE_CHECKOUT_REMARK_PREFIX
-                + sanitizeRemarkValue(confirmationNumber) + " |";
+        String confirmationMarker = CHECKED_OUT_REMARK_PREFIX + confirmationNumber;
 
         while (iterator.hasNext()) {
             HousekeepingTask task = iterator.next();
 
-            if (task.getRoomNumber().equalsIgnoreCase(roomNumber)
-                    && task.getRemarks() != null
-                    && task.getRemarks().startsWith(confirmationMarker)) {
-                return task;
+            if (task.getRemarks() != null && task.getRemarks().equals(confirmationMarker)) {
+                return true;
             }
         }
 
-        return null;
-    }
-
-    private String buildLateCheckoutRemarks(String confirmationNumber, String guestName,
-            LocalDateTime extendedCheckOutAt, String reason) {
-        return LATE_CHECKOUT_REMARK_PREFIX + sanitizeRemarkValue(confirmationNumber)
-                + " | Guest: " + sanitizeRemarkValue(guestName)
-                + " | Extended Checkout: " + extendedCheckOutAt
-                + " | Reason: " + sanitizeRemarkValue(reason);
-    }
-
-    private String normalizeRequiredText(String value) {
-        if (value == null) {
-            return null;
-        }
-
-        String normalizedValue = value.trim();
-        return normalizedValue.isEmpty() ? null : normalizedValue;
-    }
-
-    private String sanitizeRemarkValue(String value) {
-        return value.replace("|", "/")
-                .replace(",", ";")
-                .replace('\r', ' ')
-                .replace('\n', ' ');
+        return false;
     }
 
     private String generateTaskId() {

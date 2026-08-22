@@ -10,21 +10,16 @@ public class HousekeepingTask implements Serializable {
 
     private String taskId;
     private String roomNumber;
-    private String assignedStaff;
     private TaskStatus status;
     private LocalDateTime createdAt;
-    private LocalDateTime expectedReadyAt;
     private String remarks;
 
-    public HousekeepingTask(String taskId, String roomNumber, String assignedStaff,
-            TaskStatus status, LocalDateTime createdAt, LocalDateTime expectedReadyAt,
-            String remarks) {
+    public HousekeepingTask(String taskId, String roomNumber, TaskStatus status,
+            LocalDateTime createdAt, String remarks) {
         this.taskId = taskId;
         this.roomNumber = roomNumber;
-        this.assignedStaff = assignedStaff;
         this.status = status;
         this.createdAt = createdAt;
-        this.expectedReadyAt = expectedReadyAt;
         this.remarks = remarks;
     }
 
@@ -36,14 +31,6 @@ public class HousekeepingTask implements Serializable {
         return roomNumber;
     }
 
-    public String getAssignedStaff() {
-        return assignedStaff;
-    }
-
-    public void setAssignedStaff(String assignedStaff) {
-        this.assignedStaff = assignedStaff;
-    }
-
     public TaskStatus getStatus() {
         return status;
     }
@@ -53,15 +40,7 @@ public class HousekeepingTask implements Serializable {
     }
 
     public String getCreatedAt() {
-        return createdAt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd' 'HH:mm:ss"));
-    }
-
-    public LocalDateTime getExpectedReadyAt() {
-        return expectedReadyAt;
-    }
-
-    public void setExpectedReadyAt(LocalDateTime expectedReadyAt) {
-        this.expectedReadyAt = expectedReadyAt;
+        return createdAt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"));
     }
 
     public String getRemarks() {
@@ -75,10 +54,8 @@ public class HousekeepingTask implements Serializable {
     public String toCsvLine() {
         return taskId + ","
                 + roomNumber + ","
-                + assignedStaff + ","
                 + status + ","
                 + createdAt + ","
-                + expectedReadyAt + ","
                 + remarks.replace(",", ";");
     }
 }

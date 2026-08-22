@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 public class HousekeepingTaskDAO {
 
     private static final int INITIAL_CAPACITY = 100;
-    private static final String HEADER = "TaskId,RoomNumber,AssignedStaff,Status,CreatedAt,ExpectedReadyAt,Remarks";
+    private static final String HEADER = "TaskId,RoomNumber,Status,CreatedAt,Remarks";
     private final String fileName;
 
     public HousekeepingTaskDAO() {
@@ -40,18 +40,16 @@ public class HousekeepingTaskDAO {
                 }
 
                 String[] fields = line.split(",", -1);
-                if (fields.length < 7) {
+                if (fields.length < 5) {
                     continue;
                 }
 
                 tasks.add(new HousekeepingTask(
                         fields[0],
                         fields[1],
-                        fields[2],
-                        TaskStatus.valueOf(fields[3]),
-                        LocalDateTime.parse(fields[4]),
-                        LocalDateTime.parse(fields[5]),
-                        fields[6]));
+                        TaskStatus.valueOf(fields[2]),
+                        LocalDateTime.parse(fields[3]),
+                        fields[4]));
             }
         } catch (FileNotFoundException ex) {
             createParentDirectory();

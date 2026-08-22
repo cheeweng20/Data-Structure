@@ -6,8 +6,7 @@ import HousekeepingAndTaskLog.entity.StatusChange;
 import HousekeepingAndTaskLog.entity.TaskStatus;
 import HousekeepingAndTaskLog.utility.HousekeepingValidator;
 import adt.ListInterface;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeParseException;
+import common.src.Logo;
 import java.util.Iterator;
 import java.util.Scanner;
 
@@ -43,12 +42,9 @@ public class HousekeepingUI {
                     rollbackLastChange();
                     break;
                 case "4":
-                    recordLateCheckout();
-                    break;
-                case "5":
                     searchByRoom();
                     break;
-                case "6":
+                case "5":
                     displayReportMenu();
                     break;
                 case "0":
@@ -61,26 +57,28 @@ public class HousekeepingUI {
     }
 
     private void displayMenu() {
-        System.out.println("\n--- Housekeeping and Task Log ---");
-        System.out.println("1. Add Cleaning Task");
-        System.out.println("2. Update Room Cleaning Status");
-        System.out.println("3. Roll Back Last Status Change");
-        System.out.println("4. Record Late Check-Out Delay");
-        System.out.println("5. Search Task by Room");
-        System.out.println("6. View Reports");
-        System.out.println("0. Back");
-        System.out.print("Select an option: ");
+        System.out.println();
+        Logo.displayHousekeepingAndTaskLog();
+        System.out.println("\n+--------------------------------------------------------------+");
+        System.out.println("|                    HOUSEKEEPING MENU                         |");
+        System.out.println("+----+---------------------------------------------------------+");
+        System.out.println("| 1  | Add Cleaning Task                                       |");
+        System.out.println("| 2  | Update Room Cleaning Status                             |");
+        System.out.println("| 3  | Roll Back Last Status Change                            |");
+        System.out.println("| 4  | Search Task by Room                                     |");
+        System.out.println("| 5  | View Reports                                            |");
+        System.out.println("+----+---------------------------------------------------------+");
+        System.out.println("| 0  | Back to Main Menu                                       |");
+        System.out.println("+----+---------------------------------------------------------+");
+        System.out.print("Select an option [0-5]: ");
     }
 
     private void addCleaningTask() {
         System.out.println("\n--- Add Cleaning Task ---");
         String roomNumber = promptRoomNumber();
-        String assignedStaff = promptRequiredText("Assigned staff: ");
-        LocalDateTime expectedReadyAt = promptDateTime("Expected ready time (yyyy-MM-ddTHH:mm): ");
         String remarks = promptText("Remarks: ");
 
-        HousekeepingTask task = housekeepingControl.addTask(roomNumber, assignedStaff,
-                expectedReadyAt, remarks);
+        HousekeepingTask task = housekeepingControl.addTask(roomNumber, remarks);
 
         System.out.println("Cleaning task added.");
         displayTaskDetails(task);
@@ -122,28 +120,6 @@ public class HousekeepingUI {
                 + " to " + statusChange.getPreviousStatus() + ".");
     }
 
-    private void recordLateCheckout() {
-        System.out.println("\n--- Record Late Check-Out Delay ---");
-        String taskId = promptRequiredText("Task ID: ");
-        HousekeepingTask task = housekeepingControl.findTaskById(taskId);
-
-        if (task == null) {
-            System.out.println("Task not found.");
-            return;
-        }
-
-        displayTaskDetails(task);
-        LocalDateTime newExpectedReadyAt = promptDateTime("New expected ready time (yyyy-MM-ddTHH:mm): ");
-        String reason = promptRequiredText("Delay reason: ");
-
-        if (housekeepingControl.recordLateCheckout(taskId, newExpectedReadyAt, reason)) {
-            System.out.println("Late check-out delay recorded.");
-            displayTaskDetails(housekeepingControl.findTaskById(taskId));
-        } else {
-            System.out.println("Late check-out update failed.");
-        }
-    }
-
     private void searchByRoom() {
         System.out.println("\n--- Search Task by Room ---");
         String roomNumber = promptRoomNumber();
@@ -156,8 +132,7 @@ public class HousekeepingUI {
         while (!back) {
             System.out.println("\n--- Housekeeping Reports ---");
             System.out.println("1. Task Status Summary");
-            System.out.println("2. Overdue Cleaning Tasks");
-            System.out.println("3. List All Tasks");
+            System.out.println("2. List All Tasks");
             System.out.println("0. Back");
             System.out.print("Select an option: ");
             String choice = scanner.nextLine().trim();
@@ -167,9 +142,6 @@ public class HousekeepingUI {
                     displayStatusSummaryReport();
                     break;
                 case "2":
-                    displayTasks(housekeepingControl.getOverdueTasks());
-                    break;
-                case "3":
                     displayTasks(housekeepingControl.getTasks());
                     break;
                 case "0":
@@ -231,25 +203,6 @@ public class HousekeepingUI {
         return value;
     }
 
-    private LocalDateTime promptDateTime(String prompt) {
-        while (true) {
-            System.out.print(prompt);
-            String input = scanner.nextLine().trim();
-
-            try {
-                LocalDateTime dateTime = LocalDateTime.parse(input);
-
-                if (HousekeepingValidator.isFutureOrPresent(dateTime)) {
-                    return dateTime;
-                }
-
-                System.out.println("Date and time cannot be in the past.");
-            } catch (DateTimeParseException ex) {
-                System.out.println("Use yyyy-MM-ddTHH:mm format. Example: 2026-07-30T14:30");
-            }
-        }
-    }
-
     private TaskStatus promptStatus() {
         while (true) {
             System.out.println("\n--- Cleaning Status ---");
@@ -298,31 +251,28 @@ public class HousekeepingUI {
         System.out.println("\n--- Housekeeping Task Details ---");
         System.out.println("Task ID           : " + task.getTaskId());
         System.out.println("Room Number       : " + task.getRoomNumber());
-        System.out.println("Assigned Staff    : " + task.getAssignedStaff());
         System.out.println("Status            : " + task.getStatus());
         System.out.println("Created At        : " + task.getCreatedAt());
-        System.out.println("Expected Ready At : " + task.getExpectedReadyAt());
         System.out.println("Remarks           : " + task.getRemarks());
     }
 
     private void printTableHeader() {
         printTableBorder();
-        System.out.printf("| %-8s | %-6s | %-16s | %-22s | %-16s |%n",
-                "Task ID", "Room", "Staff", "Status", "Ready Time");
+        System.out.printf("| %-8s | %-12s | %-22s | %-19s |%n",
+                "Task ID", "Room", "Status", "Created At");
         printTableBorder();
     }
 
     private void printTaskLine(HousekeepingTask task) {
-        System.out.printf("| %-8s | %-6s | %-16s | %-22s | %-16s |%n",
+        System.out.printf("| %-8s | %-12s | %-22s | %-19s |%n",
                 task.getTaskId(),
                 task.getRoomNumber(),
-                task.getAssignedStaff(),
                 task.getStatus(),
-                task.getExpectedReadyAt());
+                task.getCreatedAt());
     }
 
     private void printTableBorder() {
-        System.out.println("+----------+--------+------------------+------------------------+------------------+");
+        System.out.println("+----------+--------------+------------------------+---------------------+");
     }
 
     public static void main(String[] args) {
