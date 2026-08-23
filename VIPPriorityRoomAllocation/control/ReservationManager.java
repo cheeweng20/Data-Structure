@@ -96,62 +96,6 @@ public class ReservationManager {
         return new AllocationResult(confirmedCount, rejectedCount);
     }
 
-    //checkin room->needs payment
-    public boolean checkInPriorityReservation(String searchValue, String paymentMethod) {
-        Reservation reservation = findReservation(searchValue);
-
-        if (reservation == null
-                || reservation.getStatus() != ReservationStatus.CONFIRMED
-                || reservation.getCheckInDate().isAfter(LocalDate.now())
-                || reservation.getAssignedRoom() == null) {
-            return false;
-        }
-
-        boolean alreadyPaid = "PAID".equalsIgnoreCase(reservation.getPaymentStatus());
-        if (!alreadyPaid && (paymentMethod == null || paymentMethod.trim().isEmpty())) {
-            return false;
-        }
-
-        Room savedRoom = findRoomByNumber(reservation.getAssignedRoom().getRoomNumber());
-        if (savedRoom == null || savedRoom.getStatus() != RoomStatus.RESERVED) {
-            return false;
-        }
-
-        savedRoom.setStatus(RoomStatus.OCCUPIED);
-        reservation.setAssignedRoom(savedRoom);
-
-        if (!alreadyPaid) {
-            reservation.setPaymentMethod(paymentMethod);
-            reservation.setPaymentStatus("PAID");
-        }
-
-        reservation.setStatus(ReservationStatus.CHECKED_IN);
-        saveData();
-        return true;
-    }
-
-    //check out room->needs cleaning 
-    public boolean checkOutReservation(String confirmationNumber) {
-        Reservation reservation = findByConfirmationNumber(confirmationNumber);
-
-        if (reservation == null
-                || reservation.getStatus() != ReservationStatus.CHECKED_IN
-                || reservation.getAssignedRoom() == null) {
-            return false;
-        }
-
-        Room savedRoom = findRoomByNumber(reservation.getAssignedRoom().getRoomNumber());
-        if (savedRoom == null || savedRoom.getStatus() != RoomStatus.OCCUPIED) {
-            return false;
-        }
-
-        reservation.setStatus(ReservationStatus.CHECKED_OUT);
-        savedRoom.setStatus(RoomStatus.NEEDS_CLEANING);
-        reservation.setAssignedRoom(savedRoom);
-        saveData();
-        return true;
-    }
-    
     // search reservations 
     public Reservation findReservation(String searchValue) {
         if (searchValue == null) {
