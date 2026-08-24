@@ -168,7 +168,7 @@ public final class LoyaltyUI {
                     requestOperator();
                     break;
                 case 5:
-                    displayMemberTable();
+                    displayMemberListWithProgress();
                     break;
                 case 6:
                     displayPromotion();
@@ -299,6 +299,18 @@ public final class LoyaltyUI {
                     serviceControl.getTierNameById(member.getTierId()));
         }
         System.out.println(border);
+    }
+
+    private void displayMemberListWithProgress() {
+        MessageUI.displayInfo("Fetching member data...");
+        int memberCount = serviceControl.getMemberCount();
+        if (memberCount == 0) {
+            MessageUI.displayInfo("No member records found.");
+            return;
+        }
+
+        MessageUI.displaySuccess(memberCount + " member record(s) ready.");
+        displayMemberTable();
     }
 
     private void requestOperator() {
@@ -496,14 +508,18 @@ public final class LoyaltyUI {
             return;
         }
 
+        MessageUI.displayInfo("Filtering and sorting member records...");
         ArrayList<Member> rankedMembers =
                 serviceControl.generateRankingReport(minimumPoint, tierId);
+        MessageUI.displayInfo("Filtering and sorting point transactions...");
         ArrayList<PointTransaction> transactions =
                 serviceControl.generateTransactionReport(startDate, endDate);
+        MessageUI.displayInfo("Filtering and sorting redemption requests...");
         ArrayList<RedemptionRequest> requests =
                 serviceControl.generateRequestReport(startDate, endDate);
         String report = buildBusinessCycleSummary(startDate, endDate,
                 tierId, minimumPoint, rankedMembers, transactions, requests);
+        MessageUI.displaySuccess("Business cycle report ready.");
         System.out.println(report);
         scanner.nextLine();
         offerPdfExport("Business Cycle Summary Report", report,
@@ -664,6 +680,7 @@ public final class LoyaltyUI {
 
         Path pdfPath;
         try {
+            MessageUI.displayInfo("Generating report PDF...");
             pdfPath = ReportPdfExporter.export(title, report, chartType);
         } catch (IOException exception) {
             MessageUI.displayError("Unable to generate PDF: " + exception.getMessage());
