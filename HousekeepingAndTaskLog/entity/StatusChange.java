@@ -1,22 +1,26 @@
 package HousekeepingAndTaskLog.entity;
 
 import java.time.LocalDateTime;
+import VIPPriorityRoomAllocation.entity.Room.RoomStatus;
 
 public class StatusChange {
 
     private String taskId;
     private TaskStatus previousStatus;
     private TaskStatus newStatus;
+    private LocalDateTime previousCompletedAt;
+    private RoomStatus previousRoomStatus;
     private LocalDateTime changedAt;
-    private String reason;
 
     public StatusChange(String taskId, TaskStatus previousStatus, TaskStatus newStatus,
-            LocalDateTime changedAt, String reason) {
+            LocalDateTime previousCompletedAt, RoomStatus previousRoomStatus,
+            LocalDateTime changedAt) {
         this.taskId = taskId;
         this.previousStatus = previousStatus;
         this.newStatus = newStatus;
+        this.previousCompletedAt = previousCompletedAt;
+        this.previousRoomStatus = previousRoomStatus;
         this.changedAt = changedAt;
-        this.reason = reason;
     }
 
     public String getTaskId() {
@@ -31,11 +35,15 @@ public class StatusChange {
         return newStatus;
     }
 
-    public LocalDateTime getChangedAt() {
-        return changedAt;
+    public LocalDateTime getPreviousCompletedAt() {
+        return previousCompletedAt;
     }
 
-    public String getReason() {
-        return reason;
+    public RoomStatus getPreviousRoomStatus() {
+        return previousRoomStatus;
+    }
+
+    public LocalDateTime getChangedAt() {
+        return changedAt;
     }
 }

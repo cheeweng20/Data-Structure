@@ -12,14 +12,16 @@ public class HousekeepingTask implements Serializable {
     private String roomNumber;
     private TaskStatus status;
     private LocalDateTime createdAt;
+    private LocalDateTime completedAt;
     private String remarks;
 
     public HousekeepingTask(String taskId, String roomNumber, TaskStatus status,
-            LocalDateTime createdAt, String remarks) {
+            LocalDateTime createdAt, LocalDateTime completedAt, String remarks) {
         this.taskId = taskId;
         this.roomNumber = roomNumber;
         this.status = status;
         this.createdAt = createdAt;
+        this.completedAt = completedAt;
         this.remarks = remarks;
     }
 
@@ -43,6 +45,24 @@ public class HousekeepingTask implements Serializable {
         return createdAt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"));
     }
 
+    public LocalDateTime getCreatedAtValue() {
+        return createdAt;
+    }
+
+    public LocalDateTime getCompletedAtValue() {
+        return completedAt;
+    }
+
+    public String getCompletedAt() {
+        return completedAt == null
+                ? "-"
+                : completedAt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"));
+    }
+
+    public void setCompletedAt(LocalDateTime completedAt) {
+        this.completedAt = completedAt;
+    }
+
     public String getRemarks() {
         return remarks;
     }
@@ -56,6 +76,7 @@ public class HousekeepingTask implements Serializable {
                 + roomNumber + ","
                 + status + ","
                 + createdAt + ","
+                + (completedAt == null ? "" : completedAt) + ","
                 + remarks.replace(",", ";");
     }
 }

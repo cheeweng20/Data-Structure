@@ -14,6 +14,7 @@ import adt.ArrayList;
 import adt.ArrayStack;
 import adt.ListInterface;
 import adt.StackInterface;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Iterator;
 
@@ -53,27 +54,39 @@ public class HousekeepingControl {
     }
 
     public HousekeepingTask addTask(String roomNumber, String remarks) {
-        if (!roomExists(roomNumber)) {
+        if (!roomExists(roomNumber) || hasActiveTaskForRoom(roomNumber)) {
             return null;
         }
 
         HousekeepingTask task = new HousekeepingTask(generateTaskId(), roomNumber,
-                TaskStatus.DIRTY, LocalDateTime.now(), remarks);
+                TaskStatus.DIRTY, LocalDateTime.now(), null, remarks);
         tasks.add(task);
         saveData();
         return task;
     }
 
-    public boolean updateTaskStatus(String taskId, TaskStatus newStatus, String reason) {
+    public boolean updateTaskStatus(String taskId, TaskStatus newStatus) {
         HousekeepingTask task = findTaskById(taskId);
 
         if (task == null || task.getStatus() == newStatus) {
             return false;
         }
 
+        Room room = findRoomByNumber(task.getRoomNumber());
+        RoomStatus previousRoomStatus = room == null ? null : room.getStatus();
+
         rollbackLog.push(new StatusChange(taskId, task.getStatus(), newStatus,
-                LocalDateTime.now(), reason));
+                task.getCompletedAtValue(), previousRoomStatus, LocalDateTime.now()));
         task.setStatus(newStatus);
+        task.setCompletedAt(newStatus == TaskStatus.READY_FOR_CHECK_IN
+                ? LocalDateTime.now() : null);
+
+        if (room != null && newStatus == TaskStatus.READY_FOR_CHECK_IN
+                && room.getStatus() == RoomStatus.NEEDS_CLEANING) {
+            room.setStatus(RoomStatus.AVAILABLE);
+            roomDAO.saveToFile(rooms);
+        }
+
         saveData();
         return true;
     }
@@ -88,6 +101,15 @@ public class HousekeepingControl {
 
         if (task != null) {
             task.setStatus(lastChange.getPreviousStatus());
+            task.setCompletedAt(lastChange.getPreviousCompletedAt());
+
+            Room room = findRoomByNumber(task.getRoomNumber());
+            if (room != null
+                    && lastChange.getPreviousRoomStatus() == RoomStatus.NEEDS_CLEANING) {
+                room.setStatus(RoomStatus.NEEDS_CLEANING);
+                roomDAO.saveToFile(rooms);
+            }
+
             saveData();
         }
 
@@ -124,10 +146,21 @@ public class HousekeepingControl {
     }
 
     public boolean roomExists(String roomNumber) {
-        Iterator<Room> iterator = rooms.iterator();
+        return findRoomByNumber(roomNumber) != null;
+    }
+
+    /**
+     * A room may have only one unfinished cleaning task. A task becomes
+     * inactive only after the room is ready for check-in.
+     */
+    public boolean hasActiveTaskForRoom(String roomNumber) {
+        Iterator<HousekeepingTask> iterator = tasks.iterator();
 
         while (iterator.hasNext()) {
-            if (iterator.next().getRoomNumber().equalsIgnoreCase(roomNumber)) {
+            HousekeepingTask task = iterator.next();
+
+            if (task.getRoomNumber().equalsIgnoreCase(roomNumber)
+                    && task.getStatus() != TaskStatus.READY_FOR_CHECK_IN) {
                 return true;
             }
         }
@@ -143,6 +176,29 @@ public class HousekeepingControl {
             HousekeepingTask task = iterator.next();
 
             if (task.getStatus() == status) {
+                result.add(task);
+            }
+        }
+
+        return result;
+    }
+
+    public ListInterface<HousekeepingTask> filterTasksByCreatedDateRange(
+            LocalDate startDate, LocalDate endDate) {
+        ListInterface<HousekeepingTask> result = new ArrayList<>();
+
+        if (startDate == null || endDate == null || endDate.isBefore(startDate)) {
+            return result;
+        }
+
+        Iterator<HousekeepingTask> iterator = tasks.iterator();
+
+        while (iterator.hasNext()) {
+            HousekeepingTask task = iterator.next();
+
+            LocalDate taskCreatedDate = task.getCreatedAtValue().toLocalDate();
+
+            if (!taskCreatedDate.isBefore(startDate) && !taskCreatedDate.isAfter(endDate)) {
                 result.add(task);
             }
         }
@@ -171,9 +227,11 @@ public class HousekeepingControl {
 
             if (isCleaningRequired(reservation)
                     && !hasTaskForReservation(reservation.getConfirmationNumber())) {
-                addTask(reservation.getAssignedRoom().getRoomNumber(),
+                HousekeepingTask task = addTask(reservation.getAssignedRoom().getRoomNumber(),
                         CHECKED_OUT_REMARK_PREFIX + reservation.getConfirmationNumber());
-                taskCreated = true;
+                if (task != null) {
+                    taskCreated = true;
+                }
             }
         }
 
@@ -201,6 +259,20 @@ public class HousekeepingControl {
         }
 
         return false;
+    }
+
+    private Room findRoomByNumber(String roomNumber) {
+        Iterator<Room> iterator = rooms.iterator();
+
+        while (iterator.hasNext()) {
+            Room room = iterator.next();
+
+            if (room.getRoomNumber().equalsIgnoreCase(roomNumber)) {
+                return room;
+            }
+        }
+
+        return null;
     }
 
     private String generateTaskId() {
