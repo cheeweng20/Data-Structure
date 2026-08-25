@@ -122,6 +122,7 @@ public class ReservationUI {
             return;
         }
 
+        // save as PENDING first, room will be assigned later by heap priority
         Reservation reservation = reservationManager.submitPriorityReservationRequest(
                 guest, checkInDate, checkOutDate);
 
@@ -144,7 +145,7 @@ public class ReservationUI {
             guestId = reservationManager.generateGuestId();
             System.out.println("Generated Guest ID: " + guestId);
             fullName = promptFullName();
-            phoneNumber = InputValidator.isValidPhoneNumber(searchValue)
+            phoneNumber = InputValidator.isValidPhoneNumber(searchValue) // use search value as phone if it is valid
                     ? searchValue
                     : promptPhoneNumber();
             loyaltyTier = LoyaltyTier.CLASSIC;
@@ -163,7 +164,7 @@ public class ReservationUI {
         return new Guest(guestId, fullName, phoneNumber, loyaltyTier);
     }
 
-    //put the reservation inside the  waiting queue
+    // show pending reservations based on heap priority order
     private void displayPendingPriorityReservations() {
         Iterator<Reservation> iterator = reservationManager.getPendingPriorityReservationIterator();
 
@@ -196,9 +197,9 @@ public class ReservationUI {
                 + reservationManager.getPendingPriorityReservationCount());
     }
 
-    //allocate room to guest based on priority level
+    // staff clicks this to start automatic room allocation
     private void allocateAvailableRooms() {
-        int pendingCount = reservationManager.getPendingPriorityReservationCount(); //show how many prequest pending
+        int pendingCount = reservationManager.getPendingPriorityReservationCount(); // show how many requests are pending
 
         if (pendingCount == 0) {
             MessageUI.displayInfo("No pending priority reservation requests.");
@@ -222,7 +223,7 @@ public class ReservationUI {
     }
 
 
-    //search reservation 
+    // search reservation using sequential search
     private void searchReservation() {
         System.out.println("\n--- Search Reservation ---");
         ListInterface<Reservation> matches = findReservationsByPrompt();
@@ -239,6 +240,7 @@ public class ReservationUI {
 
     private ListInterface<Reservation> findReservationsByPrompt() {
         String searchValue = promptRequiredText("Enter reservation ID / Member ID / Guest Name: ");
+        // returns all matched records, not only the first one
         return reservationManager.findMatchingReservations(searchValue);
     }
 
@@ -280,7 +282,7 @@ public class ReservationUI {
 
     private void displaySuccessfulRoomAllocations() {
         SortedListInterface<Reservation> successfulReservations = new SortedArrayList<>(
-                (left, right) -> left.compareTo(right) * -1); // sorted list shows successful guests by highest loyalty priority first
+                (left, right) -> left.compareTo(right) * -1); // SortedArrayList keeps successful guests in priority order
         Iterator<Reservation> iterator = reservationManager.getReservations().iterator();
 
         while (iterator.hasNext()) {
@@ -399,7 +401,7 @@ public class ReservationUI {
 
     private String buildMonthlyReservationSummary(YearMonth reportMonth) {
         SortedListInterface<Reservation> reportReservations = new SortedArrayList<>(
-                (left, right) -> left.getBookingDateTime().compareTo(right.getBookingDateTime())); // sorted list arranges report by booking time
+                (left, right) -> left.getBookingDateTime().compareTo(right.getBookingDateTime())); // report sorted by booking time
         Iterator<Reservation> iterator = reservationManager.getReservations().iterator();
         int[] statusCounts = new int[ReservationStatus.values().length];
         double totalRevenue = 0.00;
@@ -407,7 +409,7 @@ public class ReservationUI {
         while (iterator.hasNext()) {
             Reservation reservation = iterator.next();
             if (!YearMonth.from(reservation.getCheckInDate()).equals(reportMonth)) {
-                continue;
+                continue; // filter out reservations from other months
             }
 
             reportReservations.add(reservation);
@@ -452,7 +454,7 @@ public class ReservationUI {
     private String buildMonthlyRoomAllocationReport(YearMonth reportMonth) {
         SortedListInterface<Reservation> reportReservations = new SortedArrayList<>(
                 (left, right) -> left.getAssignedRoom().getRoomNumber()
-                        .compareToIgnoreCase(right.getAssignedRoom().getRoomNumber())); // sorted list arranges allocated rooms by room number
+                        .compareToIgnoreCase(right.getAssignedRoom().getRoomNumber())); // report sorted by room number
         Iterator<Reservation> iterator = reservationManager.getReservations().iterator();
         int[] tierCounts = new int[LoyaltyTier.values().length];
 
@@ -462,6 +464,7 @@ public class ReservationUI {
             if (YearMonth.from(reservation.getCheckInDate()).equals(reportMonth)
                     && reservation.getAssignedRoom() != null
                     && reservation.getStatus() != ReservationStatus.REJECTED) {
+                // only successful allocated rooms are shown in this report
                 reportReservations.add(reservation);
                 tierCounts[reservation.getGuest().getLoyaltyTier().ordinal()]++;
             }
