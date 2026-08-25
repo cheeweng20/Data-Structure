@@ -8,6 +8,7 @@ import HousekeepingAndTaskLog.utility.HousekeepingValidator;
 import adt.ListInterface;
 import common.src.Logo;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.Iterator;
 import java.util.Scanner;
@@ -128,7 +129,9 @@ public class HousekeepingUI {
 
         System.out.println("Rolled back task " + statusChange.getTaskId()
                 + " from " + statusChange.getNewStatus()
-                + " to " + statusChange.getPreviousStatus() + ".");
+                + " to " + statusChange.getPreviousStatus() + "." + "\n"
+                + "Original change: " + statusChange.getChangedAt()
+                        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")) + ".");
     }
 
     private void searchByRoom() {

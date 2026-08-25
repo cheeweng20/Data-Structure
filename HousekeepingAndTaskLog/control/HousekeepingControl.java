@@ -72,11 +72,21 @@ public class HousekeepingControl {
             return false;
         }
 
+        Room room = findRoomByNumber(task.getRoomNumber());
+        RoomStatus previousRoomStatus = room == null ? null : room.getStatus();
+
         rollbackLog.push(new StatusChange(taskId, task.getStatus(), newStatus,
-                task.getCompletedAtValue(), LocalDateTime.now()));
+                task.getCompletedAtValue(), previousRoomStatus, LocalDateTime.now()));
         task.setStatus(newStatus);
         task.setCompletedAt(newStatus == TaskStatus.READY_FOR_CHECK_IN
                 ? LocalDateTime.now() : null);
+
+        if (room != null && newStatus == TaskStatus.READY_FOR_CHECK_IN
+                && room.getStatus() == RoomStatus.NEEDS_CLEANING) {
+            room.setStatus(RoomStatus.AVAILABLE);
+            roomDAO.saveToFile(rooms);
+        }
+
         saveData();
         return true;
     }
@@ -92,6 +102,14 @@ public class HousekeepingControl {
         if (task != null) {
             task.setStatus(lastChange.getPreviousStatus());
             task.setCompletedAt(lastChange.getPreviousCompletedAt());
+
+            Room room = findRoomByNumber(task.getRoomNumber());
+            if (room != null
+                    && lastChange.getPreviousRoomStatus() == RoomStatus.NEEDS_CLEANING) {
+                room.setStatus(RoomStatus.NEEDS_CLEANING);
+                roomDAO.saveToFile(rooms);
+            }
+
             saveData();
         }
 
@@ -128,15 +146,7 @@ public class HousekeepingControl {
     }
 
     public boolean roomExists(String roomNumber) {
-        Iterator<Room> iterator = rooms.iterator();
-
-        while (iterator.hasNext()) {
-            if (iterator.next().getRoomNumber().equalsIgnoreCase(roomNumber)) {
-                return true;
-            }
-        }
-
-        return false;
+        return findRoomByNumber(roomNumber) != null;
     }
 
     /**
@@ -249,6 +259,20 @@ public class HousekeepingControl {
         }
 
         return false;
+    }
+
+    private Room findRoomByNumber(String roomNumber) {
+        Iterator<Room> iterator = rooms.iterator();
+
+        while (iterator.hasNext()) {
+            Room room = iterator.next();
+
+            if (room.getRoomNumber().equalsIgnoreCase(roomNumber)) {
+                return room;
+            }
+        }
+
+        return null;
     }
 
     private String generateTaskId() {
