@@ -179,6 +179,37 @@ public class LoyaltyServiceControl {
         return true;
     }
 
+    public boolean isPassportAvailable(String passport, String excludedMemberId) {
+        if (passport == null || passport.isBlank()) {
+            return false;
+        }
+        for (Member member : memberList) {
+            boolean isExcludedMember = excludedMemberId != null
+                    && member.getMemberId().equalsIgnoreCase(excludedMemberId);
+            if (!isExcludedMember
+                    && member.getPassport().equalsIgnoreCase(passport.trim())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public boolean isPhoneNumberAvailable(String phoneNumber, String excludedMemberId) {
+        if (phoneNumber == null || phoneNumber.isBlank()) {
+            return false;
+        }
+        String normalizedPhone = normalizePhoneNumber(phoneNumber);
+        for (Member member : memberList) {
+            boolean isExcludedMember = excludedMemberId != null
+                    && member.getMemberId().equalsIgnoreCase(excludedMemberId);
+            if (!isExcludedMember
+                    && normalizePhoneNumber(member.getPhoneNumber()).equals(normalizedPhone)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     public Member getMemberEntry(int position) {
         return memberList.getEntry(position);
     }
@@ -204,7 +235,6 @@ public class LoyaltyServiceControl {
         if (member == null) {
             return false;
         }
-
         member.setName(name);
         member.setPassport(passport);
         member.setPhoneNumber(phoneNumber);
@@ -598,6 +628,10 @@ public class LoyaltyServiceControl {
         } catch (NumberFormatException exception) {
             return 0;
         }
+    }
+
+    private String normalizePhoneNumber(String phoneNumber) {
+        return phoneNumber.replaceAll("[^0-9]", "");
     }
 
     private boolean hasUnreadTierUpgrade(Member member) {

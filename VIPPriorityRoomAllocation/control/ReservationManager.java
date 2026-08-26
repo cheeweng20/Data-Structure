@@ -161,6 +161,22 @@ public class ReservationManager {
         return matches;
     }
 
+    /** Returns only reservations owned by the exact member/guest ID. */
+    public ListInterface<Reservation> findReservationsByGuestId(String guestId) {
+        ListInterface<Reservation> matches = new ArrayList<>();
+        if (guestId == null || guestId.trim().isEmpty()) {
+            return matches;
+        }
+
+        for (Reservation reservation : reservations) {
+            Guest guest = reservation.getGuest();
+            if (guest != null && guest.getGuestId().equalsIgnoreCase(guestId.trim())) {
+                matches.add(reservation);
+            }
+        }
+        return matches;
+    }
+
     public Room findAvailableRoom() {
         Iterator<Room> iterator = rooms.iterator();
 

@@ -10,7 +10,6 @@ import LoyaltyAndRewardsService.boundary.LoyaltyUI;
 public class LoyaltyAndRewardsService {
 
     public static void LoyaltyAndRewardsServiceMain(Scanner input) {
-        input.nextLine();
         LoyaltyUI loyaltyUI = new LoyaltyUI(input);
         loyaltyUI.start();
     }

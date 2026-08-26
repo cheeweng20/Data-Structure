@@ -48,26 +48,23 @@ public class ReservationUI {
         boolean exit = false;
 
         while (!exit) {
-            displayMenu();
+            displayStaffMenu();
             String choice = InputHelper.inputString(scanner, "Select an option: ").trim();
 
             switch (choice) {
                 case "1":
-                    submitReservationRequest();
-                    break;
-                case "2":
                     displayPendingPriorityReservations();
                     break;
-                case "3":
+                case "2":
                     allocateAvailableRooms();
                     break;
-                case "4":
+                case "3":
                     searchReservation();
                     break;
-                case "5":
+                case "4":
                     displayReservations(reservationManager.getReservations());
                     break;
-                case "6":
+                case "5":
                     displayReportMenu();
                     break;
                 case "0":
@@ -79,32 +76,78 @@ public class ReservationUI {
         }
     }
 
-    private void displayMenu() {
-        System.out.println(ConsoleStyle.title("\n--- VIP & Loyalty Tier Priority Room Allocation ---") + "\n"
+    /**
+     * Opens the customer-facing reservation functions for one member whose ID
+     * was already verified by the member portal.
+     */
+    public void startMember(String memberId) {
+        LoyaltyProfile profile = reservationManager.findLoyaltyProfile(memberId);
+        if (profile == null || !profile.getMemberId().equalsIgnoreCase(memberId.trim())) {
+            MessageUI.displayError("Member record is no longer available. Please sign in again.");
+            return;
+        }
+
+        boolean exit = false;
+        while (!exit) {
+            displayMemberMenu(profile);
+            String choice = InputHelper.inputString(scanner, "Select an option: ").trim();
+            switch (choice) {
+                case "1":
+                    submitReservationRequest(profile);
+                    break;
+                case "2":
+                    displayReservations(
+                            reservationManager.findReservationsByGuestId(profile.getMemberId()));
+                    break;
+                case "0":
+                    exit = true;
+                    break;
+                default:
+                    MessageUI.displayError("Invalid option. Please try again.");
+            }
+        }
+    }
+
+    private void displayStaffMenu() {
+        System.out.println(ConsoleStyle.title("\n--- Staff: Priority Room Allocation ---") + "\n"
                 + ".-----.----------------------------------------.\n"
                 + "| No. |                Function                |\n"
                 + ":-----+----------------------------------------:\n"
-                + "| 1.  | Add New Reservation Request            |\n"
+                + "| 1.  | View Priority Waiting Queue            |\n"
                 + ":-----+----------------------------------------:\n"
-                + "| 2.  | View Priority Waiting Queue            |\n"
+                + "| 2.  | Allocate Rooms by Priority             |\n"
                 + ":-----+----------------------------------------:\n"
-                + "| 3.  | Allocate Rooms by Priority             |\n"
+                + "| 3.  | Search Reservation                     |\n"
                 + ":-----+----------------------------------------:\n"
-                + "| 4.  | Search Reservation                     |\n"
+                + "| 4.  | View All Reservations                  |\n"
                 + ":-----+----------------------------------------:\n"
-                + "| 5.  | View All Reservations                  |\n"
-                + ":-----+----------------------------------------:\n"
-                + "| 6.  | View Reports                           |\n"
+                + "| 5.  | View Reports                           |\n"
                 + ":-----+----------------------------------------:\n"
                 + "| 0.  | Back                                   |\n"
                 + "'-----'----------------------------------------'");
     }
 
+    private void displayMemberMenu(LoyaltyProfile profile) {
+        System.out.println(ConsoleStyle.title("\n--- Member Reservations ---"));
+        System.out.println("Signed in as " + profile.getName() + " ("
+                + profile.getMemberId() + ", " + profile.getLoyaltyTier() + ")");
+        System.out.println(ConsoleStyle.menu("1. Submit Reservation Request\n"
+                + "2. View My Reservations\n0. Back"));
+    }
 
-    // add new reservation request
-    private void submitReservationRequest() {
+
+    private void submitReservationRequest(LoyaltyProfile profile) {
         System.out.println("\n--- Submit Reservation Request ---");
-        Guest guest = inputGuest();
+        MessageUI.displaySuccess("Member identity confirmed.");
+        System.out.println("Member ID        : " + profile.getMemberId());
+        System.out.println("Member Name      : " + profile.getName());
+        System.out.println("Phone Number     : " + profile.getPhoneNumber());
+        System.out.println("Loyalty Tier     : " + profile.getLoyaltyTier());
+        submitReservationRequest(new Guest(profile.getMemberId(), profile.getName(),
+                profile.getPhoneNumber(), profile.getLoyaltyTier()));
+    }
+
+    private void submitReservationRequest(Guest guest) {
         LocalDate checkInDate = promptCheckInDate();
         LocalDate checkOutDate = promptCheckOutDate(checkInDate);
 
@@ -130,38 +173,6 @@ public class ReservationUI {
         System.out.println("Request Number : " + reservation.getConfirmationNumber());
         System.out.println("Status         : " + reservation.getStatus());
         System.out.println("Pending Count  : " + reservationManager.getPendingPriorityReservationCount());
-    }
-
-    private Guest inputGuest() {
-        String searchValue = promptRequiredText("Member ID / Phone Number : ");
-        LoyaltyProfile profile = reservationManager.findLoyaltyProfile(searchValue);  // find member by ID or phone
-        String guestId;
-        String fullName;
-        String phoneNumber;
-        LoyaltyTier loyaltyTier;
-
-        if (profile == null) {
-            MessageUI.displayInfo("No loyalty member record found. Guest will be treated as CLASSIC.");
-            guestId = reservationManager.generateGuestId();
-            System.out.println("Generated Guest ID: " + guestId);
-            fullName = promptFullName();
-            phoneNumber = InputValidator.isValidPhoneNumber(searchValue)
-                    ? searchValue
-                    : promptPhoneNumber();
-            loyaltyTier = LoyaltyTier.CLASSIC;
-        } else {
-            guestId = profile.getMemberId();
-            fullName = profile.getName();
-            phoneNumber = profile.getPhoneNumber();
-            loyaltyTier = profile.getLoyaltyTier();
-            MessageUI.displaySuccess("Loyalty member found.");
-            System.out.println("Member ID        : " + guestId);
-            System.out.println("Member Name      : " + fullName);
-            System.out.println("Phone Number     : " + phoneNumber);
-            System.out.println("Loyalty Tier     : " + loyaltyTier);
-        }
-
-        return new Guest(guestId, fullName, phoneNumber, loyaltyTier);
     }
 
     //put the reservation inside the  waiting queue
@@ -656,30 +667,6 @@ public class ReservationUI {
             } catch (DateTimeParseException ex) {
                 MessageUI.displayError("Dates must use yyyy-MM-dd format.");
             }
-        }
-    }
-
-    private String promptFullName() {
-        while (true) {
-            String fullName = InputHelper.inputString(scanner, "Full name: ").trim();
-
-            if (InputValidator.isValidName(fullName)) {
-                return fullName;
-            }
-
-            MessageUI.displayError("Invalid name. Use 2-50 letters only; spaces, apostrophe, hyphen, and dot are allowed.");
-        }
-    }
-
-    private String promptPhoneNumber() {
-        while (true) {
-            String phoneNumber = InputHelper.inputString(scanner, "Phone number: ").trim();
-
-            if (InputValidator.isValidPhoneNumber(phoneNumber)) {
-                return phoneNumber;
-            }
-
-            MessageUI.displayError("Invalid phone number. Please enter 7 to 20 digits.");
         }
     }
 

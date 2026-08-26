@@ -63,6 +63,11 @@ public final class LoyaltyUI {
             }
         }
 
+        // The legacy loyalty menus use nextInt(); clear its trailing newline
+        // before returning to the line-based staff portal.
+        if (scanner.hasNextLine()) {
+            scanner.nextLine();
+        }
         serviceControl.saveAll();
     }
 
@@ -126,6 +131,7 @@ public final class LoyaltyUI {
         } else {
             MessageUI.displayInfo("No unread tier-upgrade notifications.");
         }
+
         System.out.println();
     }
 
@@ -204,7 +210,6 @@ public final class LoyaltyUI {
             MessageUI.displayInfo("No member records found.");
             return;
         }
-
         scanner.nextLine();
         displayMemberTable();
         String memberId = InputHelper.inputString(scanner, "Enter member ID: ");
@@ -221,7 +226,6 @@ public final class LoyaltyUI {
             MessageUI.displayInfo("No member records found.");
             return;
         }
-
         scanner.nextLine();
         displayMemberTable();
         String memberId = InputHelper.inputString(scanner, "Enter member ID to update: ");
@@ -229,17 +233,13 @@ public final class LoyaltyUI {
             MessageUI.displayError("Member not found.");
             return;
         }
-
         String newName = InputHelper.inputString(scanner, "Enter new member name: ");
         String newPassport = InputHelper.inputString(scanner, "Enter new passport number: ");
         String newPhoneNumber = InputHelper.inputString(scanner, "Enter new phone number: ");
-        if (!validateMemberDetails(
-                newName, newPassport, newPhoneNumber, memberId)) {
+        if (!validateMemberDetails(newName, newPassport, newPhoneNumber, memberId)) {
             return;
         }
-
-        serviceControl.updateMember(
-                memberId, newName, newPassport, newPhoneNumber);
+        serviceControl.updateMember(memberId, newName, newPassport, newPhoneNumber);
         MessageUI.displaySuccess("Member updated successfully.");
     }
 
@@ -260,9 +260,19 @@ public final class LoyaltyUI {
                     "Passport number must contain 5 to 20 letters or numbers.");
             return false;
         }
+        if (!serviceControl.isPassportAvailable(passport, excludedMemberId)) {
+            MessageUI.displayError(
+                    "Passport number is already registered to another member.");
+            return false;
+        }
         if (!Verification.isValidPhoneNumber(phoneNumber)) {
             MessageUI.displayError(
                     "Phone number must contain 7 to 20 digits; +, spaces, and hyphens are allowed.");
+            return false;
+        }
+        if (!serviceControl.isPhoneNumberAvailable(phoneNumber, excludedMemberId)) {
+            MessageUI.displayError(
+                    "Phone number is already registered to another member.");
             return false;
         }
         return true;
