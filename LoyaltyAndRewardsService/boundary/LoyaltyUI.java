@@ -7,8 +7,9 @@ import java.time.format.DateTimeParseException;
 import java.util.Iterator;
 import java.util.Scanner;
 
-import adt.ArrayList;
+import adt.SortedArrayList;
 import LoyaltyAndRewardsService.control.LoyaltyServiceControl;
+import LoyaltyAndRewardsService.control.LoyaltyServiceControl.ExpiringPointSummary;
 import LoyaltyAndRewardsService.entity.Member;
 import LoyaltyAndRewardsService.entity.PointTransaction;
 import LoyaltyAndRewardsService.entity.RedemptionRequest;
@@ -110,20 +111,19 @@ public final class LoyaltyUI {
     }
 
     private void displayStartupNotifications() {
-        int expiringTransactionCount =
-                serviceControl.getExpiringTransactionCount(DEFAULT_EXPIRY_ALERT_DAYS);
-        int expiringPointTotal =
-                serviceControl.getExpiringPointTotal(DEFAULT_EXPIRY_ALERT_DAYS);
+        ExpiringPointSummary expiringSummary =
+                serviceControl.getExpiringPointSummary(DEFAULT_EXPIRY_ALERT_DAYS);
+        int recentlyExpiredPoints = serviceControl.getRecentlyExpiredPointTotal();
         int pendingRequestCount = serviceControl.getPendingRequestCount();
 
         System.out.println();
         System.out.println(ConsoleStyle.title("=== Loyalty Notifications ==="));
-        if (serviceControl.getRecentlyExpiredPointTotal() > 0) {
-            MessageUI.displayPointsExpired(serviceControl.getRecentlyExpiredPointTotal());
+        if (recentlyExpiredPoints > 0) {
+            MessageUI.displayPointsExpired(recentlyExpiredPoints);
         }
-        if (expiringTransactionCount > 0) {
-            MessageUI.displayInfo(expiringPointTotal + " unredeemed point(s) from "
-                    + expiringTransactionCount + " transaction(s) will expire within "
+        if (expiringSummary.transactionCount() > 0) {
+            MessageUI.displayInfo(expiringSummary.pointTotal() + " unredeemed point(s) from "
+                    + expiringSummary.transactionCount() + " transaction(s) will expire within "
                     + DEFAULT_EXPIRY_ALERT_DAYS + " days.");
         } else {
             MessageUI.displayInfo("No unredeemed points expire within "
@@ -408,7 +408,7 @@ public final class LoyaltyUI {
     }
 
     private String buildExpiringPointsReport(
-            ArrayList<PointTransaction> transactions) {
+            SortedArrayList<PointTransaction> transactions) {
         if (transactions.isEmpty()) {
             return "";
         }
@@ -434,9 +434,9 @@ public final class LoyaltyUI {
 
     private String buildBusinessCycleSummary(
             LocalDate startDate, LocalDate endDate,
-            String tierId, int minimumPoint, ArrayList<Member> rankedMembers,
-            ArrayList<PointTransaction> transactions,
-            ArrayList<RedemptionRequest> requests) {
+            String tierId, int minimumPoint, SortedArrayList<Member> rankedMembers,
+            SortedArrayList<PointTransaction> transactions,
+            SortedArrayList<RedemptionRequest> requests) {
         StringBuilder output = new StringBuilder();
         output.append("=== Business Cycle Summary Report ===\n");
         output.append("Cycle Period: ").append(startDate).append(" to ").append(endDate).append("\n");
@@ -452,7 +452,7 @@ public final class LoyaltyUI {
     }
 
     private void appendMemberSummary(StringBuilder output,
-            ArrayList<Member> members) {
+            SortedArrayList<Member> members) {
         String border = "+------------+----------------------+------------+----------+";
         output.append("=== Top Members by Current Points ===\n");
         output.append(border).append("\n");
@@ -476,7 +476,7 @@ public final class LoyaltyUI {
     }
 
     private void appendTransactionSummary(StringBuilder output,
-            ArrayList<PointTransaction> transactions) {
+            SortedArrayList<PointTransaction> transactions) {
         output.append("\n=== Transaction Summary ===\n");
         output.append("Transactions in cycle: ")
                 .append(transactions.getNumberOfEntries()).append("\n");
@@ -500,7 +500,7 @@ public final class LoyaltyUI {
     }
 
     private void appendRequestSummary(StringBuilder output,
-            ArrayList<RedemptionRequest> requests) {
+            SortedArrayList<RedemptionRequest> requests) {
         int pending = serviceControl.countRequestsByStatus(requests, "Pending");
         int approved = serviceControl.countRequestsByStatus(requests, "Approved");
         int rejected = serviceControl.countRequestsByStatus(requests, "Rejected");
@@ -571,13 +571,13 @@ public final class LoyaltyUI {
     }
 
     private static final class BusinessCycleData {
-        private final ArrayList<Member> rankedMembers;
-        private final ArrayList<PointTransaction> transactions;
-        private final ArrayList<RedemptionRequest> requests;
+        private final SortedArrayList<Member> rankedMembers;
+        private final SortedArrayList<PointTransaction> transactions;
+        private final SortedArrayList<RedemptionRequest> requests;
 
-        private BusinessCycleData(ArrayList<Member> rankedMembers,
-                ArrayList<PointTransaction> transactions,
-                ArrayList<RedemptionRequest> requests) {
+        private BusinessCycleData(SortedArrayList<Member> rankedMembers,
+                SortedArrayList<PointTransaction> transactions,
+                SortedArrayList<RedemptionRequest> requests) {
             this.rankedMembers = rankedMembers;
             this.transactions = transactions;
             this.requests = requests;
