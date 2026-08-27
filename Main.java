@@ -35,7 +35,7 @@ public class Main {
         StaffAuthenticationControl staffAuthentication = new StaffAuthenticationControl();
         boolean exit = false;
 
-        while (!exit && scanner.hasNextLine()) {
+        while (!exit) {
             displayMainMenu();
             String choice = readLine(scanner, "Select an option: ");
             if (choice == null) {
@@ -127,7 +127,7 @@ public class Main {
      */
     private static void staffPortal(Scanner scanner) {
         boolean back = false;
-        while (!back && scanner.hasNextLine()) {
+        while (!back) {
             System.out.println(ConsoleStyle.title("\n--- Staff Portal ---"));
             System.out.println(ConsoleStyle.menu(
                     "1. VIP & Loyalty Tier Priority Room Allocation\n"
@@ -171,7 +171,7 @@ public class Main {
         LoyaltyServiceControl loyalty = new LoyaltyServiceControl();
         boolean back = false;
 
-        while (!back && scanner.hasNextLine()) {
+        while (!back) {
             System.out.println(ConsoleStyle.title("\n--- Member / Guest Portal ---"));
             System.out.println(ConsoleStyle.menu(
                     "1. Existing Member Login\n"
@@ -281,7 +281,7 @@ public class Main {
     }
 
     private static String promptMemberName(Scanner scanner) {
-        while (scanner.hasNextLine()) {
+        while (true) {
             String value = readLine(scanner, "Full name: ");
             if (isCancelled(value)) {
                 return null;
@@ -292,11 +292,10 @@ public class Main {
             System.out.println(ConsoleStyle.error(
                     "Invalid name. Use 3-20 letters, spaces, apostrophes, hyphens, or dots."));
         }
-        return null;
     }
 
     private static String promptPassport(Scanner scanner) {
-        while (scanner.hasNextLine()) {
+        while (true) {
             String value = readLine(scanner, "Passport number: ");
             if (isCancelled(value)) {
                 return null;
@@ -306,11 +305,10 @@ public class Main {
             }
             System.out.println(ConsoleStyle.error("Invalid passport. Use 5-20 letters or digits."));
         }
-        return null;
     }
 
     private static String promptPhoneNumber(Scanner scanner) {
-        while (scanner.hasNextLine()) {
+        while (true) {
             String value = readLine(scanner, "Phone number: ");
             if (isCancelled(value)) {
                 return null;
@@ -320,7 +318,6 @@ public class Main {
             }
             System.out.println(ConsoleStyle.error("Invalid phone number."));
         }
-        return null;
     }
 
     private static void showMemberHome(Scanner scanner, LoyaltyServiceControl loyalty,
@@ -333,7 +330,7 @@ public class Main {
         System.out.println("Points    : " + member.getPoint());
         System.out.println("\n" + loyalty.generatePersonalizedPromotion(member.getMemberId()));
 
-        while (scanner.hasNextLine()) {
+        while (true) {
             System.out.println(ConsoleStyle.menu(
                     "\n1. Make a Reservation\n"
                             + "0. Back to Member / Guest Portal\n"));

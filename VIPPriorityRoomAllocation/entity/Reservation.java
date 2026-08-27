@@ -152,6 +152,7 @@ public class Reservation implements Comparable<Reservation> {
 
     @Override
     public int compareTo(Reservation other) {
+        // compareTo is the priority formula used by MaxHeapPriorityQueue
         int tierCompare = Integer.compare(
                 getGuest().getLoyaltyTier().getPriorityScore(), // higher tier score has higher heap priority
                 other.getGuest().getLoyaltyTier().getPriorityScore());

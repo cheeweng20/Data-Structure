@@ -22,6 +22,7 @@ public class LoyaltyLookupDAO {
     }
 
     public LoyaltyProfile findProfile(String memberId) {
+        // search Chee Weng loyalty CSV by member ID or phone number
         if (memberId == null || memberId.trim().isEmpty()) {
             return null; // no search value entered, so no loyalty profile can be found
         }
@@ -45,7 +46,7 @@ public class LoyaltyLookupDAO {
                 String memberIdValue = fields[0].trim();
                 String phoneNumber = fields[3].trim();
                 boolean memberIdMatches = memberIdValue.equalsIgnoreCase(memberId.trim());
-                boolean phoneMatches = normalize(phoneNumber).equals(searchValue);
+                boolean phoneMatches = normalize(phoneNumber).equals(searchValue); // allow phone search too
 
                 if (!memberIdMatches && !phoneMatches) {
                     continue; // skip rows that are not the selected member
