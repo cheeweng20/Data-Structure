@@ -21,6 +21,7 @@ import java.util.Iterator;
 public class HousekeepingControl {
 
     private static final String CHECKED_OUT_REMARK_PREFIX = "Checked-out reservation: ";
+    private static final String LATE_CHECKOUT_REMARK_PREFIX = "Late check-out | Confirmation: ";
     private final HousekeepingTaskDAO housekeepingTaskDAO;
     private final RoomDAO roomDAO;
     private final ReservationDAO reservationDAO;
@@ -30,15 +31,37 @@ public class HousekeepingControl {
     private final StackInterface<StatusChange> rollbackLog;
 
     public HousekeepingControl() {
-        this(new HousekeepingTaskDAO(), new RoomDAO(), new ReservationDAO());
+        this(true);
+    }
+
+    /**
+     * Creates a housekeeping control instance using the normal data files.
+     * Front Desk should pass {@code false} when it only needs to send a late
+     * check-out notification; that prevents the notification path from also
+     * generating catch-up tasks for historical checked-out reservations.
+     */
+    public HousekeepingControl(boolean createCheckedOutReservationTasks) {
+        this(new HousekeepingTaskDAO(), new RoomDAO(), new ReservationDAO(),
+                createCheckedOutReservationTasks);
     }
 
     public HousekeepingControl(HousekeepingTaskDAO housekeepingTaskDAO, RoomDAO roomDAO) {
-        this(housekeepingTaskDAO, roomDAO, new ReservationDAO());
+        this(housekeepingTaskDAO, roomDAO, new ReservationDAO(), true);
     }
 
     public HousekeepingControl(HousekeepingTaskDAO housekeepingTaskDAO, RoomDAO roomDAO,
             ReservationDAO reservationDAO) {
+        this(housekeepingTaskDAO, roomDAO, reservationDAO, true);
+    }
+
+    /**
+     * Creates a control instance with explicit data access objects.
+     *
+     * @param createCheckedOutReservationTasks whether construction should
+     * create missing cleaning tasks for already checked-out reservations
+     */
+    public HousekeepingControl(HousekeepingTaskDAO housekeepingTaskDAO, RoomDAO roomDAO,
+            ReservationDAO reservationDAO, boolean createCheckedOutReservationTasks) {
         if (housekeepingTaskDAO == null || roomDAO == null || reservationDAO == null) {
             throw new IllegalArgumentException("Housekeeping, room, and reservation data access objects are required.");
         }
@@ -50,7 +73,10 @@ public class HousekeepingControl {
         rooms = roomDAO.retrieveFromFile();
         reservations = reservationDAO.retrieveFromFile();
         rollbackLog = new ArrayStack<>();
-        createTasksForCheckedOutReservations();
+
+        if (createCheckedOutReservationTasks) {
+            createTasksForCheckedOutReservations();
+        }
     }
 
     public HousekeepingTask addTask(String roomNumber, String remarks) {
@@ -61,6 +87,59 @@ public class HousekeepingControl {
         HousekeepingTask task = new HousekeepingTask(generateTaskId(), roomNumber,
                 TaskStatus.DIRTY, LocalDateTime.now(), null, remarks);
         tasks.add(task);
+        saveData();
+        return task;
+    }
+
+    /**
+     * Notifies Housekeeping that an occupied room has been granted a late
+     * check-out. The room's cleaning task is blocked until the guest leaves.
+     * Repeated notifications for the same room and reservation update the
+     * existing task instead of creating duplicates.
+     *
+     * @return the blocked task, or {@code null} when the supplied data is
+     * invalid or the room already has a task for another active reservation
+     */
+    public HousekeepingTask notifyLateCheckout(String roomNumber, String confirmationNumber,
+            String guestName, LocalDateTime extendedCheckOutAt,
+            LocalDateTime expectedRoomReadyAt, String reason) {
+        if (isBlank(roomNumber) || isBlank(confirmationNumber)
+                || extendedCheckOutAt == null || expectedRoomReadyAt == null
+                || expectedRoomReadyAt.isBefore(extendedCheckOutAt)) {
+            return null;
+        }
+
+        String normalizedRoomNumber = roomNumber.trim();
+        String normalizedConfirmationNumber = confirmationNumber.trim();
+
+        if (!roomExists(normalizedRoomNumber)) {
+            return null;
+        }
+
+        HousekeepingTask task = findTaskForReservation(normalizedRoomNumber,
+                normalizedConfirmationNumber);
+
+        if (task == null && findActiveTaskForRoom(normalizedRoomNumber) != null) {
+            // A room cannot have two unfinished cleaning tasks. Do not replace
+            // another reservation's active task with this notification.
+            return null;
+        }
+
+        String lateCheckoutRemarks = buildLateCheckoutRemarks(normalizedConfirmationNumber,
+                guestName, extendedCheckOutAt, expectedRoomReadyAt, reason);
+
+        if (task == null) {
+            task = new HousekeepingTask(generateTaskId(), normalizedRoomNumber,
+                    TaskStatus.BLOCKED, LocalDateTime.now(), null,
+                    expectedRoomReadyAt, lateCheckoutRemarks);
+            tasks.add(task);
+        } else {
+            task.setStatus(TaskStatus.BLOCKED);
+            task.setCompletedAt(null);
+            task.setExpectedReadyAt(expectedRoomReadyAt);
+            task.setRemarks(lateCheckoutRemarks);
+        }
+
         saveData();
         return task;
     }
@@ -248,17 +327,76 @@ public class HousekeepingControl {
 
     private boolean hasTaskForReservation(String confirmationNumber) {
         Iterator<HousekeepingTask> iterator = tasks.iterator();
-        String confirmationMarker = CHECKED_OUT_REMARK_PREFIX + confirmationNumber;
 
         while (iterator.hasNext()) {
             HousekeepingTask task = iterator.next();
 
-            if (task.getRemarks() != null && task.getRemarks().equals(confirmationMarker)) {
+            if (isTaskForReservation(task, confirmationNumber)) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    private HousekeepingTask findTaskForReservation(String roomNumber,
+            String confirmationNumber) {
+        Iterator<HousekeepingTask> iterator = tasks.iterator();
+
+        while (iterator.hasNext()) {
+            HousekeepingTask task = iterator.next();
+
+            if (task.getRoomNumber().equalsIgnoreCase(roomNumber)
+                    && isTaskForReservation(task, confirmationNumber)) {
+                return task;
+            }
+        }
+
+        return null;
+    }
+
+    private HousekeepingTask findActiveTaskForRoom(String roomNumber) {
+        Iterator<HousekeepingTask> iterator = tasks.iterator();
+
+        while (iterator.hasNext()) {
+            HousekeepingTask task = iterator.next();
+
+            if (task.getRoomNumber().equalsIgnoreCase(roomNumber)
+                    && task.getStatus() != TaskStatus.READY_FOR_CHECK_IN) {
+                return task;
+            }
+        }
+
+        return null;
+    }
+
+    private boolean isTaskForReservation(HousekeepingTask task, String confirmationNumber) {
+        if (task == null || task.getRemarks() == null || isBlank(confirmationNumber)) {
+            return false;
+        }
+
+        String normalizedConfirmationNumber = confirmationNumber.trim();
+        return task.getRemarks().equals(CHECKED_OUT_REMARK_PREFIX + normalizedConfirmationNumber)
+                || task.getRemarks().startsWith(LATE_CHECKOUT_REMARK_PREFIX
+                        + normalizedConfirmationNumber + " | ");
+    }
+
+    private String buildLateCheckoutRemarks(String confirmationNumber, String guestName,
+            LocalDateTime extendedCheckOutAt, LocalDateTime expectedRoomReadyAt,
+            String reason) {
+        return LATE_CHECKOUT_REMARK_PREFIX + confirmationNumber
+                + " | Guest: " + displayValue(guestName)
+                + " | Extended check-out: " + extendedCheckOutAt
+                + " | Expected room-ready: " + expectedRoomReadyAt
+                + " | Reason: " + displayValue(reason);
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
+    }
+
+    private String displayValue(String value) {
+        return isBlank(value) ? "-" : value.trim().replace("\r", " ").replace("\n", " ");
     }
 
     private Room findRoomByNumber(String roomNumber) {

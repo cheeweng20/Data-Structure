@@ -16,7 +16,8 @@ import java.time.LocalDateTime;
 public class HousekeepingTaskDAO {
 
     private static final int INITIAL_CAPACITY = 100;
-    private static final String HEADER = "TaskId,RoomNumber,Status,CreatedAt,CompletedAt,Remarks";
+    private static final String HEADER
+            = "TaskId,RoomNumber,Status,CreatedAt,CompletedAt,ExpectedReadyAt,Remarks";
     private final String fileName;
 
     public HousekeepingTaskDAO() {
@@ -46,7 +47,11 @@ public class HousekeepingTaskDAO {
 
                 LocalDateTime completedAt = fields.length >= 6 && !fields[4].trim().isEmpty()
                         ? LocalDateTime.parse(fields[4]) : null;
-                String remarks = fields.length >= 6 ? fields[5] : fields[4];
+                LocalDateTime expectedReadyAt = fields.length >= 7 && !fields[5].trim().isEmpty()
+                        ? LocalDateTime.parse(fields[5]) : null;
+                // Six-column records were written before ExpectedReadyAt was added.
+                String remarks = fields.length >= 7 ? fields[6]
+                        : (fields.length >= 6 ? fields[5] : fields[4]);
 
                 tasks.add(new HousekeepingTask(
                         fields[0],
@@ -54,6 +59,7 @@ public class HousekeepingTaskDAO {
                         TaskStatus.valueOf(fields[2]),
                         LocalDateTime.parse(fields[3]),
                         completedAt,
+                        expectedReadyAt,
                         remarks));
             }
         } catch (FileNotFoundException ex) {
