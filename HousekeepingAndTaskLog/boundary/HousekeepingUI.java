@@ -7,6 +7,7 @@ import HousekeepingAndTaskLog.entity.TaskStatus;
 import adt.ListInterface;
 import common.src.Logo;
 import common.src.ConsoleStyle;
+import common.src.ConsoleProgress;
 import common.src.InputHelper;
 import common.src.InputHelper.EndOfInputException;
 import common.utility.Validation;
@@ -94,7 +95,11 @@ public class HousekeepingUI {
 
         String remarks = promptText("Remarks: ");
 
-        HousekeepingTask task = housekeepingControl.addTask(roomNumber, remarks);
+        HousekeepingTask task = ConsoleProgress.run(
+                () -> housekeepingControl.addTask(roomNumber, remarks),
+                "Processing cleaning task...",
+                "Creating task record...",
+                "Saving task log...");
 
         if (task == null) {
             System.out.println("Unable to add cleaning task.");
@@ -117,7 +122,12 @@ public class HousekeepingUI {
         displayTaskDetails(task);
         TaskStatus newStatus = promptStatus();
 
-        if (housekeepingControl.updateTaskStatus(taskId, newStatus)) {
+        boolean updated = ConsoleProgress.run(
+                () -> housekeepingControl.updateTaskStatus(taskId, newStatus),
+                "Processing status update...",
+                "Updating room cleaning status...",
+                "Saving task log...");
+        if (updated) {
             System.out.println("Status updated.");
             displayTaskDetails(housekeepingControl.findTaskById(taskId));
         } else {
@@ -127,7 +137,11 @@ public class HousekeepingUI {
 
     private void rollbackLastChange() {
         System.out.println("\n--- Roll Back Last Status Change ---");
-        StatusChange statusChange = housekeepingControl.rollbackLastChange();
+        StatusChange statusChange = ConsoleProgress.run(
+                housekeepingControl::rollbackLastChange,
+                "Restoring previous task status...",
+                "Updating room status...",
+                "Saving task log...");
 
         if (statusChange == null) {
             System.out.println("No change is available to roll back.");
@@ -144,7 +158,11 @@ public class HousekeepingUI {
     private void searchByRoom() {
         System.out.println("\n--- Search Task by Room ---");
         String roomNumber = promptRoomNumber();
-        displayTasks(housekeepingControl.searchByRoom(roomNumber));
+        displayTasks(ConsoleProgress.run(
+                () -> housekeepingControl.searchByRoom(roomNumber),
+                "Fetching housekeeping information...",
+                "Searching tasks by room...",
+                "Preparing results..."));
     }
 
     private void displayReportMenu() {
@@ -169,7 +187,11 @@ public class HousekeepingUI {
                     displayStatusSummaryReport();
                     break;
                 case "2":
-                    displayTasks(housekeepingControl.getTasks());
+                    displayTasks(ConsoleProgress.run(
+                            housekeepingControl::getTasks,
+                            "Fetching housekeeping information...",
+                            "Loading task records...",
+                            "Preparing results..."));
                     break;
                 case "3":
                     filterTasksByCreatedDateRange();
@@ -187,6 +209,17 @@ public class HousekeepingUI {
     }
 
     private void displayStatusSummaryReport() {
+        int[] totals = ConsoleProgress.run(() -> {
+            int[] result = new int[TaskStatus.values().length];
+            for (TaskStatus status : TaskStatus.values()) {
+                result[status.ordinal()] = housekeepingControl.countByStatus(status);
+            }
+            return result;
+        },
+                "Fetching housekeeping information...",
+                "Calculating task status totals...",
+                "Preparing report...");
+
         System.out.println("\n+----------------------------+----------+");
         System.out.println("|      TASK STATUS SUMMARY REPORT       |");
         System.out.println("+----------------------------+----------+");
@@ -194,7 +227,7 @@ public class HousekeepingUI {
         System.out.println("+----------------------------+----------+");
 
         for (TaskStatus status : TaskStatus.values()) {
-            System.out.printf("| %-26s | %8d |%n", status, housekeepingControl.countByStatus(status));
+            System.out.printf("| %-26s | %8d |%n", status, totals[status.ordinal()]);
         }
 
         System.out.println("+----------------------------+----------+");
@@ -213,7 +246,12 @@ public class HousekeepingUI {
             }
         } while (endDate.isBefore(startDate));
 
-        displayTasks(housekeepingControl.filterTasksByCreatedDateRange(startDate, endDate));
+        final LocalDate selectedEndDate = endDate;
+        displayTasks(ConsoleProgress.run(
+                () -> housekeepingControl.filterTasksByCreatedDateRange(startDate, selectedEndDate),
+                "Fetching housekeeping information...",
+                "Filtering tasks by date range...",
+                "Preparing results..."));
     }
 
     private String promptRoomNumber() {

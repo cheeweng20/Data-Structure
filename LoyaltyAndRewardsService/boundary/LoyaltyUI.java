@@ -20,6 +20,7 @@ import common.src.InputHelper;
 import common.src.InputHelper.EndOfInputException;
 import common.src.Logo;
 import common.src.ConsoleStyle;
+import common.src.ConsoleProgress;
 
 /**
  * Handles all actor interaction for loyalty and rewards use cases.
@@ -144,6 +145,12 @@ public final class LoyaltyUI {
             return;
         }
 
+        int memberCount = ConsoleProgress.run(
+                serviceControl::getMemberCount,
+                "Fetching member information...",
+                "Loading loyalty profiles...",
+                "Preparing member list...");
+
         String border = "+------------+----------------------+------------------+------------------+------------+------------+----------------+";
         System.out.println(ConsoleStyle.tableBorder(border));
         System.out.print(ConsoleStyle.tableHeader(String.format(
@@ -151,7 +158,7 @@ public final class LoyaltyUI {
                 "Member ID", "Name", "Passport", "Phone Number", "Available", "Lifetime",
                 "Tier")));
         System.out.println(ConsoleStyle.tableBorder(border));
-        for (int i = 1; i <= serviceControl.getMemberCount(); i++) {
+        for (int i = 1; i <= memberCount; i++) {
             Member member = serviceControl.getMemberEntry(i);
             System.out.printf(
                     "| %-10.10s | %-20.20s | %-16.16s | %-16.16s | %10d | %10d | %-14.14s |%n",
@@ -186,11 +193,19 @@ public final class LoyaltyUI {
                     break;
                 case 2:
                     displayRequestTable("Pending Point-Payment Requests",
-                            serviceControl.getPendingRequestIterator());
+                            ConsoleProgress.run(
+                                    serviceControl::getPendingRequestIterator,
+                                    "Fetching request information...",
+                                    "Loading pending requests...",
+                                    "Preparing results..."));
                     break;
                 case 3:
                     displayRequestTable("Point-Payment Request History",
-                            serviceControl.getRequestIterator());
+                            ConsoleProgress.run(
+                                    serviceControl::getRequestIterator,
+                                    "Fetching request information...",
+                                    "Loading request history...",
+                                    "Preparing results..."));
                     break;
                 case 0:
                     exit = true;
@@ -206,7 +221,11 @@ public final class LoyaltyUI {
     }
 
     private void processRequest() {
-        RedemptionRequest nextRequest = serviceControl.getNextPendingRequest();
+        RedemptionRequest nextRequest = ConsoleProgress.run(
+                serviceControl::getNextPendingRequest,
+                "Fetching request information...",
+                "Loading the next pending request...",
+                "Preparing request details...");
         if (nextRequest == null) {
             MessageUI.displayInfo("No pending requests.");
             return;
@@ -219,8 +238,11 @@ public final class LoyaltyUI {
             return;
         }
 
-        RedemptionRequest processed =
-                serviceControl.processNextRequestAndSave(decision.equalsIgnoreCase("Y"));
+        RedemptionRequest processed = ConsoleProgress.run(
+                () -> serviceControl.processNextRequestAndSave(decision.equalsIgnoreCase("Y")),
+                "Processing redemption request...",
+                "Updating points balance...",
+                "Saving request result...");
         if (processed != null) {
             MessageUI.displayRequestProcessed(processed.getStatus());
         }
@@ -328,8 +350,12 @@ public final class LoyaltyUI {
             return;
         }
 
-        String report = buildExpiringPointsReport(
-                serviceControl.generateExpiringReport(withinDays));
+        String report = ConsoleProgress.run(
+                () -> buildExpiringPointsReport(
+                        serviceControl.generateExpiringReport(withinDays)),
+                "Fetching points information...",
+                "Calculating expiry details...",
+                "Preparing report...");
         if (displayReport(report, "No points are expiring within the selected period.")) {
             offerPdfExport("Expiring Points Alert", report,
                     ChartType.EXPIRING_POINTS);
@@ -359,14 +385,16 @@ public final class LoyaltyUI {
             return;
         }
 
-        ArrayList<Member> rankedMembers =
-                serviceControl.generateRankingReport(minimumPoint, tierId);
-        ArrayList<PointTransaction> transactions =
-                serviceControl.generateTransactionReport(startDate, endDate);
-        ArrayList<RedemptionRequest> requests =
-                serviceControl.generateRequestReport(startDate, endDate);
+        BusinessCycleData data = ConsoleProgress.run(
+                () -> new BusinessCycleData(
+                        serviceControl.generateRankingReport(minimumPoint, tierId),
+                        serviceControl.generateTransactionReport(startDate, endDate),
+                        serviceControl.generateRequestReport(startDate, endDate)),
+                "Fetching loyalty information...",
+                "Calculating cycle summaries...",
+                "Preparing report data...");
         String report = buildBusinessCycleSummary(startDate, endDate,
-                tierId, minimumPoint, rankedMembers, transactions, requests);
+                tierId, minimumPoint, data.rankedMembers, data.transactions, data.requests);
         System.out.println(report);
         offerPdfExport("Business Cycle Summary Report", report,
                 ChartType.BUSINESS_SUMMARY);
@@ -526,7 +554,11 @@ public final class LoyaltyUI {
 
         Path pdfPath;
         try {
-            pdfPath = ReportPdfExporter.export(title, report, chartType);
+            pdfPath = ConsoleProgress.runIo(
+                    () -> ReportPdfExporter.export(title, report, chartType),
+                    "Generating chart...",
+                    "Creating PDF...",
+                    "Finalizing document...");
         } catch (IOException exception) {
             MessageUI.displayError("Unable to generate PDF: " + exception.getMessage());
             return;
@@ -540,6 +572,20 @@ public final class LoyaltyUI {
         } catch (IOException exception) {
             MessageUI.displayInfo("The PDF was generated but could not be opened automatically: "
                     + exception.getMessage());
+        }
+    }
+
+    private static final class BusinessCycleData {
+        private final ArrayList<Member> rankedMembers;
+        private final ArrayList<PointTransaction> transactions;
+        private final ArrayList<RedemptionRequest> requests;
+
+        private BusinessCycleData(ArrayList<Member> rankedMembers,
+                ArrayList<PointTransaction> transactions,
+                ArrayList<RedemptionRequest> requests) {
+            this.rankedMembers = rankedMembers;
+            this.transactions = transactions;
+            this.requests = requests;
         }
     }
 }

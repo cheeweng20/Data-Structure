@@ -8,6 +8,7 @@ import VIPPriorityRoomAllocation.entity.ReservationStatus;
 import VIPPriorityRoomAllocation.entity.Room;
 import adt.ListInterface;
 import common.src.ConsoleStyle;
+import common.src.ConsoleProgress;
 import common.src.InputHelper;
 import common.src.InputHelper.EndOfInputException;
 import common.utility.Validation;
@@ -111,8 +112,13 @@ public class FrontDeskUI {
             }
         }
 
-        CheckInResult result = control.checkInReservation(
-                reservation.getConfirmationNumber(), paymentMethod);
+        final String selectedPaymentMethod = paymentMethod;
+        CheckInResult result = ConsoleProgress.run(
+                () -> control.checkInReservation(
+                        reservation.getConfirmationNumber(), selectedPaymentMethod),
+                "Verifying reservation details...",
+                "Processing payment and check-in...",
+                "Updating room status...");
         if (result == CheckInResult.SUCCESS) {
             System.out.println("Check-in successful.");
             displayReservationDetails(
@@ -141,8 +147,11 @@ public class FrontDeskUI {
             return;
         }
 
-        CheckOutResult result = control.checkOutReservation(
-                reservation.getConfirmationNumber());
+        CheckOutResult result = ConsoleProgress.run(
+                () -> control.checkOutReservation(reservation.getConfirmationNumber()),
+                "Verifying guest stay...",
+                "Processing check-out...",
+                "Updating room status...");
         if (result == CheckOutResult.SUCCESS) {
             System.out.println("Guest checked out successfully.");
             displayReservationDetails(reservation);
@@ -169,11 +178,19 @@ public class FrontDeskUI {
 
     private void outstandingBalanceReport() {
         System.out.println("\nOutstanding balance report (sorted by amount, highest first)");
-        displayReservationList(control.getOutstandingBalanceReport());
+        displayReservationList(ConsoleProgress.run(
+                control::getOutstandingBalanceReport,
+                "Fetching billing information...",
+                "Calculating outstanding balances...",
+                "Preparing report..."));
     }
 
     private void paymentMethodReport() {
-        ListInterface<Reservation> reservations = control.getPaymentMethodReport();
+        ListInterface<Reservation> reservations = ConsoleProgress.run(
+                control::getPaymentMethodReport,
+                "Fetching payment information...",
+                "Grouping paid reservations...",
+                "Preparing report...");
         if (reservations.isEmpty()) {
             System.out.println("\nNo paid room records found.");
             return;
@@ -208,7 +225,11 @@ public class FrontDeskUI {
             return null;
         }
 
-        Reservation reservation = control.findByConfirmationNumber(confirmationNumber);
+        Reservation reservation = ConsoleProgress.run(
+                () -> control.findByConfirmationNumber(confirmationNumber),
+                "Fetching reservation information...",
+                "Searching confirmation records...",
+                "Preparing reservation details...");
         if (reservation == null) {
             System.out.println("Guest record not found.");
         }
@@ -254,8 +275,13 @@ public class FrontDeskUI {
     }
 
     private ListInterface<Reservation> findReservationsByPrompt() {
-        return control.findMatchingReservations(promptRequiredText(
-                "Enter reservation ID / Member ID / Guest Name: "));
+        String searchValue = promptRequiredText(
+                "Enter reservation ID / Member ID / Guest Name: ");
+        return ConsoleProgress.run(
+                () -> control.findMatchingReservations(searchValue),
+                "Fetching reservation information...",
+                "Searching records...",
+                "Preparing results...");
     }
 
     private void displayReservationList(ListInterface<Reservation> reservations) {

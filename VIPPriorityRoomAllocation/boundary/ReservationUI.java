@@ -19,6 +19,7 @@ import adt.SortedListInterface;
 import common.src.InputHelper;
 import common.src.InputHelper.EndOfInputException;
 import common.src.ConsoleStyle;
+import common.src.ConsoleProgress;
 import common.utility.Validation;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -88,7 +89,7 @@ public class ReservationUI {
      */
     public void startMember(String memberId) {
         try {
-            LoyaltyProfile profile = reservationManager.findLoyaltyProfile(memberId);
+            LoyaltyProfile profile = loadMemberProfile(memberId);
             if (profile == null || !profile.getMemberId().equalsIgnoreCase(memberId.trim())) {
                 MessageUI.displayError("Member record is no longer available. Please sign in again.");
                 return;
@@ -127,7 +128,11 @@ public class ReservationUI {
                 MessageUI.displayError("Member record is no longer available. Please sign in again.");
                 return;
             }
-            displayReservations(reservationManager.findReservationsByGuestId(profile.getMemberId()));
+            displayReservations(ConsoleProgress.run(
+                    () -> reservationManager.findReservationsByGuestId(profile.getMemberId()),
+                    "Fetching reservation information...",
+                    "Searching member bookings...",
+                    "Preparing reservation results..."));
         } catch (EndOfInputException exception) {
             // EOF behaves like returning to Member Home.
         }
@@ -157,6 +162,14 @@ public class ReservationUI {
         System.out.println("Signed in as " + profile.getName() + " ("
                 + profile.getMemberId() + ", " + profile.getLoyaltyTier() + ")");
         System.out.println(ConsoleStyle.menu("1. Make Reservation\n0. Back"));
+    }
+
+    private LoyaltyProfile loadMemberProfile(String memberId) {
+        return ConsoleProgress.run(
+                () -> reservationManager.findLoyaltyProfile(memberId),
+                "Fetching member information...",
+                "Checking member records...",
+                "Preparing member reservation page...");
     }
 
     private void payForReservation(LoyaltyProfile profile) {
@@ -198,8 +211,12 @@ public class ReservationUI {
             MessageUI.displayInfo("Cash selected. Payment will be collected by Front Desk "
                     + "during check-in.");
         } else if ("2".equals(choice)) {
-            boolean submitted = loyalty.submitPointPaymentRequest(
-                    profile.getMemberId(), reservation.getConfirmationNumber(), amount);
+            boolean submitted = ConsoleProgress.run(
+                    () -> loyalty.submitPointPaymentRequest(
+                            profile.getMemberId(), reservation.getConfirmationNumber(), amount),
+                    "Processing points payment...",
+                    "Updating payment request...",
+                    "Saving payment status...");
             if (submitted) {
                 MessageUI.displaySuccess(
                         "Points-payment request submitted for staff approval.");
@@ -214,7 +231,11 @@ public class ReservationUI {
 
     private Reservation findReservationByConfirmationNumber() {
         String confirmationNumber = promptRequiredText("Confirmation number: ");
-        Reservation reservation = reservationManager.findByConfirmationNumber(confirmationNumber);
+        Reservation reservation = ConsoleProgress.run(
+                () -> reservationManager.findByConfirmationNumber(confirmationNumber),
+                "Fetching reservation information...",
+                "Searching confirmation records...",
+                "Preparing reservation details...");
         if (reservation == null) {
             MessageUI.displayError("Reservation not found.");
         }
@@ -253,8 +274,12 @@ public class ReservationUI {
         }
 
         // save as PENDING first, room will be assigned later by heap priority
-        Reservation reservation = reservationManager.submitPriorityReservationRequest(
-                guest, checkInDate, checkOutDate);
+        Reservation reservation = ConsoleProgress.run(
+                () -> reservationManager.submitPriorityReservationRequest(
+                        guest, checkInDate, checkOutDate),
+                "Processing your booking...",
+                "Saving reservation request...",
+                "Updating priority queue...");
 
         MessageUI.displaySuccess("Reservation request submitted successfully.");
         System.out.println("Request Number : " + reservation.getConfirmationNumber());
@@ -264,7 +289,11 @@ public class ReservationUI {
 
     // show pending reservations based on heap priority order
     private void displayPendingPriorityReservations() {
-        Iterator<Reservation> iterator = reservationManager.getPendingPriorityReservationIterator();
+        Iterator<Reservation> iterator = ConsoleProgress.run(
+                reservationManager::getPendingPriorityReservationIterator,
+                "Fetching pending reservation information...",
+                "Ordering requests by priority...",
+                "Preparing queue results...");
 
         if (!iterator.hasNext()) {
             MessageUI.displayInfo("No pending priority reservation requests.");
@@ -312,7 +341,11 @@ public class ReservationUI {
             return;
         }
 
-        AllocationResult result = reservationManager.allocateAvailableRooms();
+        AllocationResult result = ConsoleProgress.run(
+                reservationManager::allocateAvailableRooms,
+                "Loading priority queue...",
+                "Assigning available rooms...",
+                "Saving allocation results...");
         MessageUI.displaySuccess("Allocation completed.");
         System.out.println("Confirmed : " + result.getConfirmedCount());
         System.out.println("Rejected  : " + result.getRejectedCount());
@@ -339,7 +372,11 @@ public class ReservationUI {
     private ListInterface<Reservation> findReservationsByPrompt() {
         String searchValue = promptRequiredText("Enter reservation ID / Member ID / Guest Name: ");
         // returns all matched records, not only the first one
-        return reservationManager.findMatchingReservations(searchValue);
+        return ConsoleProgress.run(
+                () -> reservationManager.findMatchingReservations(searchValue),
+                "Fetching reservation information...",
+                "Searching records...",
+                "Preparing results...");
     }
 
     public void displayReservations(ListInterface<Reservation> reservations) {
@@ -485,7 +522,11 @@ public class ReservationUI {
 
     private void displayMonthlyReservationSummary() {
         YearMonth reportMonth = promptReportMonth();
-        String report = buildMonthlyReservationSummary(reportMonth);
+        String report = ConsoleProgress.run(
+                () -> buildMonthlyReservationSummary(reportMonth),
+                "Fetching reservation information...",
+                "Calculating reservation summary...",
+                "Preparing report...");
 
         if (displayReport(report, "No reservation records found for " + reportMonth + ".")) {
             offerPdfExport("Monthly Reservation Summary", report, ChartType.RESERVATION_STATUS);
@@ -494,7 +535,11 @@ public class ReservationUI {
 
     private void displayMonthlyRoomAllocationReport() {
         YearMonth reportMonth = promptReportMonth();
-        String report = buildMonthlyRoomAllocationReport(reportMonth);
+        String report = ConsoleProgress.run(
+                () -> buildMonthlyRoomAllocationReport(reportMonth),
+                "Fetching room allocation information...",
+                "Calculating allocation summary...",
+                "Preparing report...");
 
         if (displayReport(report, "No allocated room records found for " + reportMonth + ".")) {
             offerPdfExport("Monthly Room Allocation Report", report, ChartType.TIER_ALLOCATION);
@@ -610,7 +655,11 @@ public class ReservationUI {
 
         Path pdfPath;
         try {
-            pdfPath = ReportPdfExporter.export(title, report, chartType);
+            pdfPath = ConsoleProgress.runIo(
+                    () -> ReportPdfExporter.export(title, report, chartType),
+                    "Generating chart...",
+                    "Creating PDF...",
+                    "Finalizing document...");
         } catch (IOException ex) {
             MessageUI.displayError("Unable to generate PDF: " + ex.getMessage());
             return;

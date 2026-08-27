@@ -10,6 +10,7 @@ import LoyaltyAndRewardsService.entity.Member;
 import VIPPriorityRoomAllocation.boundary.ReservationUI;
 import common.control.MemberIdentityControl;
 import common.src.ConsoleStyle;
+import common.src.ConsoleProgress;
 import common.src.InputHelper;
 import common.src.Logo;
 import common.utility.Validation;
@@ -160,7 +161,11 @@ public class Main {
             return;
         }
 
-        Member member = loyalty.getMemberById(memberId);
+        Member member = ConsoleProgress.run(
+                () -> loyalty.getMemberById(memberId),
+                "Fetching member information...",
+                "Checking member records...",
+                "Preparing member verification...");
         if (member == null) {
             System.out.println(ConsoleStyle.error("Member ID not found."));
             InputHelper.pressEnterToContinue(scanner);
@@ -224,7 +229,11 @@ public class Main {
             return;
         }
 
-        String memberId = loyalty.createMember(name, passport, phoneNumber);
+        String memberId = ConsoleProgress.run(
+                () -> loyalty.createMember(name, passport, phoneNumber),
+                "Processing member details...",
+                "Creating member profile...",
+                "Preparing member home...");
         System.out.println(ConsoleStyle.success(
                 "Registration successful. Your Member ID is " + memberId + "."));
         Member member = loyalty.getMemberById(memberId);
