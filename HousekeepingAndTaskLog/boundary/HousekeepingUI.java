@@ -353,27 +353,32 @@ public class HousekeepingUI {
         System.out.println("Status            : " + task.getStatus());
         System.out.println("Created At        : " + task.getCreatedAt());
         System.out.println("Completed At      : " + task.getCompletedAt());
+        System.out.println("Expected Ready At : " + task.getExpectedReadyAt());
         System.out.println("Remarks           : " + task.getRemarks());
     }
 
     private void printTableHeader() {
         printTableBorder();
-        System.out.printf("| %-8s | %-12s | %-22s | %-19s | %-19s |%n",
-                "Task ID", "Room", "Status", "Created At", "Completed At");
+        System.out.printf("| %-8s | %-12s | %-22s | %-19s | %-19s | %-19s | %-48s |%n",
+                "Task ID", "Room", "Status", "Created At", "Completed At", "Expected Ready",
+                "Late Check-Out / Remarks");
         printTableBorder();
     }
 
     private void printTaskLine(HousekeepingTask task) {
-        System.out.printf("| %-8s | %-12s | %-22s | %-19s | %-19s |%n",
+        String remarks = task.getRemarks() == null ? "-" : task.getRemarks();
+        System.out.printf("| %-8s | %-12s | %-22s | %-19s | %-19s | %-19s | %-48.48s |%n",
                 task.getTaskId(),
                 task.getRoomNumber(),
                 task.getStatus(),
                 task.getCreatedAt(),
-                task.getCompletedAt());
+                task.getCompletedAt(),
+                task.getExpectedReadyAt(),
+                remarks);
     }
 
     private void printTableBorder() {
-        System.out.println("+----------+--------------+------------------------+---------------------+---------------------+");
+        System.out.println("+----------+--------------+------------------------+---------------------+---------------------+---------------------+--------------------------------------------------+");
     }
 
     public static void main(String[] args) {

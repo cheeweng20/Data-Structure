@@ -3,6 +3,9 @@ package FrontDeskService.boundary;
 import FrontDeskService.control.FrontDeskControl;
 import FrontDeskService.control.FrontDeskControl.CheckInResult;
 import FrontDeskService.control.FrontDeskControl.CheckOutResult;
+import FrontDeskService.control.FrontDeskControl.LateCheckoutResult;
+import FrontDeskService.control.FrontDeskControl.LateCheckoutStatus;
+import FrontDeskService.entity.LateCheckoutExtension;
 import VIPPriorityRoomAllocation.entity.Reservation;
 import VIPPriorityRoomAllocation.entity.ReservationStatus;
 import VIPPriorityRoomAllocation.entity.Room;
@@ -14,6 +17,8 @@ import common.src.InputHelper;
 import common.src.InputHelper.EndOfInputException;
 import common.utility.Validation;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.Iterator;
 import java.util.Scanner;
 
@@ -75,7 +80,7 @@ public class FrontDeskUI {
     }
 
     private void checkInGuest() {
-        System.out.println("\n--- Check-In Confirmed Reservation ---");
+        System.out.println("\n--- Guest Check-In ---");
         Reservation reservation = selectReservationBySearch();
         if (reservation == null) {
             return;
@@ -143,6 +148,27 @@ public class FrontDeskUI {
         }
 
         displayReservationDetails(reservation);
+        System.out.println("\n1. Complete Guest Check-Out");
+        System.out.println("2. Extend Check-Out Time (Notify Housekeeping)");
+        System.out.println("0. Cancel");
+        System.out.print("Select an option: ");
+
+        switch (scanner.nextLine().trim()) {
+            case "1":
+                completeGuestCheckOut(reservation);
+                break;
+            case "2":
+                extendGuestCheckOut(reservation);
+                break;
+            case "0":
+                System.out.println("Check-out action cancelled.");
+                break;
+            default:
+                System.out.println("Invalid option. Please select 0, 1, or 2.");
+        }
+    }
+
+    private void completeGuestCheckOut(Reservation reservation) {
         if (!confirmYes("Confirm guest check-out? (Y/N): ")) {
             System.out.println("Check-out cancelled.");
             return;
@@ -155,9 +181,43 @@ public class FrontDeskUI {
                 "Updating room status...");
         if (result == CheckOutResult.SUCCESS) {
             ConsoleAnimation.success("Guest checked out successfully.");
-            displayReservationDetails(reservation);
+            displayReservationDetails(
+                    control.findByConfirmationNumber(reservation.getConfirmationNumber()));
         } else {
             ConsoleAnimation.error("Check-out failed: " + getCheckOutFailureMessage(result));
+        }
+    }
+
+    /**
+     * This action lives inside Front Desk's Check-Out screen. It keeps the
+     * guest checked in and tells Housekeeping to hold cleaning for the room.
+     */
+    private void extendGuestCheckOut(Reservation reservation) {
+        System.out.println("\n--- Extend Check-Out Time ---");
+        LocalDateTime extendedCheckOutAt = promptFutureDateTime(
+                "Extended check-out time (yyyy-MM-dd HH:mm): ");
+        LocalDateTime expectedRoomReadyAt = promptRoomReadyTime(extendedCheckOutAt);
+        String reason = promptRequiredText("Reason for extension: ");
+
+        System.out.println("New temporary check-out time: " + extendedCheckOutAt);
+        System.out.println("Expected room-ready time    : " + expectedRoomReadyAt);
+        if (!confirmYes("Notify Housekeeping and save this extension? (Y/N): ")) {
+            System.out.println("Extension cancelled.");
+            return;
+        }
+
+        LateCheckoutResult result = control.extendCheckOut(
+                reservation.getConfirmationNumber(), extendedCheckOutAt,
+                expectedRoomReadyAt, reason);
+        if (result.isSuccessful()) {
+            System.out.println("Check-out time extended. Housekeeping task "
+                    + result.getHousekeepingTaskId()
+                    + " is blocked until the guest checks out.");
+            displayReservationDetails(
+                    control.findByConfirmationNumber(reservation.getConfirmationNumber()));
+        } else {
+            System.out.println("Unable to extend check-out: "
+                    + getLateCheckoutFailureMessage(result.getStatus()));
         }
     }
 
@@ -347,6 +407,12 @@ public class FrontDeskUI {
                 + (room == null ? "Not assigned" : room.getRoomNumber()));
         System.out.println("Check-in Date    : " + reservation.getCheckInDate());
         System.out.println("Check-out Date   : " + reservation.getCheckOutDate());
+        LateCheckoutExtension extension = control.findLateCheckoutExtension(
+                reservation.getConfirmationNumber());
+        if (extension != null) {
+            System.out.println("Extended Check-Out: " + extension.getExtendedCheckOutAt());
+            System.out.println("Expected Ready At : " + extension.getExpectedRoomReadyAt());
+        }
         System.out.println("Number of Nights : " + nights);
         if (room != null) {
             System.out.printf("Price per Night  : RM%.2f%n", room.getPricePerNight());
@@ -396,6 +462,60 @@ public class FrontDeskUI {
                 return "the assigned room is not occupied.";
             default:
                 return "unable to complete check-out.";
+        }
+    }
+
+    private String getLateCheckoutFailureMessage(LateCheckoutStatus status) {
+        switch (status) {
+            case RESERVATION_NOT_FOUND:
+                return "reservation not found.";
+            case NOT_CHECKED_IN:
+                return "only checked-in guests can extend check-out.";
+            case ROOM_NOT_OCCUPIED:
+                return "the assigned room is not occupied.";
+            case INVALID_EXTENDED_CHECK_OUT_TIME:
+                return "the extended check-out time must be in the future.";
+            case INVALID_ROOM_READY_TIME:
+                return "the room-ready time cannot be before the extended check-out time.";
+            case REASON_REQUIRED:
+                return "a reason is required.";
+            case HOUSEKEEPING_NOTIFICATION_FAILED:
+                return "Housekeeping could not be notified.";
+            default:
+                return "unable to save the extension.";
+        }
+    }
+
+    private LocalDateTime promptFutureDateTime(String prompt) {
+        while (true) {
+            LocalDateTime value = promptDateTime(prompt);
+            if (value.isAfter(LocalDateTime.now())) {
+                return value;
+            }
+            System.out.println("Enter a future date and time.");
+        }
+    }
+
+    private LocalDateTime promptRoomReadyTime(LocalDateTime extendedCheckOutAt) {
+        while (true) {
+            LocalDateTime value = promptDateTime(
+                    "Expected room-ready time (yyyy-MM-dd HH:mm): ");
+            if (!value.isBefore(extendedCheckOutAt)) {
+                return value;
+            }
+            System.out.println("Room-ready time cannot be before the extended check-out time.");
+        }
+    }
+
+    private LocalDateTime promptDateTime(String prompt) {
+        while (true) {
+            System.out.print(prompt);
+            String value = scanner.nextLine().trim();
+            try {
+                return LocalDateTime.parse(value.replace(' ', 'T'));
+            } catch (DateTimeParseException exception) {
+                System.out.println("Use yyyy-MM-dd HH:mm, for example 2026-08-27 14:00.");
+            }
         }
     }
 

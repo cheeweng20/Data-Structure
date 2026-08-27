@@ -15,7 +15,6 @@ public class Reservation implements Comparable<Reservation> {
     private Room assignedRoom; 
     private LocalDate checkInDate;
     private LocalDate checkOutDate;
-    private LocalDateTime temporaryCheckOutAt;
     private LocalDateTime bookingDateTime;
     private String paymentMethod;
     private String paymentStatus;
@@ -95,18 +94,6 @@ public class Reservation implements Comparable<Reservation> {
 
     public void setBookingDateTime(LocalDateTime bookingDateTime) {
         this.bookingDateTime = bookingDateTime;
-    }
-
-    /**
-     * Gets the temporary late check-out time, if Front Desk has recorded one.
-     * The scheduled check-out date remains unchanged so billing is unaffected.
-     */
-    public LocalDateTime getTemporaryCheckOutAt() {
-        return temporaryCheckOutAt;
-    }
-
-    public void setTemporaryCheckOutAt(LocalDateTime temporaryCheckOutAt) {
-        this.temporaryCheckOutAt = temporaryCheckOutAt;
     }
 
     public String getPaymentMethod() {
