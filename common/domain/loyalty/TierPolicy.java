@@ -1,4 +1,4 @@
-package LoyaltyAndRewardsService.utility;
+package common.domain.loyalty;
 
 /** Fixed loyalty-tier thresholds shared by loyalty and reservation modules. */
 public final class TierPolicy {

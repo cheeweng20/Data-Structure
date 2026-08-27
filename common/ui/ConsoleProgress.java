@@ -1,4 +1,4 @@
-package common.src;
+package common.ui;
 
 import java.io.IOException;
 import java.util.function.Supplier;

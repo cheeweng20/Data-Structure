@@ -5,12 +5,12 @@ import HousekeepingAndTaskLog.entity.HousekeepingTask;
 import HousekeepingAndTaskLog.entity.StatusChange;
 import HousekeepingAndTaskLog.entity.TaskStatus;
 import adt.ListInterface;
-import common.src.Logo;
-import common.src.ConsoleStyle;
-import common.src.ConsoleProgress;
-import common.src.ConsoleAnimation;
-import common.src.InputHelper;
-import common.src.InputHelper.EndOfInputException;
+import common.ui.Logo;
+import common.ui.ConsoleStyle;
+import common.ui.ConsoleProgress;
+import common.ui.ConsoleAnimation;
+import common.ui.InputHelper;
+import common.ui.InputHelper.EndOfInputException;
 import common.utility.Validation;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -71,7 +71,7 @@ public class HousekeepingUI {
 
     private void displayMenu() {
         System.out.println();
-        Logo.displayHousekeepingAndTaskLog();
+        Logo.display();
         System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("HOUSEKEEPING MENU",
                 "1|Add Cleaning Task",
                 "2|Update Room Cleaning Status",
@@ -165,7 +165,7 @@ public class HousekeepingUI {
 
         while (!back) {
             InputHelper.clearScreen();
-            Logo.displayHousekeepingAndTaskLog();
+            Logo.display();
             System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("HOUSEKEEPING REPORTS",
                     "1|Task Status Summary",
                     "2|List All Tasks",

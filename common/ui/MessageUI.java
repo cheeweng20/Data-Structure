@@ -1,11 +1,6 @@
-package VIPPriorityRoomAllocation.utility;
+package common.ui;
 
-import common.src.ConsoleStyle;
-
-// Displays messages shared by the reservation boundary classes.
-/**
- * @author Wan Yin
- */
+/** Displays consistent success, error, and informational console messages. */
 public final class MessageUI {
 
     private MessageUI() {

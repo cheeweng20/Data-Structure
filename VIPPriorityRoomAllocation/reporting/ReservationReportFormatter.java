@@ -1,6 +1,6 @@
-package VIPPriorityRoomAllocation.utility;
+package VIPPriorityRoomAllocation.reporting;
 
-import VIPPriorityRoomAllocation.entity.LoyaltyTier;
+import common.domain.loyalty.LoyaltyTier;
 import VIPPriorityRoomAllocation.entity.Reservation;
 import VIPPriorityRoomAllocation.entity.ReservationStatus;
 import VIPPriorityRoomAllocation.entity.Room;

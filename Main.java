@@ -9,11 +9,11 @@ import LoyaltyAndRewardsService.control.LoyaltyServiceControl;
 import LoyaltyAndRewardsService.entity.Member;
 import VIPPriorityRoomAllocation.boundary.ReservationUI;
 import common.control.MemberIdentityControl;
-import common.src.ConsoleStyle;
-import common.src.ConsoleProgress;
-import common.src.ConsoleAnimation;
-import common.src.InputHelper;
-import common.src.Logo;
+import common.ui.ConsoleStyle;
+import common.ui.ConsoleProgress;
+import common.ui.ConsoleAnimation;
+import common.ui.InputHelper;
+import common.ui.Logo;
 import common.utility.Validation;
 
 /**
@@ -69,7 +69,7 @@ public class Main {
     }
 
     private static void displayMainMenu() {
-        Logo.displayMain();
+        Logo.display();
         System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("TARUMT RESORT",
                 "1|Staff", "2|Member / Guest", "0|Exit")));
     }
@@ -83,7 +83,7 @@ public class Main {
         boolean back = false;
         while (!back) {
             InputHelper.clearScreen();
-            Logo.displayMain();
+            Logo.display();
             System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("STAFF PORTAL",
                     "1|VIP & Loyalty Tier Priority Room Allocation",
                     "2|Housekeeping and Task Log",
@@ -129,7 +129,7 @@ public class Main {
 
         while (!back) {
             InputHelper.clearScreen();
-            Logo.displayMain();
+            Logo.display();
             System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("MEMBER / GUEST PORTAL",
                     "1|Existing Member Login", "2|Register as Member", "0|Back")));
             String choice = readLine(scanner, "Select an option: ");
@@ -186,7 +186,8 @@ public class Main {
         String identityProof = readLine(scanner,
                 "Enter your registered passport or phone number: ");
         if (isCancelled(identityProof)
-                || !MemberIdentityControl.verify(member, identityProof)) {
+                || !MemberIdentityControl.verify(member.getPassport(),
+                        member.getPhoneNumber(), identityProof)) {
             if (!isCancelled(identityProof)) {
                 MEMBER_VERIFICATION_FAILURES.put(normalizedMemberId,
                         failedAttempts + 1);

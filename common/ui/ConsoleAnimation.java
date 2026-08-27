@@ -1,4 +1,4 @@
-package common.src;
+package common.ui;
 
 import java.io.IOException;
 import java.util.function.Supplier;
@@ -7,7 +7,7 @@ import java.util.function.Supplier;
 public final class ConsoleAnimation {
     private static final String[] SPINNER_FRAMES = {"|", "/", "-", "\\"};
     private static final long FRAME_MILLIS = 140L;
-    private static final int ROOM_ASSIGNMENT_FRAMES = 3;
+    private static final int STATUS_SEQUENCE_FRAMES = 3;
 
     private ConsoleAnimation() {
     }
@@ -89,15 +89,14 @@ public final class ConsoleAnimation {
         }
     }
 
-    /** Displays a small per-room assignment animation. */
-    public static void roomAssignment(String roomNumber, String guestName) {
+    /** Displays a short animated status message followed by a success line. */
+    public static void statusSequence(String message) {
         if (!isEnabled()) {
             return;
         }
 
         LineRenderer renderer = new LineRenderer();
-        String message = "Assigning room " + roomNumber + " to " + guestName;
-        for (int i = 0; i < ROOM_ASSIGNMENT_FRAMES; i++) {
+        for (int i = 0; i < STATUS_SEQUENCE_FRAMES; i++) {
             renderer.render(message + ".".repeat((i % 3) + 1));
             pause(FRAME_MILLIS);
         }

@@ -13,16 +13,17 @@ import LoyaltyAndRewardsService.control.LoyaltyServiceControl.ExpiringPointSumma
 import LoyaltyAndRewardsService.entity.Member;
 import LoyaltyAndRewardsService.entity.PointTransaction;
 import LoyaltyAndRewardsService.entity.RedemptionRequest;
-import LoyaltyAndRewardsService.utility.MessageUI;
-import LoyaltyAndRewardsService.utility.ReportPdfExporter;
-import LoyaltyAndRewardsService.utility.ReportPdfExporter.ChartType;
-import LoyaltyAndRewardsService.utility.TierPolicy;
-import common.src.InputHelper;
-import common.src.InputHelper.EndOfInputException;
-import common.src.Logo;
-import common.src.ConsoleStyle;
-import common.src.ConsoleProgress;
-import common.src.ConsoleAnimation;
+import LoyaltyAndRewardsService.reporting.LoyaltyReportFormatter;
+import LoyaltyAndRewardsService.reporting.ReportPdfExporter;
+import LoyaltyAndRewardsService.reporting.ReportPdfExporter.ChartType;
+import common.domain.loyalty.TierPolicy;
+import common.ui.InputHelper;
+import common.ui.InputHelper.EndOfInputException;
+import common.ui.Logo;
+import common.ui.MessageUI;
+import common.ui.ConsoleStyle;
+import common.ui.ConsoleProgress;
+import common.ui.ConsoleAnimation;
 
 /**
  * Handles all actor interaction for loyalty and rewards use cases.
@@ -91,7 +92,7 @@ public final class LoyaltyUI {
     }
 
     private void displayMenu() {
-        Logo.displayLoyaltyAndRewardsService();
+        Logo.display();
         System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("LOYALTY AND REWARDS",
                 "1|Redemption Requests", "2|Member List", "3|Tier Progression",
                 "4|Report", "0|Back")));
@@ -106,7 +107,8 @@ public final class LoyaltyUI {
         System.out.println();
         System.out.println(ConsoleStyle.title("=== Loyalty Notifications ==="));
         if (recentlyExpiredPoints > 0) {
-            MessageUI.displayPointsExpired(recentlyExpiredPoints);
+            MessageUI.displayInfo(recentlyExpiredPoints
+                    + " unredeemed transaction point(s) expired; member balances were updated.");
         }
         if (expiringSummary.transactionCount() > 0) {
             MessageUI.displayInfo(expiringSummary.pointTotal() + " unredeemed point(s) from "
@@ -221,7 +223,15 @@ public final class LoyaltyUI {
                 "Updating points balance...",
                 "Saving request result...");
         if (processed != null) {
-            MessageUI.displayRequestProcessed(processed.getStatus());
+            displayRequestProcessed(processed.getStatus());
+        }
+    }
+
+    private void displayRequestProcessed(String status) {
+        if ("Approved".equalsIgnoreCase(status)) {
+            MessageUI.displaySuccess("Request approved.");
+        } else {
+            MessageUI.displayInfo("Request " + status + ".");
         }
     }
 
@@ -323,7 +333,7 @@ public final class LoyaltyUI {
         }
 
         String report = ConsoleProgress.run(
-                () -> buildExpiringPointsReport(
+                () -> LoyaltyReportFormatter.buildExpiringPointsReport(
                         serviceControl.generateExpiringReport(withinDays)),
                 "Fetching points information...",
                 "Calculating expiry details...",
@@ -353,7 +363,8 @@ public final class LoyaltyUI {
                 "Fetching point transactions...",
                 "Calculating transaction totals...",
                 "Preparing report data...");
-        String report = buildPointsTransactionReport(startDate, endDate, transactions);
+        String report = LoyaltyReportFormatter.buildPointsTransactionReport(
+                startDate, endDate, transactions);
         if (displayReport(report,
                 "No point transactions found within the selected period.")) {
             offerPdfExport("Points Transaction Report", report,
@@ -369,63 +380,6 @@ public final class LoyaltyUI {
             MessageUI.displayError("Invalid date format. Please use YYYY-MM-DD.");
             return null;
         }
-    }
-
-    private String buildExpiringPointsReport(
-            SortedArrayList<PointTransaction> transactions) {
-        if (transactions.isEmpty()) {
-            return "";
-        }
-
-        StringBuilder output = new StringBuilder();
-        String border = "+----------------+------------+-----------------+--------------+";
-        output.append("=== Expiring Points Alert ===\n");
-        output.append(border).append("\n");
-        output.append(String.format("| %-14s | %-10s | %15s | %-12s |%n",
-                "Transaction ID", "Member ID", "Points Expiring", "Expiry Date"));
-        output.append(border).append("\n");
-
-        Iterator<PointTransaction> iterator = transactions.iterator();
-        while (iterator.hasNext()) {
-            PointTransaction transaction = iterator.next();
-            output.append(String.format("| %-14.14s | %-10.10s | %15d | %-12s |%n",
-                    transaction.getTransactionId(), transaction.getMemberId(),
-                    transaction.getPointsRemaining(), transaction.getExpiryDate()));
-        }
-        output.append(border);
-        return output.toString();
-    }
-
-    private String buildPointsTransactionReport(LocalDate startDate, LocalDate endDate,
-            SortedArrayList<PointTransaction> transactions) {
-        if (transactions.isEmpty()) {
-            return "";
-        }
-
-        StringBuilder output = new StringBuilder();
-        output.append("=== Points Transaction Report ===\n");
-        output.append("Report Period: ").append(startDate).append(" to ")
-                .append(endDate).append("\n");
-        output.append("Total Transactions: ")
-                .append(transactions.getNumberOfEntries()).append("\n");
-        output.append("Total Points Earned: ")
-                .append(serviceControl.calculateTotalPointsEarned(transactions))
-                .append("\n\n");
-        String border = "+----------------+------------+----------------+-------------+";
-        output.append(border).append("\n");
-        output.append(String.format("| %-14s | %-10s | %-14s | %-11s |%n",
-                "Transaction ID", "Member ID", "Points Earned", "Earned Date"));
-        output.append(border).append("\n");
-
-        Iterator<PointTransaction> iterator = transactions.iterator();
-        while (iterator.hasNext()) {
-            PointTransaction transaction = iterator.next();
-            output.append(String.format("| %-14.14s | %-10.10s | %14d | %-11s |%n",
-                    transaction.getTransactionId(), transaction.getMemberId(),
-                    transaction.getPointsEarned(), transaction.getEarnedDate()));
-        }
-        output.append(border);
-        return output.toString();
     }
 
     private boolean displayReport(String report, String emptyMessage) {

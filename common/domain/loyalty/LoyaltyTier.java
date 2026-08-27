@@ -1,4 +1,4 @@
-package VIPPriorityRoomAllocation.entity;
+package common.domain.loyalty;
 
 public enum LoyaltyTier {
     PLATINUM(3), // highest priority in the heap

@@ -1,7 +1,7 @@
 package VIPPriorityRoomAllocation.dao;
 
-import VIPPriorityRoomAllocation.entity.LoyaltyTier;
-import LoyaltyAndRewardsService.utility.TierPolicy;
+import common.domain.loyalty.LoyaltyTier;
+import common.domain.loyalty.TierPolicy;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;

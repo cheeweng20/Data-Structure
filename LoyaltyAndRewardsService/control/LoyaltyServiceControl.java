@@ -14,7 +14,7 @@ import LoyaltyAndRewardsService.dao.RequestDao;
 import LoyaltyAndRewardsService.entity.Member;
 import LoyaltyAndRewardsService.entity.PointTransaction;
 import LoyaltyAndRewardsService.entity.RedemptionRequest;
-import LoyaltyAndRewardsService.utility.TierPolicy;
+import common.domain.loyalty.TierPolicy;
 import common.utility.Validation;
 
 /**
@@ -599,14 +599,6 @@ public class LoyaltyServiceControl {
 
     private boolean isWithinRange(LocalDate date, LocalDate start, LocalDate end) {
         return !date.isBefore(start) && !date.isAfter(end);
-    }
-
-    public int calculateTotalPointsEarned(SortedArrayList<PointTransaction> transactions) {
-        int totalPointsEarned = 0;
-        for (PointTransaction transaction : transactions) {
-            totalPointsEarned += transaction.getPointsEarned();
-        }
-        return totalPointsEarned;
     }
 
 }

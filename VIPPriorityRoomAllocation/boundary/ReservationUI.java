@@ -7,7 +7,6 @@ import VIPPriorityRoomAllocation.entity.Guest;
 import VIPPriorityRoomAllocation.entity.Reservation;
 import VIPPriorityRoomAllocation.entity.ReservationStatus;
 import VIPPriorityRoomAllocation.entity.Room;
-import VIPPriorityRoomAllocation.utility.MessageUI;
 import LoyaltyAndRewardsService.control.LoyaltyServiceControl;
 import LoyaltyAndRewardsService.dao.RequestDao;
 import LoyaltyAndRewardsService.entity.RedemptionRequest;
@@ -15,12 +14,13 @@ import adt.ArrayList;
 import adt.ListInterface;
 import adt.SortedArrayList;
 import adt.SortedListInterface;
-import common.src.InputHelper;
-import common.src.InputHelper.EndOfInputException;
-import common.src.ConsoleStyle;
-import common.src.ConsoleProgress;
-import common.src.ConsoleAnimation;
-import common.src.Logo;
+import common.ui.MessageUI;
+import common.ui.InputHelper;
+import common.ui.InputHelper.EndOfInputException;
+import common.ui.ConsoleStyle;
+import common.ui.ConsoleProgress;
+import common.ui.ConsoleAnimation;
+import common.ui.Logo;
 import common.utility.Validation;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
@@ -116,7 +116,7 @@ public class ReservationUI {
     }
 
     private void displayStaffMenu() {
-        Logo.displayService("Priority Room Allocation");
+        Logo.display();
         System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("PRIORITY ROOM ALLOCATION",
                 "1|View Priority Waiting Queue",
                 "2|Allocate Rooms by Priority",

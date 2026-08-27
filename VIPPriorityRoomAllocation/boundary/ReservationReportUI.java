@@ -1,15 +1,15 @@
 package VIPPriorityRoomAllocation.boundary;
 
 import VIPPriorityRoomAllocation.control.ReservationManager;
-import VIPPriorityRoomAllocation.utility.MessageUI;
-import VIPPriorityRoomAllocation.utility.ReportPdfExporter;
-import VIPPriorityRoomAllocation.utility.ReportPdfExporter.ChartType;
-import VIPPriorityRoomAllocation.utility.ReservationReportFormatter;
-import common.src.ConsoleAnimation;
-import common.src.ConsoleProgress;
-import common.src.ConsoleStyle;
-import common.src.InputHelper;
-import common.src.Logo;
+import VIPPriorityRoomAllocation.reporting.ReportPdfExporter;
+import VIPPriorityRoomAllocation.reporting.ReportPdfExporter.ChartType;
+import VIPPriorityRoomAllocation.reporting.ReservationReportFormatter;
+import common.ui.ConsoleAnimation;
+import common.ui.ConsoleProgress;
+import common.ui.ConsoleStyle;
+import common.ui.InputHelper;
+import common.ui.Logo;
+import common.ui.MessageUI;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.YearMonth;
@@ -55,7 +55,7 @@ final class ReservationReportUI {
     }
 
     private void displayMenu() {
-        Logo.displayService("Reservation Reports");
+        Logo.display();
         System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("RESERVATION REPORTS",
                 "1|Monthly Reservation Summary",
                 "2|Monthly Room Allocation Report",

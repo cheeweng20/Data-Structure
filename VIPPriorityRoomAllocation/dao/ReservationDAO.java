@@ -1,7 +1,7 @@
 package VIPPriorityRoomAllocation.dao;
 
 import VIPPriorityRoomAllocation.entity.Guest;
-import VIPPriorityRoomAllocation.entity.LoyaltyTier;
+import common.domain.loyalty.LoyaltyTier;
 import VIPPriorityRoomAllocation.entity.Reservation;
 import VIPPriorityRoomAllocation.entity.ReservationStatus;
 import VIPPriorityRoomAllocation.entity.Room;

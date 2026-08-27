@@ -3,10 +3,10 @@ package VIPPriorityRoomAllocation.boundary;
 import VIPPriorityRoomAllocation.entity.Guest;
 import VIPPriorityRoomAllocation.entity.Reservation;
 import VIPPriorityRoomAllocation.entity.Room;
-import VIPPriorityRoomAllocation.utility.MessageUI;
 import adt.ListInterface;
 import adt.SortedListInterface;
-import common.src.ConsoleAnimation;
+import common.ui.ConsoleAnimation;
+import common.ui.MessageUI;
 import java.util.Iterator;
 
 /** Prints reservation tables and detail views without changing reservation data. */
@@ -85,9 +85,9 @@ final class ReservationTablePrinter {
 
         for (int i = 1; i <= reservations.getNumberOfEntries(); i++) {
             Reservation reservation = reservations.getEntry(i);
-            ConsoleAnimation.roomAssignment(
-                    reservation.getAssignedRoom().getRoomNumber(),
-                    reservation.getGuest().getFullName());
+            ConsoleAnimation.statusSequence("Assigning room "
+                    + reservation.getAssignedRoom().getRoomNumber() + " to "
+                    + reservation.getGuest().getFullName());
         }
 
         String border = "+-----+------------+--------------------+-----------+----------+------------+-------------+";

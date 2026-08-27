@@ -1,4 +1,4 @@
-package common.src;
+package common.ui;
 
 /**
  * Shared ANSI styling for the command-line user interface.

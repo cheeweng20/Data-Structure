@@ -1,5 +1,6 @@
 package VIPPriorityRoomAllocation.entity;
 
+import common.domain.loyalty.LoyaltyTier;
 import java.util.Objects;
 
 // Stores the guest profile used for priority room allocation.

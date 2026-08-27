@@ -10,12 +10,12 @@ import VIPPriorityRoomAllocation.entity.Reservation;
 import VIPPriorityRoomAllocation.entity.ReservationStatus;
 import VIPPriorityRoomAllocation.entity.Room;
 import adt.ListInterface;
-import common.src.ConsoleStyle;
-import common.src.ConsoleProgress;
-import common.src.ConsoleAnimation;
-import common.src.InputHelper;
-import common.src.InputHelper.EndOfInputException;
-import common.src.Logo;
+import common.ui.ConsoleStyle;
+import common.ui.ConsoleProgress;
+import common.ui.ConsoleAnimation;
+import common.ui.InputHelper;
+import common.ui.InputHelper.EndOfInputException;
+import common.ui.Logo;
 import common.utility.Validation;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -74,7 +74,7 @@ public class FrontDeskUI {
     }
 
     private void displayMenu() {
-        Logo.displayService("Front Desk Service");
+        Logo.display();
         System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("FRONT DESK SERVICE",
                 "1|Check-In Guest",
                 "2|Guest Check-Out",

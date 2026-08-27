@@ -1,6 +1,5 @@
 package common.control;
 
-import LoyaltyAndRewardsService.entity.Member;
 import common.utility.Validation;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -10,15 +9,16 @@ public final class MemberIdentityControl {
     private MemberIdentityControl() {
     }
 
-    public static boolean verify(Member member, String passportOrPhone) {
-        if (member == null || Validation.isBlank(passportOrPhone)) {
+    public static boolean verify(String passport, String phoneNumber,
+            String passportOrPhone) {
+        if (Validation.isBlank(passport) || Validation.isBlank(passportOrPhone)) {
             return false;
         }
-        String storedPhone = Validation.normalizePhoneNumber(member.getPhoneNumber());
+        String storedPhone = Validation.normalizePhoneNumber(phoneNumber);
         String suppliedPhone = Validation.normalizePhoneNumber(passportOrPhone);
         boolean phoneMatches = !storedPhone.isEmpty() && !suppliedPhone.isEmpty()
                 && secureEquals(storedPhone, suppliedPhone);
-        return secureEquals(member.getPassport().toLowerCase(),
+        return secureEquals(passport.toLowerCase(),
                         passportOrPhone.trim().toLowerCase())
                 || phoneMatches;
     }
