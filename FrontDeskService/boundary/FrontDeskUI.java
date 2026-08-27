@@ -15,6 +15,7 @@ import common.src.ConsoleProgress;
 import common.src.ConsoleAnimation;
 import common.src.InputHelper;
 import common.src.InputHelper.EndOfInputException;
+import common.src.Logo;
 import common.utility.Validation;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -73,10 +74,14 @@ public class FrontDeskUI {
     }
 
     private void displayMenu() {
-        System.out.println(ConsoleStyle.title("\n--- Front Desk Service ---"));
-        System.out.println(ConsoleStyle.menu("1. Check-In Guest\n2. Guest Check-Out\n"
-                + "3. View Billing Details\n4. Outstanding Balance Report\n"
-                + "5. Payment Method Report\n0. Back"));
+        Logo.displayService("Front Desk Service");
+        System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("FRONT DESK SERVICE",
+                "1|Check-In Guest",
+                "2|Guest Check-Out",
+                "3|View Billing Details",
+                "4|Outstanding Balance Report",
+                "5|Payment Method Report",
+                "0|Back")));
     }
 
     private void checkInGuest() {
@@ -105,16 +110,12 @@ public class FrontDeskUI {
 
         String paymentMethod = reservation.getPaymentMethod();
         if (!"PAID".equalsIgnoreCase(reservation.getPaymentStatus())) {
-            if (control.hasApprovedMemberPointsPayment(reservation)) {
-                paymentMethod = FrontDeskControl.MEMBER_POINTS_PAYMENT_METHOD;
-                System.out.println("Approved member-points payment found."
-                        + " No additional payment is required.");
-            } else {
-                paymentMethod = promptPaymentMethod();
-                if (!confirmYes("Confirm payment? (Y/N): ")) {
-                    System.out.println("Payment cancelled. Check-in not completed.");
-                    return;
-                }
+            boolean approvedMemberPointsPayment =
+                    control.hasApprovedMemberPointsPayment(reservation);
+            paymentMethod = promptPaymentMethod(approvedMemberPointsPayment);
+            if (!confirmYes("Confirm payment? (Y/N): ")) {
+                System.out.println("Payment cancelled. Check-in not completed.");
+                return;
             }
         }
 
@@ -148,10 +149,11 @@ public class FrontDeskUI {
         }
 
         displayReservationDetails(reservation);
-        System.out.println("\n1. Complete Guest Check-Out");
-        System.out.println("2. Extend Check-Out Time (Notify Housekeeping)");
-        System.out.println("0. Cancel");
-        System.out.print("Select an option: ");
+        System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("GUEST CHECK-OUT",
+                "1|Complete Guest Check-Out",
+                "2|Extend Check-Out Time (Notify Housekeeping)",
+                "0|Cancel")));
+        System.out.print(ConsoleStyle.prompt("Select an option: "));
 
         switch (scanner.nextLine().trim()) {
             case "1":
@@ -369,13 +371,30 @@ public class FrontDeskUI {
                 ? "Unspecified" : paymentMethod.trim();
     }
 
-    private String promptPaymentMethod() {
+    private String promptPaymentMethod(boolean memberPointsApproved) {
         while (true) {
-            System.out.println("\n--- Payment Method ---");
-            System.out.println("1. Cash");
-            System.out.println("2. Credit / Debit Card");
-            System.out.println("3. Touch n Go");
-            System.out.println("4. Online Banking");
+            if (memberPointsApproved) {
+                System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("PAYMENT METHOD",
+                        "1|Member Points (Approved)", "2|Cash",
+                        "3|Credit / Debit Card", "4|Touch n Go", "5|Online Banking")));
+                String choice = InputHelper.inputString(
+                        scanner, "Select payment method: ").trim();
+                if ("1".equals(choice)) {
+                    return FrontDeskControl.MEMBER_POINTS_PAYMENT_METHOD;
+                }
+                if (choice.equals("2") || choice.equals("3")
+                        || choice.equals("4") || choice.equals("5")) {
+                    System.out.println("An approved points-payment request exists. "
+                            + "Please select Member Points.");
+                } else {
+                    System.out.println("Invalid payment method. Please select 1 to 5.");
+                }
+                continue;
+            }
+
+            System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("PAYMENT METHOD",
+                    "1|Cash", "2|Credit / Debit Card", "3|Touch n Go",
+                    "4|Online Banking")));
             switch (InputHelper.inputString(scanner, "Select payment method: ").trim()) {
                 case "1":
                     return "Cash";

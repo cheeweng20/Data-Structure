@@ -59,7 +59,7 @@ public class Main {
                     exit = true;
                     break;
                 default:
-                    System.out.println(ConsoleStyle.error("Invalid option. Please enter 1, 2, or 0."));
+                    System.out.println(ConsoleStyle.error("Invalid option. Please enter 0, 1, or 2."));
                     InputHelper.pressEnterToContinue(scanner);
                     break;
             }
@@ -70,11 +70,8 @@ public class Main {
 
     private static void displayMainMenu() {
         Logo.displayMain();
-        System.out.println(ConsoleStyle.menu(
-                "\n--- TARUMT Resort ---\n"
-                        + "1. Staff\n"
-                        + "2. Member / Guest\n"
-                        + "0. Exit\n"));
+        System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("TARUMT RESORT",
+                "1|Staff", "2|Member / Guest", "0|Exit")));
     }
 
     /**
@@ -86,13 +83,13 @@ public class Main {
         boolean back = false;
         while (!back) {
             InputHelper.clearScreen();
-            System.out.println(ConsoleStyle.title("\n--- Staff Portal ---"));
-            System.out.println(ConsoleStyle.menu(
-                    "1. VIP & Loyalty Tier Priority Room Allocation\n"
-                            + "2. Housekeeping and Task Log\n"
-                            + "3. Front Desk Service\n"
-                            + "4. Loyalty and Rewards Service\n"
-                            + "0. Back\n"));
+            Logo.displayMain();
+            System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("STAFF PORTAL",
+                    "1|VIP & Loyalty Tier Priority Room Allocation",
+                    "2|Housekeeping and Task Log",
+                    "3|Front Desk Service",
+                    "4|Loyalty and Rewards Service",
+                    "0|Back")));
             String choice = readLine(scanner, "Select a staff function: ");
             if (choice == null) {
                 return;
@@ -132,11 +129,9 @@ public class Main {
 
         while (!back) {
             InputHelper.clearScreen();
-            System.out.println(ConsoleStyle.title("\n--- Member / Guest Portal ---"));
-            System.out.println(ConsoleStyle.menu(
-                    "1. Existing Member Login\n"
-                        + "2. Register as Member\n"
-                        + "0. Back\n"));
+            Logo.displayMain();
+            System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("MEMBER / GUEST PORTAL",
+                    "1|Existing Member Login", "2|Register as Member", "0|Back")));
             String choice = readLine(scanner, "Select an option: ");
             if (choice == null) {
                 return;
@@ -300,10 +295,10 @@ public class Main {
             System.out.println("Points    : " + member.getPoint());
             displayMemberPromotionTable(
                     loyalty.generatePersonalizedPromotion(member.getMemberId()));
-            System.out.println(ConsoleStyle.menu(
-                    "\n1. Make a Reservation\n"
-                            + "2. View My Reservations\n"
-                            + "0. Back to Member / Guest Portal\n"));
+            System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("MEMBER HOME",
+                    "1|Make a Reservation", "2|View My Reservations",
+                    "3|Pay Reservation with Points",
+                    "0|Back to Member / Guest Portal")));
             String choice = readLine(scanner, "Select an option: ");
             if (choice == null || choice.equals("0")) {
                 return;
@@ -313,6 +308,9 @@ public class Main {
                 new ReservationUI(scanner).startMember(member.getMemberId());
             } else if (choice.equals("2")) {
                 new ReservationUI(scanner).viewMemberReservations(member.getMemberId());
+                InputHelper.pressEnterToContinue(scanner);
+            } else if (choice.equals("3")) {
+                new ReservationUI(scanner).startMemberPayment(member.getMemberId());
                 InputHelper.pressEnterToContinue(scanner);
             } else {
                 System.out.println(ConsoleStyle.error("Invalid member home option."));

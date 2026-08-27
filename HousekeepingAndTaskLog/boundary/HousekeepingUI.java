@@ -72,17 +72,13 @@ public class HousekeepingUI {
     private void displayMenu() {
         System.out.println();
         Logo.displayHousekeepingAndTaskLog();
-        System.out.println(ConsoleStyle.menu("\n+--------------------------------------------------------------+\n"
-                + "|                    HOUSEKEEPING MENU                         |\n"
-                + "+----+---------------------------------------------------------+\n"
-                + "| 1  | Add Cleaning Task                                       |\n"
-                + "| 2  | Update Room Cleaning Status                             |\n"
-                + "| 3  | Roll Back Last Status Change                            |\n"
-                + "| 4  | Search Task by Room                                     |\n"
-                + "| 5  | View Reports                                            |\n"
-                + "+----+---------------------------------------------------------+\n"
-                + "| 0  | Back to Main Menu                                       |\n"
-                + "+----+---------------------------------------------------------+"));
+        System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("HOUSEKEEPING MENU",
+                "1|Add Cleaning Task",
+                "2|Update Room Cleaning Status",
+                "3|Roll Back Last Status Change",
+                "4|Search Task by Room",
+                "5|View Reports",
+                "0|Back to Main Menu")));
     }
 
     private void addCleaningTask() {
@@ -169,15 +165,12 @@ public class HousekeepingUI {
 
         while (!back) {
             InputHelper.clearScreen();
-            System.out.println("\n+--------------------------------------------------------------+");
-            System.out.println("|                     HOUSEKEEPING REPORTS                     |");
-            System.out.println("+----+---------------------------------------------------------+");
-            System.out.println("| 1  | Task Status Summary                                     |");
-            System.out.println("| 2  | List All Tasks                                          |");
-            System.out.println("| 3  | Filter Tasks by Created Date Range                      |");
-            System.out.println("+----+---------------------------------------------------------+");
-            System.out.println("| 0  | Back                                                    |");
-            System.out.println("+----+---------------------------------------------------------+");
+            Logo.displayHousekeepingAndTaskLog();
+            System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("HOUSEKEEPING REPORTS",
+                    "1|Task Status Summary",
+                    "2|List All Tasks",
+                    "3|Filter Tasks by Created Date Range",
+                    "0|Back")));
             String choice = InputHelper.inputString(
                     scanner, "Select an option [0-3]: ").trim();
 
@@ -304,14 +297,9 @@ public class HousekeepingUI {
 
     private TaskStatus promptStatus() {
         while (true) {
-            System.out.println("\n+----+----------------------------+");
-            System.out.println("|          CLEANING STATUS        |");
-            System.out.println("+----+----------------------------+");
-            System.out.println("| 1  | Dirty                      |");
-            System.out.println("| 2  | Cleaning In Progress       |");
-            System.out.println("| 3  | Inspected                  |");
-            System.out.println("| 4  | Ready for Check-In         |");
-            System.out.println("+----+----------------------------+");
+            System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("CLEANING STATUS",
+                    "1|Dirty", "2|Cleaning In Progress", "3|Inspected",
+                    "4|Ready for Check-In")));
             String choice = InputHelper.inputString(
                     scanner, "Select status [1-4]: ").trim();
 

@@ -188,24 +188,6 @@ public class LoyaltyServiceControl {
         return String.format("M%03d", highestNumber + 1);
     }
 
-    public SortedArrayList<Member> generateRankingReport(int minPoint, String targetTierId) {
-        SortedArrayList<Member> sortedResult = new SortedArrayList<>(
-                (left, right) -> right.compareTo(left));
-        boolean hasTargetTier = targetTierId != null && !targetTierId.isEmpty();
-
-        for (Member current : memberList) {
-            boolean matchesCriteria = current.getPoint() >= minPoint
-                    && (!hasTargetTier || TierPolicy
-                            .getTierId(current.getLifetimePointsEarned())
-                            .equalsIgnoreCase(targetTierId));
-            if (matchesCriteria) {
-                sortedResult.add(current);
-            }
-        }
-
-        return sortedResult;
-    }
-
     public String generatePersonalizedPromotion(String memberId) {
         Member member = getMemberById(memberId);
         if (member == null) {
@@ -260,7 +242,7 @@ public class LoyaltyServiceControl {
         return sortedResult;
     }
 
-    private int deductPointsFromOldestTransactions(String memberId, int pointsToDeduct) {
+    private void deductPointsFromOldestTransactions(String memberId, int pointsToDeduct) {
         int remainingToDeduct = pointsToDeduct;
 
         while (remainingToDeduct > 0) {
@@ -273,8 +255,6 @@ public class LoyaltyServiceControl {
             oldest.setPointsRemaining(oldest.getPointsRemaining() - deducted);
             remainingToDeduct -= deducted;
         }
-
-        return pointsToDeduct - remainingToDeduct;
     }
 
     /**
@@ -617,17 +597,6 @@ public class LoyaltyServiceControl {
         return sortedResult;
     }
 
-    public SortedArrayList<RedemptionRequest> generateRequestReport(
-            LocalDate startDate, LocalDate endDate) {
-        SortedArrayList<RedemptionRequest> sortedResult = new SortedArrayList<>();
-        for (RedemptionRequest current : requestHistory) {
-            if (isWithinRange(current.getRequestDate(), startDate, endDate)) {
-                sortedResult.add(current);
-            }
-        }
-        return sortedResult;
-    }
-
     private boolean isWithinRange(LocalDate date, LocalDate start, LocalDate end) {
         return !date.isBefore(start) && !date.isAfter(end);
     }
@@ -638,20 +607,6 @@ public class LoyaltyServiceControl {
             totalPointsEarned += transaction.getPointsEarned();
         }
         return totalPointsEarned;
-    }
-
-    public int countRequestsByStatus(SortedArrayList<RedemptionRequest> requests, String status) {
-        int count = 0;
-        for (RedemptionRequest request : requests) {
-            String currentStatus = request.getStatus();
-            boolean matchesRejectedGroup = STATUS_REJECTED.equalsIgnoreCase(status)
-                    && !STATUS_PENDING.equalsIgnoreCase(currentStatus)
-                    && !STATUS_APPROVED.equalsIgnoreCase(currentStatus);
-            if (currentStatus.equalsIgnoreCase(status) || matchesRejectedGroup) {
-                count++;
-            }
-        }
-        return count;
     }
 
 }

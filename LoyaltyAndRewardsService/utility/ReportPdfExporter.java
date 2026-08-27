@@ -22,7 +22,7 @@ import adt.ListInterface;
 public final class ReportPdfExporter {
     public enum ChartType {
         EXPIRING_POINTS,
-        BUSINESS_SUMMARY
+        POINTS_TRANSACTION
     }
 
     private static final double PAGE_WIDTH = 842;
@@ -228,16 +228,7 @@ public final class ReportPdfExporter {
     }
 
     private static void drawCharts(StringBuilder stream, ListInterface<ReportChart> charts) {
-        if (charts.getNumberOfEntries() == 1) {
-            drawFullWidthChart(stream, charts.getEntry(1));
-            return;
-        }
-
-        double[] panelPositions = {38, 299, 560};
-        for (int index = 0;
-                index < Math.min(charts.getNumberOfEntries(), panelPositions.length); index++) {
-            drawDashboardChart(stream, charts.getEntry(index + 1), panelPositions[index]);
-        }
+        drawFullWidthChart(stream, charts.getEntry(1));
     }
 
     private static void drawFullWidthChart(StringBuilder stream, ReportChart chart) {
@@ -270,51 +261,16 @@ public final class ReportPdfExporter {
         }
     }
 
-    private static void drawDashboardChart(StringBuilder stream, ReportChart chart,
-            double panelX) {
-        stream.append("1 1 1 rg ").append(panelX).append(" 300 244 215 re f\n");
-        appendText(stream, "F1", 10.5, panelX + 13, 491, 0.07, 0.13, 0.24,
-                chart.title);
-
-        if (chart.items.isEmpty()) {
-            appendText(stream, "F1", 8, panelX + 13, 452, 0.45, 0.49, 0.55,
-                    "No data in selected period.");
-            return;
-        }
-
-        int maximum = 1;
-        for (ChartItem item : chart.items) {
-            maximum = Math.max(maximum, item.value);
-        }
-
-        int displayedItems = Math.min(chart.items.getNumberOfEntries(), 6);
-        double y = 458;
-        for (int index = 0; index < displayedItems; index++) {
-            ChartItem item = chart.items.getEntry(index + 1);
-            double barWidth = 102.0 * item.value / maximum;
-            appendText(stream, "F1", 7, panelX + 13, y + 1, 0.20, 0.24, 0.30,
-                    abbreviate(item.label, 11));
-            stream.append("0.20 0.55 0.86 rg ").append(panelX + 88).append(' ')
-                    .append(y).append(' ').append(Math.max(2, barWidth))
-                    .append(" 10 re f\n");
-            appendText(stream, "F1", 7, panelX + 199, y + 1, 0.20, 0.24, 0.30,
-                    String.valueOf(item.value));
-            y -= 25;
-        }
-    }
-
     private static ListInterface<ReportChart> extractCharts(String report, ChartType chartType) {
-        if (chartType == ChartType.BUSINESS_SUMMARY) {
-            return extractBusinessSummaryCharts(report);
-        }
-
         ListInterface<ReportChart> charts = new ArrayList<>();
         charts.add(new ReportChart(chartTitle(chartType),
-                extractSimpleChartItems(report, chartType)));
+                chartType == ChartType.POINTS_TRANSACTION
+                        ? extractTransactionChartItems(report)
+                        : extractSimpleChartItems(report)));
         return charts;
     }
 
-    private static ListInterface<ChartItem> extractSimpleChartItems(String report, ChartType chartType) {
+    private static ListInterface<ChartItem> extractSimpleChartItems(String report) {
         ListInterface<ChartItem> items = new ArrayList<>();
         String[] lines = report.split("\\R");
         for (String line : lines) {
@@ -332,63 +288,26 @@ public final class ReportPdfExporter {
         return items;
     }
 
-    private static ListInterface<ReportChart> extractBusinessSummaryCharts(String report) {
-        ListInterface<ChartItem> memberPoints = new ArrayList<>();
+    private static ListInterface<ChartItem> extractTransactionChartItems(String report) {
         ListInterface<DatedPointTotal> transactionPointsByDate = new ArrayList<>();
-        ListInterface<ChartItem> requestStatuses = new ArrayList<>();
-        int section = 0;
 
         for (String line : report.split("\\R")) {
-            if (line.contains("Top Members by Current Points")) {
-                section = 1;
-                continue;
-            }
-            if (line.contains("Transaction Summary")) {
-                section = 2;
-                continue;
-            }
-            if (line.contains("Redemption Request Summary")) {
-                section = 3;
-                continue;
-            }
-
             ListInterface<String> columns = parseTableColumns(line);
             if (columns.getNumberOfEntries() != 4) {
                 continue;
             }
 
-            if (section == 1) {
-                Integer points = parseInteger(columns.getEntry(4));
-                if (points != null) {
-                    memberPoints.add(new ChartItem(columns.getEntry(2), points));
-                }
-            } else if (section == 2) {
-                Integer points = parseInteger(columns.getEntry(3));
-                if (points != null) {
-                    addPointsForDate(transactionPointsByDate, columns.getEntry(4), points);
-                }
+            Integer points = parseInteger(columns.getEntry(3));
+            if (points != null) {
+                addPointsForDate(transactionPointsByDate, columns.getEntry(4), points);
             }
-        }
-
-        Matcher matcher = Pattern.compile(
-                "Pending:\\s*(\\d+),\\s*Approved:\\s*(\\d+),\\s*Rejected:\\s*(\\d+)",
-                Pattern.CASE_INSENSITIVE).matcher(report);
-        if (matcher.find()) {
-            requestStatuses.add(new ChartItem("Pending", Integer.parseInt(matcher.group(1))));
-            requestStatuses.add(new ChartItem("Approved", Integer.parseInt(matcher.group(2))));
-            requestStatuses.add(new ChartItem("Rejected", Integer.parseInt(matcher.group(3))));
         }
 
         ListInterface<ChartItem> transactionPoints = new ArrayList<>();
         for (DatedPointTotal entry : transactionPointsByDate) {
             transactionPoints.add(new ChartItem(entry.date, entry.points));
         }
-
-        ListInterface<ReportChart> charts = new ArrayList<>();
-        charts.add(new ReportChart("Top member points", memberPoints));
-        charts.add(new ReportChart("Points earned by date", transactionPoints));
-        charts.add(new ReportChart("Redemption status", requestStatuses));
-        return charts;
+        return transactionPoints;
     }
 
     private static void addPointsForDate(ListInterface<DatedPointTotal> totals,
@@ -425,7 +344,7 @@ public final class ReportPdfExporter {
 
     private static String chartTitle(ChartType chartType) {
         return chartType == ChartType.EXPIRING_POINTS
-                ? "Points due to expire" : "Report chart";
+                ? "Points due to expire" : "Points earned by date";
     }
 
     private static byte[] buildPdf(ListInterface<String> pageStreams) throws IOException {

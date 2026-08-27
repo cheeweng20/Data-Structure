@@ -92,22 +92,9 @@ public final class LoyaltyUI {
 
     private void displayMenu() {
         Logo.displayLoyaltyAndRewardsService();
-        System.out.println(ConsoleStyle.menu("\r\n" + //
-                ".-----.----------------------.\r\n" + //
-                "| No. |       Function       |\r\n" + //
-                ":-----+----------------------:\r\n" + //
-                "|  1. | Redemption Requests  |\r\n" + //
-                ":-----+----------------------:\r\n" + //
-                "|  2. | Member List          |\r\n" + //
-                ":-----+----------------------:\r\n" + //
-                "|  3. | Tier Progression     |\r\n" + //
-                ":-----+----------------------:\r\n" + //
-                "|  4. | Report               |\r\n" + //
-                ":-----+----------------------:\r\n" + //
-                "|  0. | Back                 |\r\n" + //
-                "'-----'----------------------'\r\n" + //
-                "\r\n" + //
-                ""));
+        System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("LOYALTY AND REWARDS",
+                "1|Redemption Requests", "2|Member List", "3|Tier Progression",
+                "4|Report", "0|Back")));
     }
 
     private void displayStartupNotifications() {
@@ -176,16 +163,9 @@ public final class LoyaltyUI {
 
         while (!exit) {
             InputHelper.clearScreen();
-            System.out.println(ConsoleStyle.menu("\r\n"
-                    + ".-----.---------------------------.\r\n"
-                    + "| No. |         Function          |\r\n"
-                    + ":-----+---------------------------:\r\n"
-                    + "|  1. | Process Next Request      |\r\n"
-                    + ":-----+---------------------------:\r\n"
-                    + "|  2. | View Pending Requests     |\r\n"
-                    + ":-----+---------------------------:\r\n"
-                    + "|  3. | View Request History      |\r\n"
-                    + "'-----'---------------------------'\r\n"));
+            System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("REDEMPTION REQUESTS",
+                    "1|Process Next Request", "2|View Pending Requests",
+                    "3|View Request History", "0|Back")));
 
             int userEntry = InputHelper.inputInt(scanner, "Please enter a number (0 to exit): ");
             switch (userEntry) {
@@ -309,14 +289,9 @@ public final class LoyaltyUI {
 
         while (!exit) {
             InputHelper.clearScreen();
-            System.out.println(ConsoleStyle.menu("\r\n"
-                    + ".-----.-----------------------------.\r\n"
-                    + "| No. |          Function           |\r\n"
-                    + ":-----+-----------------------------:\r\n"
-                    + "|  1. | Expiring Points Alert       |\r\n"
-                    + ":-----+-----------------------------:\r\n"
-                    + "|  2. | Business Cycle Summary      |\r\n"
-                    + "'-----'-----------------------------'\r\n"));
+            System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("LOYALTY REPORTS",
+                    "1|Expiring Points Alert", "2|Points Transaction Report",
+                    "0|Back")));
 
             int selection = InputHelper.inputInt(scanner, "Enter a number (0 to exit): ");
             switch (selection) {
@@ -324,7 +299,7 @@ public final class LoyaltyUI {
                     displayExpiringPoints();
                     break;
                 case 2:
-                    displayBusinessCycleSummary();
+                    displayPointsTransactionReport();
                     break;
                 case 0:
                     exit = true;
@@ -359,12 +334,12 @@ public final class LoyaltyUI {
         }
     }
 
-    private void displayBusinessCycleSummary() {
-        LocalDate startDate = readDate("Enter cycle start date (YYYY-MM-DD): ");
+    private void displayPointsTransactionReport() {
+        LocalDate startDate = readDate("Enter report start date (YYYY-MM-DD): ");
         if (startDate == null) {
             return;
         }
-        LocalDate endDate = readDate("Enter cycle end date (YYYY-MM-DD): ");
+        LocalDate endDate = readDate("Enter report end date (YYYY-MM-DD): ");
         if (endDate == null) {
             return;
         }
@@ -373,28 +348,17 @@ public final class LoyaltyUI {
             return;
         }
 
-        String tierId =
-                InputHelper.inputString(scanner, "Enter tier ID to filter (blank for all): ");
-        int minimumPoint =
-                InputHelper.inputInt(scanner, "Enter minimum current point for ranking: ");
-        if (minimumPoint < 0) {
-            MessageUI.displayError("Minimum point cannot be negative.");
-            return;
-        }
-
-        BusinessCycleData data = ConsoleProgress.run(
-                () -> new BusinessCycleData(
-                        serviceControl.generateRankingReport(minimumPoint, tierId),
-                        serviceControl.generateTransactionReport(startDate, endDate),
-                        serviceControl.generateRequestReport(startDate, endDate)),
-                "Fetching loyalty information...",
-                "Calculating cycle summaries...",
+        SortedArrayList<PointTransaction> transactions = ConsoleProgress.run(
+                () -> serviceControl.generateTransactionReport(startDate, endDate),
+                "Fetching point transactions...",
+                "Calculating transaction totals...",
                 "Preparing report data...");
-        String report = buildBusinessCycleSummary(startDate, endDate,
-                tierId, minimumPoint, data.rankedMembers, data.transactions, data.requests);
-        System.out.println(report);
-        offerPdfExport("Business Cycle Summary Report", report,
-                ChartType.BUSINESS_SUMMARY);
+        String report = buildPointsTransactionReport(startDate, endDate, transactions);
+        if (displayReport(report,
+                "No point transactions found within the selected period.")) {
+            offerPdfExport("Points Transaction Report", report,
+                    ChartType.POINTS_TRANSACTION);
+        }
     }
 
     private LocalDate readDate(String prompt) {
@@ -432,57 +396,21 @@ public final class LoyaltyUI {
         return output.toString();
     }
 
-    private String buildBusinessCycleSummary(
-            LocalDate startDate, LocalDate endDate,
-            String tierId, int minimumPoint, SortedArrayList<Member> rankedMembers,
-            SortedArrayList<PointTransaction> transactions,
-            SortedArrayList<RedemptionRequest> requests) {
-        StringBuilder output = new StringBuilder();
-        output.append("=== Business Cycle Summary Report ===\n");
-        output.append("Cycle Period: ").append(startDate).append(" to ").append(endDate).append("\n");
-        output.append("Applied Filters: tier=")
-                .append(tierId == null || tierId.isBlank() ? "All" : tierId)
-                .append(", minimum point=").append(minimumPoint)
-                .append("\n\n");
-
-        appendMemberSummary(output, rankedMembers);
-        appendTransactionSummary(output, transactions);
-        appendRequestSummary(output, requests);
-        return output.toString();
-    }
-
-    private void appendMemberSummary(StringBuilder output,
-            SortedArrayList<Member> members) {
-        String border = "+------------+----------------------+------------+----------+";
-        output.append("=== Top Members by Current Points ===\n");
-        output.append(border).append("\n");
-        output.append(String.format("| %-10s | %-20s | %-10s | %8s |%n",
-                "Member ID", "Member Name", "Tier", "Points"));
-        output.append(border).append("\n");
-
-        if (members.isEmpty()) {
-            output.append(String.format("| %-10s | %-20s | %-10s | %8s |%n",
-                    "-", "No matching members", "-", "-"));
-        } else {
-            Iterator<Member> iterator = members.iterator();
-            while (iterator.hasNext()) {
-                Member member = iterator.next();
-                output.append(String.format("| %-10.10s | %-20.20s | %-10.10s | %8d |%n",
-                        member.getMemberId(), member.getName(),
-                        serviceControl.getTierName(member), member.getPoint()));
-            }
-        }
-        output.append(border).append("\n");
-    }
-
-    private void appendTransactionSummary(StringBuilder output,
+    private String buildPointsTransactionReport(LocalDate startDate, LocalDate endDate,
             SortedArrayList<PointTransaction> transactions) {
-        output.append("\n=== Transaction Summary ===\n");
-        output.append("Transactions in cycle: ")
-                .append(transactions.getNumberOfEntries()).append("\n");
-        output.append("Total points earned in cycle: ")
-                .append(serviceControl.calculateTotalPointsEarned(transactions)).append("\n");
+        if (transactions.isEmpty()) {
+            return "";
+        }
 
+        StringBuilder output = new StringBuilder();
+        output.append("=== Points Transaction Report ===\n");
+        output.append("Report Period: ").append(startDate).append(" to ")
+                .append(endDate).append("\n");
+        output.append("Total Transactions: ")
+                .append(transactions.getNumberOfEntries()).append("\n");
+        output.append("Total Points Earned: ")
+                .append(serviceControl.calculateTotalPointsEarned(transactions))
+                .append("\n\n");
         String border = "+----------------+------------+----------------+-------------+";
         output.append(border).append("\n");
         output.append(String.format("| %-14s | %-10s | %-14s | %-11s |%n",
@@ -496,39 +424,8 @@ public final class LoyaltyUI {
                     transaction.getTransactionId(), transaction.getMemberId(),
                     transaction.getPointsEarned(), transaction.getEarnedDate()));
         }
-        output.append(border).append("\n");
-    }
-
-    private void appendRequestSummary(StringBuilder output,
-            SortedArrayList<RedemptionRequest> requests) {
-        int pending = serviceControl.countRequestsByStatus(requests, "Pending");
-        int approved = serviceControl.countRequestsByStatus(requests, "Approved");
-        int rejected = serviceControl.countRequestsByStatus(requests, "Rejected");
-
-        output.append("\n=== Point-Payment Redemption Request Summary ===\n");
-        output.append("Requests in cycle: ").append(requests.getNumberOfEntries()).append("\n");
-        output.append("Pending: ").append(pending)
-                .append(", Approved: ").append(approved)
-                .append(", Rejected: ").append(rejected).append("\n");
-
-        String border =
-                "+------------+------------+----------------------+------------------+--------------------+--------------------------------+";
-        output.append(border).append("\n");
-        output.append(String.format("| %-10s | %-10s | %-20s | %-16s | %-18s | %-30s |%n",
-                "Request ID", "Member ID", "Confirmation No.", "Points Requested",
-                "Request Date", "Status"));
-        output.append(border).append("\n");
-
-        Iterator<RedemptionRequest> iterator = requests.iterator();
-        while (iterator.hasNext()) {
-            RedemptionRequest request = iterator.next();
-            output.append(String.format(
-                    "| %-10.10s | %-10.10s | %-20.20s | %16d | %-18s | %-30.30s |%n",
-                    request.getRequestId(), request.getMemberId(),
-                    request.getConfirmationNumber(), request.getPointsRequested(),
-                    request.getRequestDate(), request.getStatus()));
-        }
         output.append(border);
+        return output.toString();
     }
 
     private boolean displayReport(String report, String emptyMessage) {
@@ -570,17 +467,4 @@ public final class LoyaltyUI {
         }
     }
 
-    private static final class BusinessCycleData {
-        private final SortedArrayList<Member> rankedMembers;
-        private final SortedArrayList<PointTransaction> transactions;
-        private final SortedArrayList<RedemptionRequest> requests;
-
-        private BusinessCycleData(SortedArrayList<Member> rankedMembers,
-                SortedArrayList<PointTransaction> transactions,
-                SortedArrayList<RedemptionRequest> requests) {
-            this.rankedMembers = rankedMembers;
-            this.transactions = transactions;
-            this.requests = requests;
-        }
-    }
 }

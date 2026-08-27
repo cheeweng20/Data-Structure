@@ -44,10 +44,10 @@ public final class ConsoleAnimation {
         LineRenderer renderer = spin(message);
         try {
             T result = operation.get();
-            renderer.finishWith("✓ " + message + " complete", true);
+            renderer.finishWith("Success: " + message + " complete", true);
             return result;
         } catch (RuntimeException | Error exception) {
-            renderer.finishWith("✗ " + message + " failed", false);
+            renderer.finishWith("Error: " + message + " failed", false);
             throw exception;
         }
     }
@@ -63,9 +63,9 @@ public final class ConsoleAnimation {
         LineRenderer renderer = spin(message);
         try {
             operation.run();
-            renderer.finishWith("✓ " + message + " complete", true);
+            renderer.finishWith("Success: " + message + " complete", true);
         } catch (RuntimeException | Error exception) {
-            renderer.finishWith("✗ " + message + " failed", false);
+            renderer.finishWith("Error: " + message + " failed", false);
             throw exception;
         }
     }
@@ -81,10 +81,10 @@ public final class ConsoleAnimation {
         LineRenderer renderer = spin(message);
         try {
             T result = operation.get();
-            renderer.finishWith("✓ " + message + " complete", true);
+            renderer.finishWith("Success: " + message + " complete", true);
             return result;
         } catch (IOException | RuntimeException | Error exception) {
-            renderer.finishWith("✗ " + message + " failed", false);
+            renderer.finishWith("Error: " + message + " failed", false);
             throw exception;
         }
     }
@@ -101,17 +101,17 @@ public final class ConsoleAnimation {
             renderer.render(message + ".".repeat((i % 3) + 1));
             pause(FRAME_MILLIS);
         }
-        renderer.finishWith("✓ " + message, true);
+        renderer.finishWith("Success: " + message, true);
     }
 
     /** Prints a consistent success transition for an operation result. */
     public static void success(String message) {
-        System.out.println(ConsoleStyle.success("✓ " + message));
+        System.out.println(ConsoleStyle.success("Success: " + message));
     }
 
     /** Prints a consistent failure transition for an operation result. */
     public static void error(String message) {
-        System.out.println(ConsoleStyle.error("✗ " + message));
+        System.out.println(ConsoleStyle.error("Error: " + message));
     }
 
     private static LineRenderer spin(String message) {
