@@ -9,6 +9,7 @@ import VIPPriorityRoomAllocation.entity.Room;
 import adt.ListInterface;
 import common.src.ConsoleStyle;
 import common.src.ConsoleProgress;
+import common.src.ConsoleAnimation;
 import common.src.InputHelper;
 import common.src.InputHelper.EndOfInputException;
 import common.utility.Validation;
@@ -120,7 +121,7 @@ public class FrontDeskUI {
                 "Processing payment and check-in...",
                 "Updating room status...");
         if (result == CheckInResult.SUCCESS) {
-            System.out.println("Check-in successful.");
+            ConsoleAnimation.success("Check-in successful.");
             displayReservationDetails(
                     control.findByConfirmationNumber(reservation.getConfirmationNumber()));
         } else {
@@ -153,10 +154,10 @@ public class FrontDeskUI {
                 "Processing check-out...",
                 "Updating room status...");
         if (result == CheckOutResult.SUCCESS) {
-            System.out.println("Guest checked out successfully.");
+            ConsoleAnimation.success("Guest checked out successfully.");
             displayReservationDetails(reservation);
         } else {
-            System.out.println("Check-out failed: " + getCheckOutFailureMessage(result));
+            ConsoleAnimation.error("Check-out failed: " + getCheckOutFailureMessage(result));
         }
     }
 
@@ -225,11 +226,9 @@ public class FrontDeskUI {
             return null;
         }
 
-        Reservation reservation = ConsoleProgress.run(
+        Reservation reservation = ConsoleAnimation.runWithSpinner(
                 () -> control.findByConfirmationNumber(confirmationNumber),
-                "Fetching reservation information...",
-                "Searching confirmation records...",
-                "Preparing reservation details...");
+                "Fetching reservation information");
         if (reservation == null) {
             System.out.println("Guest record not found.");
         }
@@ -277,11 +276,9 @@ public class FrontDeskUI {
     private ListInterface<Reservation> findReservationsByPrompt() {
         String searchValue = promptRequiredText(
                 "Enter reservation ID / Member ID / Guest Name: ");
-        return ConsoleProgress.run(
+        return ConsoleAnimation.runWithSpinner(
                 () -> control.findMatchingReservations(searchValue),
-                "Fetching reservation information...",
-                "Searching records...",
-                "Preparing results...");
+                "Searching reservation records");
     }
 
     private void displayReservationList(ListInterface<Reservation> reservations) {
@@ -363,16 +360,16 @@ public class FrontDeskUI {
     private void displayCheckInFailure(CheckInResult result) {
         switch (result) {
             case PAYMENT_REQUIRED:
-                System.out.println("Check-in failed: payment is required.");
+                ConsoleAnimation.error("Check-in failed: payment is required.");
                 break;
             case MEMBER_POINTS_PAYMENT_NOT_APPROVED:
-                System.out.println("Check-in failed: the member-points request is not approved.");
+                ConsoleAnimation.error("Check-in failed: the member-points request is not approved.");
                 break;
             case ROOM_NOT_RESERVED:
-                System.out.println("Check-in failed: the assigned room is not reserved.");
+                ConsoleAnimation.error("Check-in failed: the assigned room is not reserved.");
                 break;
             default:
-                System.out.println("Check-in failed: " + getCheckInFailureMessage(result));
+                ConsoleAnimation.error("Check-in failed: " + getCheckInFailureMessage(result));
         }
     }
 

@@ -13,11 +13,13 @@ public final class MessageUI {
     }
 
     public static void displaySuccess(String message) {
-        System.out.println(ConsoleStyle.successBadge() + " " + message);
+        System.out.println(ConsoleStyle.successBadge() + " "
+                + ConsoleStyle.success("✓ " + message));
     }
 
     public static void displayError(String message) {
-        System.out.println(ConsoleStyle.failedBadge() + " " + message);
+        System.out.println(ConsoleStyle.failedBadge() + " "
+                + ConsoleStyle.error("✗ " + message));
     }
 
     public static void displayInfo(String message) {

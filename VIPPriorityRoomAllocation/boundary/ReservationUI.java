@@ -20,6 +20,7 @@ import common.src.InputHelper;
 import common.src.InputHelper.EndOfInputException;
 import common.src.ConsoleStyle;
 import common.src.ConsoleProgress;
+import common.src.ConsoleAnimation;
 import common.utility.Validation;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -128,11 +129,9 @@ public class ReservationUI {
                 MessageUI.displayError("Member record is no longer available. Please sign in again.");
                 return;
             }
-            displayReservations(ConsoleProgress.run(
+            displayReservations(ConsoleAnimation.runWithSpinner(
                     () -> reservationManager.findReservationsByGuestId(profile.getMemberId()),
-                    "Fetching reservation information...",
-                    "Searching member bookings...",
-                    "Preparing reservation results..."));
+                    "Fetching member reservations"));
         } catch (EndOfInputException exception) {
             // EOF behaves like returning to Member Home.
         }
@@ -231,11 +230,9 @@ public class ReservationUI {
 
     private Reservation findReservationByConfirmationNumber() {
         String confirmationNumber = promptRequiredText("Confirmation number: ");
-        Reservation reservation = ConsoleProgress.run(
+        Reservation reservation = ConsoleAnimation.runWithSpinner(
                 () -> reservationManager.findByConfirmationNumber(confirmationNumber),
-                "Fetching reservation information...",
-                "Searching confirmation records...",
-                "Preparing reservation details...");
+                "Fetching reservation information");
         if (reservation == null) {
             MessageUI.displayError("Reservation not found.");
         }
@@ -372,11 +369,9 @@ public class ReservationUI {
     private ListInterface<Reservation> findReservationsByPrompt() {
         String searchValue = promptRequiredText("Enter reservation ID / Member ID / Guest Name: ");
         // returns all matched records, not only the first one
-        return ConsoleProgress.run(
+        return ConsoleAnimation.runWithSpinner(
                 () -> reservationManager.findMatchingReservations(searchValue),
-                "Fetching reservation information...",
-                "Searching records...",
-                "Preparing results...");
+                "Searching reservation records");
     }
 
     public void displayReservations(ListInterface<Reservation> reservations) {
@@ -431,6 +426,13 @@ public class ReservationUI {
         if (successfulReservations.isEmpty()) {
             MessageUI.displayInfo("No successful room allocation found.");
             return;
+        }
+
+        for (int i = 1; i <= successfulReservations.getNumberOfEntries(); i++) {
+            Reservation reservation = successfulReservations.getEntry(i);
+            ConsoleAnimation.roomAssignment(
+                    reservation.getAssignedRoom().getRoomNumber(),
+                    reservation.getGuest().getFullName());
         }
 
         String border = "+-----+------------+--------------------+-----------+----------+------------+-------------+";
@@ -655,11 +657,9 @@ public class ReservationUI {
 
         Path pdfPath;
         try {
-            pdfPath = ConsoleProgress.runIo(
+            pdfPath = ConsoleAnimation.runIoWithSpinner(
                     () -> ReportPdfExporter.export(title, report, chartType),
-                    "Generating chart...",
-                    "Creating PDF...",
-                    "Finalizing document...");
+                    "Generating report PDF");
         } catch (IOException ex) {
             MessageUI.displayError("Unable to generate PDF: " + ex.getMessage());
             return;

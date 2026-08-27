@@ -8,6 +8,7 @@ import adt.ListInterface;
 import common.src.Logo;
 import common.src.ConsoleStyle;
 import common.src.ConsoleProgress;
+import common.src.ConsoleAnimation;
 import common.src.InputHelper;
 import common.src.InputHelper.EndOfInputException;
 import common.utility.Validation;
@@ -102,9 +103,9 @@ public class HousekeepingUI {
                 "Saving task log...");
 
         if (task == null) {
-            System.out.println("Unable to add cleaning task.");
+            ConsoleAnimation.error("Unable to add cleaning task.");
         } else {
-            System.out.println("Cleaning task added.");
+            ConsoleAnimation.success("Cleaning task added.");
             displayTaskDetails(task);
         }
     }
@@ -128,10 +129,10 @@ public class HousekeepingUI {
                 "Updating room cleaning status...",
                 "Saving task log...");
         if (updated) {
-            System.out.println("Status updated.");
+            ConsoleAnimation.success("Status updated.");
             displayTaskDetails(housekeepingControl.findTaskById(taskId));
         } else {
-            System.out.println("Status update failed.");
+            ConsoleAnimation.error("Status update failed.");
         }
     }
 
@@ -144,25 +145,23 @@ public class HousekeepingUI {
                 "Saving task log...");
 
         if (statusChange == null) {
-            System.out.println("No change is available to roll back.");
+            ConsoleAnimation.error("No change is available to roll back.");
             return;
         }
 
-        System.out.println("Rolled back task " + statusChange.getTaskId()
+        ConsoleAnimation.success("Rolled back task " + statusChange.getTaskId()
                 + " from " + statusChange.getNewStatus()
-                + " to " + statusChange.getPreviousStatus() + "." + "\n"
-                + "Original change: " + statusChange.getChangedAt()
-                        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")) + ".");
+                + " to " + statusChange.getPreviousStatus() + ".");
+        System.out.println("Original change: " + statusChange.getChangedAt()
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")) + ".");
     }
 
     private void searchByRoom() {
         System.out.println("\n--- Search Task by Room ---");
         String roomNumber = promptRoomNumber();
-        displayTasks(ConsoleProgress.run(
+        displayTasks(ConsoleAnimation.runWithSpinner(
                 () -> housekeepingControl.searchByRoom(roomNumber),
-                "Fetching housekeeping information...",
-                "Searching tasks by room...",
-                "Preparing results..."));
+                "Searching housekeeping tasks"));
     }
 
     private void displayReportMenu() {

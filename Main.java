@@ -11,6 +11,7 @@ import VIPPriorityRoomAllocation.boundary.ReservationUI;
 import common.control.MemberIdentityControl;
 import common.src.ConsoleStyle;
 import common.src.ConsoleProgress;
+import common.src.ConsoleAnimation;
 import common.src.InputHelper;
 import common.src.Logo;
 import common.utility.Validation;
@@ -33,9 +34,14 @@ public class Main {
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
         boolean exit = false;
+        boolean startupShown = false;
 
         while (!exit) {
             InputHelper.clearScreen();
+            if (!startupShown) {
+                ConsoleAnimation.startup();
+                startupShown = true;
+            }
             displayMainMenu();
             String choice = readLine(scanner, "Select an option: ");
             if (choice == null) {
@@ -167,7 +173,7 @@ public class Main {
                 "Checking member records...",
                 "Preparing member verification...");
         if (member == null) {
-            System.out.println(ConsoleStyle.error("Member ID not found."));
+            ConsoleAnimation.error("Member ID not found.");
             InputHelper.pressEnterToContinue(scanner);
             return;
         }
@@ -176,8 +182,8 @@ public class Main {
         int failedAttempts = MEMBER_VERIFICATION_FAILURES.getOrDefault(
                 normalizedMemberId, 0);
         if (failedAttempts >= MAX_MEMBER_VERIFICATION_ATTEMPTS) {
-            System.out.println(ConsoleStyle.error(
-                    "Member verification is locked for this application session."));
+            ConsoleAnimation.error(
+                    "Member verification is locked for this application session.");
             InputHelper.pressEnterToContinue(scanner);
             return;
         }
@@ -190,7 +196,7 @@ public class Main {
                 MEMBER_VERIFICATION_FAILURES.put(normalizedMemberId,
                         failedAttempts + 1);
             }
-            System.out.println(ConsoleStyle.error("Member verification failed."));
+            ConsoleAnimation.error("Member verification failed.");
             InputHelper.pressEnterToContinue(scanner);
             return;
         }
@@ -234,8 +240,8 @@ public class Main {
                 "Processing member details...",
                 "Creating member profile...",
                 "Preparing member home...");
-        System.out.println(ConsoleStyle.success(
-                "Registration successful. Your Member ID is " + memberId + "."));
+        ConsoleAnimation.success(
+                "Registration successful. Your Member ID is " + memberId + ".");
         Member member = loyalty.getMemberById(memberId);
         if (member != null) {
             showMemberHome(scanner, loyalty, member);

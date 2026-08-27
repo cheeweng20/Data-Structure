@@ -21,6 +21,7 @@ import common.src.InputHelper.EndOfInputException;
 import common.src.Logo;
 import common.src.ConsoleStyle;
 import common.src.ConsoleProgress;
+import common.src.ConsoleAnimation;
 
 /**
  * Handles all actor interaction for loyalty and rewards use cases.
@@ -193,19 +194,15 @@ public final class LoyaltyUI {
                     break;
                 case 2:
                     displayRequestTable("Pending Point-Payment Requests",
-                            ConsoleProgress.run(
+                            ConsoleAnimation.runWithSpinner(
                                     serviceControl::getPendingRequestIterator,
-                                    "Fetching request information...",
-                                    "Loading pending requests...",
-                                    "Preparing results..."));
+                                    "Fetching pending requests"));
                     break;
                 case 3:
                     displayRequestTable("Point-Payment Request History",
-                            ConsoleProgress.run(
+                            ConsoleAnimation.runWithSpinner(
                                     serviceControl::getRequestIterator,
-                                    "Fetching request information...",
-                                    "Loading request history...",
-                                    "Preparing results..."));
+                                    "Fetching request history"));
                     break;
                 case 0:
                     exit = true;
@@ -554,11 +551,9 @@ public final class LoyaltyUI {
 
         Path pdfPath;
         try {
-            pdfPath = ConsoleProgress.runIo(
+            pdfPath = ConsoleAnimation.runIoWithSpinner(
                     () -> ReportPdfExporter.export(title, report, chartType),
-                    "Generating chart...",
-                    "Creating PDF...",
-                    "Finalizing document...");
+                    "Generating report PDF");
         } catch (IOException exception) {
             MessageUI.displayError("Unable to generate PDF: " + exception.getMessage());
             return;
