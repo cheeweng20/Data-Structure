@@ -4,10 +4,12 @@ import HousekeepingAndTaskLog.control.HousekeepingControl;
 import HousekeepingAndTaskLog.entity.HousekeepingTask;
 import HousekeepingAndTaskLog.entity.StatusChange;
 import HousekeepingAndTaskLog.entity.TaskStatus;
-import HousekeepingAndTaskLog.utility.HousekeepingValidator;
 import adt.ListInterface;
 import common.src.Logo;
 import common.src.ConsoleStyle;
+import common.src.InputHelper;
+import common.src.InputHelper.EndOfInputException;
+import common.utility.Validation;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -19,44 +21,49 @@ public class HousekeepingUI {
     private final Scanner scanner;
     private final HousekeepingControl housekeepingControl;
 
-    public HousekeepingUI() {
-        this(new Scanner(System.in));
-    }
-
     public HousekeepingUI(Scanner scanner) {
         this.scanner = scanner;
         housekeepingControl = new HousekeepingControl();
     }
 
     public void start() {
-        boolean exit = false;
+        try {
+            boolean exit = false;
 
-        while (!exit) {
-            displayMenu();
-            String choice = scanner.nextLine().trim();
+            while (!exit) {
+                InputHelper.clearScreen();
+                displayMenu();
+                String choice = InputHelper.inputString(
+                        scanner, "Select an option [0-5]: ").trim();
 
-            switch (choice) {
-                case "1":
-                    addCleaningTask();
-                    break;
-                case "2":
-                    updateCleaningStatus();
-                    break;
-                case "3":
-                    rollbackLastChange();
-                    break;
-                case "4":
-                    searchByRoom();
-                    break;
-                case "5":
-                    displayReportMenu();
-                    break;
-                case "0":
-                    exit = true;
-                    break;
-                default:
-                    System.out.println("Invalid option. Please try again.");
+                switch (choice) {
+                    case "1":
+                        addCleaningTask();
+                        break;
+                    case "2":
+                        updateCleaningStatus();
+                        break;
+                    case "3":
+                        rollbackLastChange();
+                        break;
+                    case "4":
+                        searchByRoom();
+                        break;
+                    case "5":
+                        displayReportMenu();
+                        break;
+                    case "0":
+                        exit = true;
+                        break;
+                    default:
+                        System.out.println("Invalid option. Please try again.");
+                }
+                if (!exit && !choice.equals("5")) {
+                    InputHelper.pressEnterToContinue(scanner);
+                }
             }
+        } catch (EndOfInputException exception) {
+            // EOF behaves like selecting Back.
         }
     }
 
@@ -74,7 +81,6 @@ public class HousekeepingUI {
                 + "+----+---------------------------------------------------------+\n"
                 + "| 0  | Back to Main Menu                                       |\n"
                 + "+----+---------------------------------------------------------+"));
-        System.out.print(ConsoleStyle.inputPrompt("Select an option [0-5]: "));
     }
 
     private void addCleaningTask() {
@@ -145,6 +151,7 @@ public class HousekeepingUI {
         boolean back = false;
 
         while (!back) {
+            InputHelper.clearScreen();
             System.out.println("\n+--------------------------------------------------------------+");
             System.out.println("|                     HOUSEKEEPING REPORTS                     |");
             System.out.println("+----+---------------------------------------------------------+");
@@ -154,8 +161,8 @@ public class HousekeepingUI {
             System.out.println("+----+---------------------------------------------------------+");
             System.out.println("| 0  | Back                                                    |");
             System.out.println("+----+---------------------------------------------------------+");
-            System.out.print("Select an option [0-3]: ");
-            String choice = scanner.nextLine().trim();
+            String choice = InputHelper.inputString(
+                    scanner, "Select an option [0-3]: ").trim();
 
             switch (choice) {
                 case "1":
@@ -172,6 +179,9 @@ public class HousekeepingUI {
                     break;
                 default:
                     System.out.println("Invalid option. Please try again.");
+            }
+            if (!back) {
+                InputHelper.pressEnterToContinue(scanner);
             }
         }
     }
@@ -208,10 +218,9 @@ public class HousekeepingUI {
 
     private String promptRoomNumber() {
         while (true) {
-            System.out.print("Room number: ");
-            String roomNumber = scanner.nextLine().trim();
+            String roomNumber = InputHelper.inputString(scanner, "Room number: ").trim();
 
-            if (HousekeepingValidator.isValidRoomNumber(roomNumber)) {
+            if (Validation.isValidRoomNumber(roomNumber)) {
                 if (housekeepingControl.roomExists(roomNumber)) {
                     return roomNumber;
                 }
@@ -224,10 +233,9 @@ public class HousekeepingUI {
 
     private String promptRequiredText(String prompt) {
         while (true) {
-            System.out.print(prompt);
-            String value = scanner.nextLine().trim();
+            String value = InputHelper.inputString(scanner, prompt).trim();
 
-            if (HousekeepingValidator.isNonBlank(value)) {
+            if (Validation.isNonBlank(value)) {
                 return value;
             }
 
@@ -236,10 +244,9 @@ public class HousekeepingUI {
     }
 
     private String promptText(String prompt) {
-        System.out.print(prompt);
-        String value = scanner.nextLine().trim();
+        String value = InputHelper.inputString(scanner, prompt).trim();
 
-        if (HousekeepingValidator.isBlank(value)) {
+        if (Validation.isBlank(value)) {
             value = "-";
         }
 
@@ -248,8 +255,7 @@ public class HousekeepingUI {
 
     private LocalDate promptDate(String prompt) {
         while (true) {
-            System.out.print(prompt);
-            String input = scanner.nextLine().trim();
+            String input = InputHelper.inputString(scanner, prompt).trim();
 
             try {
                 return LocalDate.parse(input);
@@ -269,8 +275,8 @@ public class HousekeepingUI {
             System.out.println("| 3  | Inspected                  |");
             System.out.println("| 4  | Ready for Check-In         |");
             System.out.println("+----+----------------------------+");
-            System.out.print("Select status [1-4]: ");
-            String choice = scanner.nextLine().trim();
+            String choice = InputHelper.inputString(
+                    scanner, "Select status [1-4]: ").trim();
 
             switch (choice) {
                 case "1":
@@ -334,6 +340,6 @@ public class HousekeepingUI {
     }
 
     public static void main(String[] args) {
-        new HousekeepingUI().start();
+        new HousekeepingUI(new Scanner(System.in)).start();
     }
 }

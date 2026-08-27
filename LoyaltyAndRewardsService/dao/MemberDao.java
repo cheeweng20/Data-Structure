@@ -42,8 +42,8 @@ public class MemberDao {
 
                 try {
                     String[] fields = line.split(",", -1);
-                    if (fields.length != 8) {
-                        throw new IllegalArgumentException("expected 8 columns");
+                    if (fields.length < 6) {
+                        throw new IllegalArgumentException("expected at least 6 columns");
                     }
 
                     String memberId = fields[0].trim();
@@ -52,18 +52,15 @@ public class MemberDao {
                     String phoneNumber = fields[3].trim();
                     int point = Integer.parseInt(fields[4].trim());
                     int lifetimePointsEarned = Integer.parseInt(fields[5].trim());
-                    String tierId = fields[6].trim();
-                    String lastNotifiedTierId = fields[7].trim();
 
                     if (memberId.isEmpty() || name.isEmpty() || passport.isEmpty()
-                            || phoneNumber.isEmpty() || tierId.isEmpty()
-                            || lastNotifiedTierId.isEmpty() || point < 0
+                            || phoneNumber.isEmpty() || point < 0
                             || lifetimePointsEarned < point) {
                         throw new IllegalArgumentException("invalid required member value");
                     }
 
                     members.add(new Member(memberId, name, passport, phoneNumber, point,
-                            lifetimePointsEarned, tierId, lastNotifiedTierId));
+                            lifetimePointsEarned));
                 } catch (RuntimeException exception) {
                     System.out.println("Skipping invalid member record at line "
                             + lineNumber + ": " + exception.getMessage());
@@ -81,7 +78,7 @@ public class MemberDao {
 
     public void saveToFile(ListInterface<Member> members) {
         try (PrintWriter writer = new PrintWriter(new FileWriter(fileName))) {
-            writer.println("MemberId,Name,Passport,PhoneNumber,Point,LifetimePointsEarned,TierId,LastNotifiedTierId");
+            writer.println("MemberId,Name,Passport,PhoneNumber,Point,LifetimePointsEarned");
             for (Member member : members) {
                 writer.println(member.toCsvLine());
             }
@@ -92,7 +89,7 @@ public class MemberDao {
 
     private void createMemberCSVFile() {
         try (PrintWriter writer = new PrintWriter(fileName)) {
-            writer.println("MemberId,Name,Passport,PhoneNumber,Point,LifetimePointsEarned,TierId,LastNotifiedTierId");
+            writer.println("MemberId,Name,Passport,PhoneNumber,Point,LifetimePointsEarned");
 
             System.out.println("CSV File created success !");
         } catch (IOException e) {

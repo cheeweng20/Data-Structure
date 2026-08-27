@@ -3,12 +3,14 @@ package FrontDeskService.boundary;
 import FrontDeskService.control.FrontDeskControl;
 import FrontDeskService.control.FrontDeskControl.CheckInResult;
 import FrontDeskService.control.FrontDeskControl.CheckOutResult;
-import FrontDeskService.utility.FrontDeskValidator;
 import VIPPriorityRoomAllocation.entity.Reservation;
 import VIPPriorityRoomAllocation.entity.ReservationStatus;
 import VIPPriorityRoomAllocation.entity.Room;
 import adt.ListInterface;
 import common.src.ConsoleStyle;
+import common.src.InputHelper;
+import common.src.InputHelper.EndOfInputException;
+import common.utility.Validation;
 import java.time.LocalDate;
 import java.util.Iterator;
 import java.util.Scanner;
@@ -26,31 +28,40 @@ public class FrontDeskUI {
     }
 
     public void start() {
-        boolean exit = false;
-        while (!exit) {
-            displayMenu();
-            switch (scanner.nextLine().trim()) {
-                case "1":
-                    checkInGuest();
-                    break;
-                case "2":
-                    checkOutGuest();
-                    break;
-                case "3":
-                    viewBilling();
-                    break;
-                case "4":
-                    outstandingBalanceReport();
-                    break;
-                case "5":
-                    paymentMethodReport();
-                    break;
-                case "0":
-                    exit = true;
-                    break;
-                default:
-                    System.out.println("Invalid option. Please try again.");
+        try {
+            boolean exit = false;
+            while (!exit) {
+                InputHelper.clearScreen();
+                displayMenu();
+                String choice = InputHelper.inputString(scanner, "Select an option: ").trim();
+                switch (choice) {
+                    case "1":
+                        checkInGuest();
+                        break;
+                    case "2":
+                        checkOutGuest();
+                        break;
+                    case "3":
+                        viewBilling();
+                        break;
+                    case "4":
+                        outstandingBalanceReport();
+                        break;
+                    case "5":
+                        paymentMethodReport();
+                        break;
+                    case "0":
+                        exit = true;
+                        break;
+                    default:
+                        System.out.println("Invalid option. Please try again.");
+                }
+                if (!exit) {
+                    InputHelper.pressEnterToContinue(scanner);
+                }
             }
+        } catch (EndOfInputException exception) {
+            // EOF behaves like selecting Back.
         }
     }
 
@@ -59,7 +70,6 @@ public class FrontDeskUI {
         System.out.println(ConsoleStyle.menu("1. Check-In Guest\n2. Guest Check-Out\n"
                 + "3. View Billing Details\n4. Outstanding Balance Report\n"
                 + "5. Payment Method Report\n0. Back"));
-        System.out.print(ConsoleStyle.inputPrompt("Select an option: "));
     }
 
     private void checkInGuest() {
@@ -191,9 +201,9 @@ public class FrontDeskUI {
     }
 
     private Reservation findReservationByConfirmationNumber() {
-        System.out.print("8-digit confirmation number: ");
-        String confirmationNumber = scanner.nextLine().trim();
-        if (!FrontDeskValidator.isConfirmationNumber(confirmationNumber)) {
+        String confirmationNumber = InputHelper.inputString(
+                scanner, "8-digit confirmation number: ").trim();
+        if (!Validation.isValidConfirmationNumber(confirmationNumber)) {
             System.out.println("Confirmation number must contain exactly 8 digits.");
             return null;
         }
@@ -283,9 +293,7 @@ public class FrontDeskUI {
             System.out.println("2. Credit / Debit Card");
             System.out.println("3. Touch n Go");
             System.out.println("4. Online Banking");
-            System.out.print("Select payment method: ");
-
-            switch (scanner.nextLine().trim()) {
+            switch (InputHelper.inputString(scanner, "Select payment method: ").trim()) {
                 case "1":
                     return "Cash";
                 case "2":
@@ -370,8 +378,7 @@ public class FrontDeskUI {
 
     private String promptRequiredText(String prompt) {
         while (true) {
-            System.out.print(prompt);
-            String value = scanner.nextLine().trim();
+            String value = InputHelper.inputString(scanner, prompt).trim();
             if (!value.isEmpty()) {
                 return value;
             }
@@ -382,8 +389,8 @@ public class FrontDeskUI {
     private int promptPositiveInteger(String prompt) {
         while (true) {
             try {
-                System.out.print(prompt);
-                int value = Integer.parseInt(scanner.nextLine().trim());
+                int value = Integer.parseInt(
+                        InputHelper.inputString(scanner, prompt).trim());
                 if (value > 0) {
                     return value;
                 }
@@ -396,8 +403,7 @@ public class FrontDeskUI {
 
     private boolean confirmYes(String prompt) {
         while (true) {
-            System.out.print(prompt);
-            String answer = scanner.nextLine().trim();
+            String answer = InputHelper.inputString(scanner, prompt).trim();
             if (answer.equalsIgnoreCase("Y")) {
                 return true;
             }

@@ -12,12 +12,12 @@ import LoyaltyAndRewardsService.control.LoyaltyServiceControl;
 import LoyaltyAndRewardsService.entity.Member;
 import LoyaltyAndRewardsService.entity.PointTransaction;
 import LoyaltyAndRewardsService.entity.RedemptionRequest;
-import LoyaltyAndRewardsService.entity.Tier;
 import LoyaltyAndRewardsService.utility.MessageUI;
 import LoyaltyAndRewardsService.utility.ReportPdfExporter;
 import LoyaltyAndRewardsService.utility.ReportPdfExporter.ChartType;
-import LoyaltyAndRewardsService.utility.Verification;
+import LoyaltyAndRewardsService.utility.TierPolicy;
 import common.src.InputHelper;
+import common.src.InputHelper.EndOfInputException;
 import common.src.Logo;
 import common.src.ConsoleStyle;
 
@@ -38,55 +38,73 @@ public final class LoyaltyUI {
     }
 
     public void start() {
-        boolean exit = false;
+        try {
+            boolean exit = false;
 
-        displayStartupNotifications();
+            displayStartupNotifications();
+            InputHelper.pressEnterToContinue(scanner);
 
-        while (!exit) {
-            displayMenu();
-            int menuSelected = scanner.nextInt();
-            switch (menuSelected) {
-                case 1:
-                    memberOperator();
-                    break;
-                case 2:
-                    displayTierTable();
-                    break;
-                case 3:
-                    reportOperator();
-                    break;
-                case 0:
-                    exit = true;
-                    break;
-                default:
-                    break;
+            while (!exit) {
+                InputHelper.clearScreen();
+                displayMenu();
+                int menuSelected = InputHelper.inputInt(scanner,
+                        "Enter number of function (0 to exit current program): ");
+                boolean openedSubmenu = false;
+                switch (menuSelected) {
+                    case 1:
+                        if (serviceControl.isMemberEmpty()) {
+                            MessageUI.displayInfo("No member records found.");
+                            break;
+                        }
+                        requestOperator();
+                        openedSubmenu = true;
+                        break;
+                    case 2:
+                        displayMemberTable();
+                        break;
+                    case 3:
+                        displayTierTable();
+                        break;
+                    case 4:
+                        reportOperator();
+                        openedSubmenu = true;
+                        break;
+                    case 0:
+                        exit = true;
+                        break;
+                    default:
+                        MessageUI.displayError("Invalid option.");
+                        break;
+                }
+                if (!exit && !openedSubmenu) {
+                    InputHelper.pressEnterToContinue(scanner);
+                }
             }
+        } catch (EndOfInputException exception) {
+            // EOF behaves like selecting Back.
+        } finally {
+            serviceControl.saveAll();
         }
-
-        // The legacy loyalty menus use nextInt(); clear its trailing newline
-        // before returning to the line-based staff portal.
-        if (scanner.hasNextLine()) {
-            scanner.nextLine();
-        }
-        serviceControl.saveAll();
     }
 
     private void displayMenu() {
         Logo.displayLoyaltyAndRewardsService();
         System.out.println(ConsoleStyle.menu("\r\n" + //
-                ".-----.-------------------.\r\n" + //
-                "| No. |     Function      |\r\n" + //
-                ":-----+-------------------:\r\n" + //
-                "|  1. | Member Management |\r\n" + //
-                ":-----+-------------------:\r\n" + //
-                "|  2. | Tier Progression  |\r\n" + //
-                ":-----+-------------------:\r\n" + //
-                "|  3. | Report            |\r\n" + //
-                "'-----'-------------------'\r\n" + //
+                ".-----.----------------------.\r\n" + //
+                "| No. |       Function       |\r\n" + //
+                ":-----+----------------------:\r\n" + //
+                "|  1. | Redemption Requests  |\r\n" + //
+                ":-----+----------------------:\r\n" + //
+                "|  2. | Member List          |\r\n" + //
+                ":-----+----------------------:\r\n" + //
+                "|  3. | Tier Progression     |\r\n" + //
+                ":-----+----------------------:\r\n" + //
+                "|  4. | Report               |\r\n" + //
+                ":-----+----------------------:\r\n" + //
+                "|  0. | Back                 |\r\n" + //
+                "'-----'----------------------'\r\n" + //
                 "\r\n" + //
                 ""));
-        System.out.print(ConsoleStyle.prompt(
-                "Enter number of function (0 to exit current program): "));
     }
 
     private void displayStartupNotifications() {
@@ -117,175 +135,7 @@ public final class LoyaltyUI {
             MessageUI.displayInfo("No redemption requests are waiting for processing.");
         }
 
-        int unreadUpgradeCount = serviceControl.getUnreadTierUpgradeCount();
-        if (unreadUpgradeCount > 0) {
-            Iterator<Member> iterator = serviceControl.getUnreadTierUpgradeIterator();
-            while (iterator.hasNext()) {
-                Member member = iterator.next();
-                MessageUI.displayTierUpgradeAlert(
-                        member.getMemberId(),
-                        serviceControl.getTierName(member.getLastNotifiedTierId()),
-                        serviceControl.getTierName(member.getTierId()));
-            }
-            serviceControl.markTierUpgradesAsRead();
-        } else {
-            MessageUI.displayInfo("No unread tier-upgrade notifications.");
-        }
-
         System.out.println();
-    }
-
-    private void memberOperator() {
-        boolean exit = false;
-
-        while (!exit) {
-            System.out.println(ConsoleStyle.menu("\r\n"
-                    + ".-----.----------------------.\r\n"
-                    + "| No. |       Function       |\r\n"
-                    + ":-----+----------------------:\r\n"
-                    + "| 1.  | New Member           |\r\n"
-                    + ":-----+----------------------:\r\n"
-                    + "| 2.  | Remove Member        |\r\n"
-                    + ":-----+----------------------:\r\n"
-                    + "| 3.  | Update Member Info   |\r\n"
-                    + ":-----+----------------------:\r\n"
-                    + "| 4.  | Redemption Requests  |\r\n"
-                    + ":-----+----------------------:\r\n"
-                    + "| 5.  | Member List          |\r\n"
-                    + ":-----+----------------------:\r\n"
-                    + "| 6.  | Member Promotion     |\r\n"
-                    + "'-----'----------------------'\r\n"));
-
-            int userEntry = InputHelper.inputInt(scanner, "Please enter a number (0 to exit): ");
-            switch (userEntry) {
-                case 1:
-                    addMember();
-                    break;
-                case 2:
-                    removeMember();
-                    break;
-                case 3:
-                    updateMember();
-                    break;
-                case 4:
-                    if (serviceControl.isMemberEmpty()) {
-                        MessageUI.displayInfo("No member records found.");
-                        break;
-                    }
-                    scanner.nextLine();
-                    requestOperator();
-                    break;
-                case 5:
-                    displayMemberTable();
-                    break;
-                case 6:
-                    displayPromotion();
-                    break;
-                case 0:
-                    exit = true;
-                    break;
-                default:
-                    MessageUI.displayError("Invalid option.");
-                    break;
-            }
-        }
-    }
-
-    private void addMember() {
-        scanner.nextLine();
-        String name = InputHelper.inputString(scanner, "Enter member name: ");
-        String passport = InputHelper.inputString(scanner, "Enter passport number: ");
-        String phoneNumber = InputHelper.inputString(scanner, "Enter phone number: ");
-
-        if (!validateMemberDetails(name, passport, phoneNumber, null)) {
-            return;
-        }
-
-        String memberId = serviceControl.createMember(name, passport, phoneNumber);
-        MessageUI.displaySuccess("Member " + memberId + " added successfully.");
-    }
-
-    private void removeMember() {
-        if (serviceControl.isMemberEmpty()) {
-            MessageUI.displayInfo("No member records found.");
-            return;
-        }
-        scanner.nextLine();
-        displayMemberTable();
-        String memberId = InputHelper.inputString(scanner, "Enter member ID: ");
-        if (serviceControl.removeMember(memberId)) {
-            MessageUI.displaySuccess("Member deleted successfully.");
-        } else {
-            MessageUI.displayError(
-                    "Member not found or has a pending redemption request.");
-        }
-    }
-
-    private void updateMember() {
-        if (serviceControl.isMemberEmpty()) {
-            MessageUI.displayInfo("No member records found.");
-            return;
-        }
-        scanner.nextLine();
-        displayMemberTable();
-        String memberId = InputHelper.inputString(scanner, "Enter member ID to update: ");
-        if (!serviceControl.findMember(memberId)) {
-            MessageUI.displayError("Member not found.");
-            return;
-        }
-        String newName = InputHelper.inputString(scanner, "Enter new member name: ");
-        String newPassport = InputHelper.inputString(scanner, "Enter new passport number: ");
-        String newPhoneNumber = InputHelper.inputString(scanner, "Enter new phone number: ");
-        if (!validateMemberDetails(newName, newPassport, newPhoneNumber, memberId)) {
-            return;
-        }
-        serviceControl.updateMember(memberId, newName, newPassport, newPhoneNumber);
-        MessageUI.displaySuccess("Member updated successfully.");
-    }
-
-    private boolean validateMemberDetails(String name, String passport,
-            String phoneNumber, String excludedMemberId) {
-        if (!Verification.isValidMemberName(name)) {
-            MessageUI.displayError(
-                    "Member name must contain 3 to 20 valid name characters.");
-            return false;
-        }
-        if (!serviceControl.isMemberNameAvailable(name, excludedMemberId)) {
-            MessageUI.displayError(
-                    "Member name already exists. Please enter a different member name.");
-            return false;
-        }
-        if (!Verification.isValidPassport(passport)) {
-            MessageUI.displayError(
-                    "Passport number must contain 5 to 20 letters or numbers.");
-            return false;
-        }
-        if (!serviceControl.isPassportAvailable(passport, excludedMemberId)) {
-            MessageUI.displayError(
-                    "Passport number is already registered to another member.");
-            return false;
-        }
-        if (!Verification.isValidPhoneNumber(phoneNumber)) {
-            MessageUI.displayError(
-                    "Phone number must contain 7 to 20 digits; +, spaces, and hyphens are allowed.");
-            return false;
-        }
-        if (!serviceControl.isPhoneNumberAvailable(phoneNumber, excludedMemberId)) {
-            MessageUI.displayError(
-                    "Phone number is already registered to another member.");
-            return false;
-        }
-        return true;
-    }
-
-    private void displayPromotion() {
-        scanner.nextLine();
-        String memberId = InputHelper.inputString(scanner, "Enter member ID: ");
-        if (!serviceControl.findMember(memberId)) {
-            MessageUI.displayError("Member not found.");
-            return;
-        }
-        MessageUI.displayInfo(serviceControl.generatePersonalizedPromotion(memberId));
     }
 
     private void displayMemberTable() {
@@ -308,7 +158,7 @@ public final class LoyaltyUI {
                     member.getMemberId(), member.getName(), member.getPassport(),
                     member.getPhoneNumber(), member.getPoint(),
                     member.getLifetimePointsEarned(),
-                    serviceControl.getTierNameById(member.getTierId()));
+                    serviceControl.getTierName(member));
         }
         System.out.println(ConsoleStyle.tableBorder(border));
     }
@@ -317,6 +167,7 @@ public final class LoyaltyUI {
         boolean exit = false;
 
         while (!exit) {
+            InputHelper.clearScreen();
             System.out.println(ConsoleStyle.menu("\r\n"
                     + ".-----.---------------------------.\r\n"
                     + "| No. |         Function          |\r\n"
@@ -329,8 +180,6 @@ public final class LoyaltyUI {
                     + "'-----'---------------------------'\r\n"));
 
             int userEntry = InputHelper.inputInt(scanner, "Please enter a number (0 to exit): ");
-            scanner.nextLine();
-
             switch (userEntry) {
                 case 1:
                     processRequest();
@@ -349,6 +198,9 @@ public final class LoyaltyUI {
                 default:
                     MessageUI.displayError("Invalid option.");
                     break;
+            }
+            if (!exit) {
+                InputHelper.pressEnterToContinue(scanner);
             }
         }
     }
@@ -416,24 +268,19 @@ public final class LoyaltyUI {
     }
 
     private void displayTierTable() {
-        Iterator<Tier> iterator = serviceControl.getTierIterator();
-        if (!iterator.hasNext()) {
-            MessageUI.displayInfo("No tier records found.");
-            return;
-        }
-
         String border = "+------------+----------------------+------------+------------+";
         System.out.println(ConsoleStyle.tableBorder(border));
         System.out.print(ConsoleStyle.tableHeader(String.format(
                 "| %-10s | %-20s | %10s | %10s |%n",
                 "Tier ID", "Tier Level", "Min Points", "Max Points")));
         System.out.println(ConsoleStyle.tableBorder(border));
-        while (iterator.hasNext()) {
-            Tier tier = iterator.next();
-            String maxPoints = tier.getMaxPoint() == 0
-                    ? "No limit" : String.valueOf(tier.getMaxPoint());
+        for (String tierId : TierPolicy.getTierIds()) {
+            int maximumPoints = TierPolicy.getMaximumPoints(tierId);
+            String maxPoints = maximumPoints == 0
+                    ? "No limit" : String.valueOf(maximumPoints);
             System.out.printf("| %-10.10s | %-20.20s | %10d | %10s |%n",
-                    tier.getTierId(), tier.getTierLevel(), tier.getMinPoint(), maxPoints);
+                    tierId, TierPolicy.getTierNameById(tierId),
+                    TierPolicy.getMinimumPoints(tierId), maxPoints);
         }
         System.out.println(ConsoleStyle.tableBorder(border));
     }
@@ -442,6 +289,7 @@ public final class LoyaltyUI {
         boolean exit = false;
 
         while (!exit) {
+            InputHelper.clearScreen();
             System.out.println(ConsoleStyle.menu("\r\n"
                     + ".-----.-----------------------------.\r\n"
                     + "| No. |          Function           |\r\n"
@@ -466,6 +314,9 @@ public final class LoyaltyUI {
                     MessageUI.displayError("Invalid option.");
                     break;
             }
+            if (!exit) {
+                InputHelper.pressEnterToContinue(scanner);
+            }
         }
     }
 
@@ -480,14 +331,12 @@ public final class LoyaltyUI {
         String report = buildExpiringPointsReport(
                 serviceControl.generateExpiringReport(withinDays));
         if (displayReport(report, "No points are expiring within the selected period.")) {
-            scanner.nextLine();
             offerPdfExport("Expiring Points Alert", report,
                     ChartType.EXPIRING_POINTS);
         }
     }
 
     private void displayBusinessCycleSummary() {
-        scanner.nextLine();
         LocalDate startDate = readDate("Enter cycle start date (YYYY-MM-DD): ");
         if (startDate == null) {
             return;
@@ -519,7 +368,6 @@ public final class LoyaltyUI {
         String report = buildBusinessCycleSummary(startDate, endDate,
                 tierId, minimumPoint, rankedMembers, transactions, requests);
         System.out.println(report);
-        scanner.nextLine();
         offerPdfExport("Business Cycle Summary Report", report,
                 ChartType.BUSINESS_SUMMARY);
     }
@@ -596,7 +444,7 @@ public final class LoyaltyUI {
                 Member member = iterator.next();
                 output.append(String.format("| %-10.10s | %-20.20s | %-10.10s | %8d |%n",
                         member.getMemberId(), member.getName(),
-                        serviceControl.getTierNameById(member.getTierId()), member.getPoint()));
+                        serviceControl.getTierName(member), member.getPoint()));
             }
         }
         output.append(border).append("\n");

@@ -10,20 +10,15 @@ public class Member implements Comparable<Member> {
     private String phoneNumber;
     private int point;
     private int lifetimePointsEarned;
-    private String tierId;
-    private String lastNotifiedTierId;
 
     public Member(String memberId, String name, String passport, String phoneNumber,
-            int point, int lifetimePointsEarned, String tierId,
-            String lastNotifiedTierId) {
+            int point, int lifetimePointsEarned) {
         this.memberId = memberId;
         this.name = name;
         this.passport = passport;
         this.phoneNumber = phoneNumber;
         this.point = point;
         this.lifetimePointsEarned = lifetimePointsEarned;
-        this.tierId = tierId;
-        this.lastNotifiedTierId = lastNotifiedTierId;
     }
 
     public String getMemberId() {
@@ -48,14 +43,6 @@ public class Member implements Comparable<Member> {
 
     public int getLifetimePointsEarned() {
         return lifetimePointsEarned;
-    }
-
-    public String getTierId() {
-        return tierId;
-    }
-
-    public String getLastNotifiedTierId() {
-        return lastNotifiedTierId;
     }
 
     public void setMemberId(String memberId) {
@@ -88,14 +75,6 @@ public class Member implements Comparable<Member> {
         }
     }
 
-    public void setTierId(String tierId) {
-        this.tierId = tierId;
-    }
-
-    public void setLastNotifiedTierId(String lastNotifiedTierId) {
-        this.lastNotifiedTierId = lastNotifiedTierId;
-    }
-
     @Override
     public int compareTo(Member other) {
         return Integer.compare(point, other.point);
@@ -103,8 +82,7 @@ public class Member implements Comparable<Member> {
 
     public String toCsvLine(){
         return memberId + "," + name + "," + passport + "," + phoneNumber + ","
-                + point + "," + lifetimePointsEarned + "," + tierId + ","
-                + lastNotifiedTierId;
+                + point + "," + lifetimePointsEarned;
     }
     
 }

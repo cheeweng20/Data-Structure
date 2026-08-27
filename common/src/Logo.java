@@ -2,8 +2,6 @@ package common.src;
 public final class Logo {
     private Logo(){}
     public static void displayMain() {
-        System.out.print("\u001B[H\u001B[2J");
-        System.out.flush();
         System.out.println(ConsoleStyle.logo(" __        __   _                            _                                \r\n" + //
                 " \\ \\      / /__| | ___ ___  _ __ ___   ___  | |_ ___                          \r\n" + //
                 "  \\ \\ /\\ / / _ \\ |/ __/ _ \\| '_ ` _ \\ / _ \\ | __/ _ \\                         \r\n" + //

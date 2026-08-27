@@ -8,16 +8,18 @@ import VIPPriorityRoomAllocation.entity.LoyaltyTier;
 import VIPPriorityRoomAllocation.entity.Reservation;
 import VIPPriorityRoomAllocation.entity.ReservationStatus;
 import VIPPriorityRoomAllocation.entity.Room;
-import VIPPriorityRoomAllocation.utility.InputValidator;
 import VIPPriorityRoomAllocation.utility.MessageUI;
 import VIPPriorityRoomAllocation.utility.ReportPdfExporter;
 import VIPPriorityRoomAllocation.utility.ReportPdfExporter.ChartType;
+import LoyaltyAndRewardsService.control.LoyaltyServiceControl;
 import adt.ArrayList;
 import adt.ListInterface;
 import adt.SortedArrayList;
 import adt.SortedListInterface;
 import common.src.InputHelper;
+import common.src.InputHelper.EndOfInputException;
 import common.src.ConsoleStyle;
+import common.utility.Validation;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -35,44 +37,48 @@ public class ReservationUI {
     private final ReservationManager reservationManager;
     private final Scanner scanner;
 
-    public ReservationUI() {
-        this(new Scanner(System.in));
-    }
-
     public ReservationUI(Scanner scanner) {
         this.scanner = scanner;
         reservationManager = new ReservationManager();
     }
 
     public void start() {
-        boolean exit = false;
+        try {
+            boolean exit = false;
 
-        while (!exit) {
-            displayStaffMenu();
-            String choice = InputHelper.inputString(scanner, "Select an option: ").trim();
+            while (!exit) {
+                InputHelper.clearScreen();
+                displayStaffMenu();
+                String choice = InputHelper.inputString(scanner, "Select an option: ").trim();
 
-            switch (choice) {
-                case "1":
-                    displayPendingPriorityReservations();
-                    break;
-                case "2":
-                    allocateAvailableRooms();
-                    break;
-                case "3":
-                    searchReservation();
-                    break;
-                case "4":
-                    displayReservations(reservationManager.getReservations());
-                    break;
-                case "5":
-                    displayReportMenu();
-                    break;
-                case "0":
-                    exit = true;
-                    break;
-                default:
-                    MessageUI.displayError("Invalid option. Please try again.");
+                switch (choice) {
+                    case "1":
+                        displayPendingPriorityReservations();
+                        break;
+                    case "2":
+                        allocateAvailableRooms();
+                        break;
+                    case "3":
+                        searchReservation();
+                        break;
+                    case "4":
+                        displayReservations(reservationManager.getReservations());
+                        break;
+                    case "5":
+                        displayReportMenu();
+                        break;
+                    case "0":
+                        exit = true;
+                        break;
+                    default:
+                        MessageUI.displayError("Invalid option. Please try again.");
+                }
+                if (!exit && !choice.equals("5")) {
+                    InputHelper.pressEnterToContinue(scanner);
+                }
             }
+        } catch (EndOfInputException exception) {
+            // EOF behaves like selecting Back.
         }
     }
 
@@ -81,30 +87,49 @@ public class ReservationUI {
      * was already verified by the member portal.
      */
     public void startMember(String memberId) {
-        LoyaltyProfile profile = reservationManager.findLoyaltyProfile(memberId);
-        if (profile == null || !profile.getMemberId().equalsIgnoreCase(memberId.trim())) {
-            MessageUI.displayError("Member record is no longer available. Please sign in again.");
-            return;
-        }
-
-        boolean exit = false;
-        while (!exit) {
-            displayMemberMenu(profile);
-            String choice = InputHelper.inputString(scanner, "Select an option: ").trim();
-            switch (choice) {
-                case "1":
-                    submitReservationRequest(profile);
-                    break;
-                case "2":
-                    displayReservations(
-                            reservationManager.findReservationsByGuestId(profile.getMemberId()));
-                    break;
-                case "0":
-                    exit = true;
-                    break;
-                default:
-                    MessageUI.displayError("Invalid option. Please try again.");
+        try {
+            LoyaltyProfile profile = reservationManager.findLoyaltyProfile(memberId);
+            if (profile == null || !profile.getMemberId().equalsIgnoreCase(memberId.trim())) {
+                MessageUI.displayError("Member record is no longer available. Please sign in again.");
+                return;
             }
+
+            boolean exit = false;
+            while (!exit) {
+                InputHelper.clearScreen();
+                displayMemberMenu(profile);
+                String choice = InputHelper.inputString(scanner, "Select an option: ").trim();
+                switch (choice) {
+                    case "1":
+                        submitReservationRequest(profile);
+                        break;
+                    case "0":
+                        exit = true;
+                        break;
+                    default:
+                        MessageUI.displayError("Invalid option. Please try again.");
+                }
+                if (!exit) {
+                    InputHelper.pressEnterToContinue(scanner);
+                }
+            }
+        } catch (EndOfInputException exception) {
+            // EOF behaves like selecting Back.
+        }
+    }
+
+    /** Displays the signed-in member's reservations from Member Home. */
+    public void viewMemberReservations(String memberId) {
+        try {
+            InputHelper.clearScreen();
+            LoyaltyProfile profile = reservationManager.findLoyaltyProfile(memberId);
+            if (profile == null || !profile.getMemberId().equalsIgnoreCase(memberId.trim())) {
+                MessageUI.displayError("Member record is no longer available. Please sign in again.");
+                return;
+            }
+            displayReservations(reservationManager.findReservationsByGuestId(profile.getMemberId()));
+        } catch (EndOfInputException exception) {
+            // EOF behaves like returning to Member Home.
         }
     }
 
@@ -131,8 +156,69 @@ public class ReservationUI {
         System.out.println(ConsoleStyle.title("\n--- Member Reservations ---"));
         System.out.println("Signed in as " + profile.getName() + " ("
                 + profile.getMemberId() + ", " + profile.getLoyaltyTier() + ")");
-        System.out.println(ConsoleStyle.menu("1. Submit Reservation Request\n"
-                + "2. View My Reservations\n0. Back"));
+        System.out.println(ConsoleStyle.menu("1. Make Reservation\n0. Back"));
+    }
+
+    private void payForReservation(LoyaltyProfile profile) {
+        System.out.println("\n--- Reservation Payment ---");
+        Reservation reservation = findReservationByConfirmationNumber();
+        if (reservation == null) {
+            return;
+        }
+        if (reservation.getGuest() == null
+                || !profile.getMemberId().equalsIgnoreCase(reservation.getGuest().getGuestId())) {
+            MessageUI.displayError("You can only pay for your own reservations.");
+            return;
+        }
+        if (reservation.getStatus() != ReservationStatus.CONFIRMED) {
+            MessageUI.displayInfo("Only accepted reservations can be paid. Current status: "
+                    + reservation.getStatus());
+            return;
+        }
+        if (reservation.getAssignedRoom() == null) {
+            MessageUI.displayInfo("A room must be assigned before payment.");
+            return;
+        }
+        if ("PAID".equalsIgnoreCase(reservation.getPaymentStatus())) {
+            MessageUI.displayInfo("This reservation has already been paid.");
+            return;
+        }
+
+        LoyaltyServiceControl loyalty = new LoyaltyServiceControl();
+        double amount = calculateReservationAmount(reservation);
+        int requiredPoints = loyalty.calculatePointsForPaymentAmount(amount);
+        int availablePoints = loyalty.getAvailablePointsForPayment(profile.getMemberId());
+        System.out.printf("Amount due: RM%.2f%n", amount);
+        System.out.println("1. Cash");
+        System.out.println("2. Points (" + requiredPoints + " point(s), available: "
+                + availablePoints + ")");
+        String choice = InputHelper.inputString(scanner, "Select payment method: ").trim();
+
+        if ("1".equals(choice)) {
+            MessageUI.displayInfo("Cash selected. Payment will be collected by Front Desk "
+                    + "during check-in.");
+        } else if ("2".equals(choice)) {
+            boolean submitted = loyalty.submitPointPaymentRequest(
+                    profile.getMemberId(), reservation.getConfirmationNumber(), amount);
+            if (submitted) {
+                MessageUI.displaySuccess(
+                        "Points-payment request submitted for staff approval.");
+            } else {
+                MessageUI.displayError("Unable to submit points payment. Check available "
+                        + "points or an existing request, or choose Cash instead.");
+            }
+        } else {
+            MessageUI.displayError("Invalid payment method.");
+        }
+    }
+
+    private Reservation findReservationByConfirmationNumber() {
+        String confirmationNumber = promptRequiredText("Confirmation number: ");
+        Reservation reservation = reservationManager.findByConfirmationNumber(confirmationNumber);
+        if (reservation == null) {
+            MessageUI.displayError("Reservation not found.");
+        }
+        return reservation;
     }
 
 
@@ -371,6 +457,7 @@ public class ReservationUI {
         boolean back = false;
 
         while (!back) {
+            InputHelper.clearScreen();
             System.out.println("\n--- Reservation Reports ---\n"
                     + "1. Monthly Reservation Summary\n"
                     + "2. Monthly Room Allocation Report\n"
@@ -389,6 +476,9 @@ public class ReservationUI {
                     break;
                 default:
                     MessageUI.displayError("Invalid option. Please try again.");
+            }
+            if (!back) {
+                InputHelper.pressEnterToContinue(scanner);
             }
         }
     }
@@ -653,7 +743,7 @@ public class ReservationUI {
         while (true) {
             LocalDate checkOutDate = promptDate("Check-out date (yyyy-MM-dd): ");
 
-            if (InputValidator.isValidStay(checkInDate, checkOutDate)) {
+            if (Validation.isValidStay(checkInDate, checkOutDate)) {
                 return checkOutDate;
             }
 
@@ -677,7 +767,7 @@ public class ReservationUI {
         while (true) {
             String value = InputHelper.inputString(scanner, prompt).trim();
 
-            if (InputValidator.isNonBlank(value)) {
+            if (Validation.isNonBlank(value)) {
                 return value;
             }
 
@@ -706,6 +796,6 @@ public class ReservationUI {
     }
 
     public static void main(String[] args) {
-        new ReservationUI().start();
+        new ReservationUI(new Scanner(System.in)).start();
     }
 }

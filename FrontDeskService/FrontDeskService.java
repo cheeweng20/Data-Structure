@@ -8,7 +8,6 @@ import java.util.Scanner;
  */
 public class FrontDeskService {
     public static void FrontDeskServiceMain(Scanner input) {
-        input.nextLine();
         new FrontDeskUI(input).start();
     }
 }

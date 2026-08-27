@@ -13,12 +13,10 @@ public final class ConsoleStyle {
     private static final String DIM = ESC + "2m";
     private static final String RED = ESC + "31m";
     private static final String GREEN = ESC + "32m";
-    private static final String YELLOW = ESC + "33m";
     private static final String BLUE = ESC + "34m";
     private static final String MAGENTA = ESC + "35m";
     private static final String CYAN = ESC + "36m";
     private static final String WHITE = ESC + "37m";
-    private static final String GRAY_BG = ESC + "100m";
     private static final String BLACK_BG = ESC + "40m";
     private static final String RED_BG = ESC + "41m";
     private static final String GREEN_BG = ESC + "42m";
@@ -49,18 +47,12 @@ public final class ConsoleStyle {
     }
 
     public static String prompt(String text) {
-        return style(text, BOLD + YELLOW);
+        return style(text, BOLD + WHITE);
     }
 
-    /**
-     * Starts the grey input-box style and intentionally leaves it active so
-     * that the characters typed by the user receive the same background.
-     */
+    /** Styles an input prompt without applying a background colour. */
     public static String inputPrompt(String text) {
-        if (!ENABLED || text == null) {
-            return text;
-        }
-        return BOLD + WHITE + GRAY_BG + " " + text + " ";
+        return style(text, BOLD + WHITE);
     }
 
     /** Ends the input-box style after Scanner has finished reading input. */

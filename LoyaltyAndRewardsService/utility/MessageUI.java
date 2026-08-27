@@ -37,9 +37,4 @@ public final class MessageUI {
                 + " unredeemed transaction point(s) expired; member balances were updated.");
     }
 
-    public static void displayTierUpgradeAlert(String memberId, String previousTierName,
-            String currentTierName) {
-        displayInfo("Member " + memberId + " upgraded from " + previousTierName
-                + " to " + currentTierName + ".");
-    }
 }

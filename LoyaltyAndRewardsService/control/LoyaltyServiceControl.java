@@ -4,7 +4,6 @@ import java.time.LocalDate;
 import java.util.Iterator;
 
 import adt.ArrayList;
-import adt.LinkedList;
 import adt.LinkedQueue;
 import adt.ListInterface;
 import adt.QueueInterface;
@@ -13,11 +12,11 @@ import adt.SortedArrayList;
 import LoyaltyAndRewardsService.dao.MemberDao;
 import LoyaltyAndRewardsService.dao.PointTransactionDao;
 import LoyaltyAndRewardsService.dao.RequestDao;
-import LoyaltyAndRewardsService.dao.TierDao;
 import LoyaltyAndRewardsService.entity.Member;
 import LoyaltyAndRewardsService.entity.PointTransaction;
 import LoyaltyAndRewardsService.entity.RedemptionRequest;
-import LoyaltyAndRewardsService.entity.Tier;
+import LoyaltyAndRewardsService.utility.TierPolicy;
+import common.utility.Validation;
 
 /**
  * Initializes and coordinates the Loyalty and Rewards subsystem.
@@ -30,8 +29,6 @@ public class LoyaltyServiceControl {
     private final MemberDao memberDao;
     private final PointTransactionDao pointTransactionDao;
     private final RequestDao requestDao;
-    private final TierDao tierDao;
-    private ListInterface<Tier> tierLinkedList;
     private ListInterface<Member> memberList;
     private ListInterface<PointTransaction> transactionList;
     private QueueInterface<RedemptionRequest> requestQueue;
@@ -43,19 +40,15 @@ public class LoyaltyServiceControl {
     // ====================
 
     public LoyaltyServiceControl() {
-        this(new MemberDao(), new PointTransactionDao(), new RequestDao(), new TierDao());
+        this(new MemberDao(), new PointTransactionDao(), new RequestDao());
     }
 
     public LoyaltyServiceControl(MemberDao memberDao,
-            PointTransactionDao pointTransactionDao, RequestDao requestDao,
-            TierDao tierDao) {
+            PointTransactionDao pointTransactionDao, RequestDao requestDao) {
         this.memberDao = memberDao;
         this.pointTransactionDao = pointTransactionDao;
         this.requestDao = requestDao;
-        this.tierDao = tierDao;
 
-        tierLinkedList = tierDao.retrieveFromFile();
-        organizeTierRanges();
         memberList = memberDao.retrieveFromFile();
         transactionList = pointTransactionDao.retrieveFromFile();
         requestQueue = new LinkedQueue<>();
@@ -74,63 +67,9 @@ public class LoyaltyServiceControl {
 
     // ==================== Tier Control ====================
 
-    public Iterator<Tier> getTierIterator() {
-        return tierLinkedList.iterator();
-    }
-
-    public Tier getExistTierById(String tierId) {
-        for (int i = 1; i <= tierLinkedList.getNumberOfEntries(); i++) {
-            Tier current = tierLinkedList.getEntry(i);
-            if (current.getTierId().equalsIgnoreCase(tierId)) {
-                return current;
-            }
-        }
-        return null;
-    }
-
-    public String getTierIdByPoint(int point) {
-        Tier matchingTier = null;
-
-        for (int i = 1; i <= tierLinkedList.getNumberOfEntries(); i++) {
-            Tier current = tierLinkedList.getEntry(i);
-            if (point >= current.getMinPoint()) {
-                matchingTier = current;
-            } else {
-                break;
-            }
-        }
-
-        return matchingTier == null ? null : matchingTier.getTierId();
-    }
-
-    public String getTierNameById(String tierId) {
-        for (int i = 1; i <= tierLinkedList.getNumberOfEntries(); i++) {
-            Tier current = tierLinkedList.getEntry(i);
-            if (current.getTierId().equalsIgnoreCase(tierId)) {
-                return current.getTierLevel();
-            }
-        }
-        return "Unknown";
-    }
-
-    public String getTierName(String tierId) {
-        return getTierNameById(tierId);
-    }
-
-    public Tier getNextTier(String tierId) {
-        for (int i = 1; i <= tierLinkedList.getNumberOfEntries(); i++) {
-            if (tierLinkedList.getEntry(i).getTierId().equalsIgnoreCase(tierId)) {
-                return i < tierLinkedList.getNumberOfEntries()
-                        ? tierLinkedList.getEntry(i + 1)
-                        : null;
-            }
-        }
-        return null;
-    }
-
-    public int getMinimumPoint(String tierId) {
-        Tier tier = getExistTierById(tierId);
-        return tier == null ? -1 : tier.getMinPoint();
+    public String getTierName(Member member) {
+        return member == null ? "Unknown"
+                : TierPolicy.getTierName(member.getLifetimePointsEarned());
     }
 
     // ==================== Member Control ====================
@@ -144,19 +83,12 @@ public class LoyaltyServiceControl {
     }
 
     private void addMember(Member member) {
-        promoteTierIfEligible(member);
-        if (member.getLastNotifiedTierId() == null
-                || member.getLastNotifiedTierId().isBlank()) {
-            member.setLastNotifiedTierId(member.getTierId());
-        }
         memberList.add(member);
     }
 
     public String createMember(String name, String passport, String phoneNumber) {
         String memberId = generateMemberId();
-        String initialTierId = getTierIdByPoint(0);
-        addMember(new Member(memberId, name, passport, phoneNumber, 0, 0,
-                initialTierId, initialTierId));
+        addMember(new Member(memberId, name, passport, phoneNumber, 0, 0));
         saveMembers();
         return memberId;
     }
@@ -165,45 +97,26 @@ public class LoyaltyServiceControl {
         return getMemberById(memberId) != null;
     }
 
-    public boolean isMemberNameAvailable(String memberName, String excludedMemberId) {
-        if (memberName == null || memberName.isBlank()) {
+    public boolean isPassportAvailable(String passport) {
+        if (Validation.isBlank(passport)) {
             return false;
         }
         for (Member member : memberList) {
-            boolean isExcludedMember = excludedMemberId != null
-                    && member.getMemberId().equalsIgnoreCase(excludedMemberId);
-            if (!isExcludedMember && member.getName().equalsIgnoreCase(memberName.trim())) {
+            if (member.getPassport().equalsIgnoreCase(passport.trim())) {
                 return false;
             }
         }
         return true;
     }
 
-    public boolean isPassportAvailable(String passport, String excludedMemberId) {
-        if (passport == null || passport.isBlank()) {
+    public boolean isPhoneNumberAvailable(String phoneNumber) {
+        if (Validation.isBlank(phoneNumber)) {
             return false;
         }
+        String normalizedPhone = Validation.normalizePhoneNumber(phoneNumber);
         for (Member member : memberList) {
-            boolean isExcludedMember = excludedMemberId != null
-                    && member.getMemberId().equalsIgnoreCase(excludedMemberId);
-            if (!isExcludedMember
-                    && member.getPassport().equalsIgnoreCase(passport.trim())) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    public boolean isPhoneNumberAvailable(String phoneNumber, String excludedMemberId) {
-        if (phoneNumber == null || phoneNumber.isBlank()) {
-            return false;
-        }
-        String normalizedPhone = normalizePhoneNumber(phoneNumber);
-        for (Member member : memberList) {
-            boolean isExcludedMember = excludedMemberId != null
-                    && member.getMemberId().equalsIgnoreCase(excludedMemberId);
-            if (!isExcludedMember
-                    && normalizePhoneNumber(member.getPhoneNumber()).equals(normalizedPhone)) {
+            if (Validation.normalizePhoneNumber(member.getPhoneNumber())
+                            .equals(normalizedPhone)) {
                 return false;
             }
         }
@@ -212,34 +125,6 @@ public class LoyaltyServiceControl {
 
     public Member getMemberEntry(int position) {
         return memberList.getEntry(position);
-    }
-
-    public boolean removeMember(String memberId) {
-        if (getPendingPointsForMember(memberId) > 0) {
-            return false;
-        }
-        for (int i = 1; i <= memberList.getNumberOfEntries(); i++) {
-            Member member = memberList.getEntry(i);
-            if (member.getMemberId().equalsIgnoreCase(memberId)) {
-                memberList.remove(i);
-                saveMembers();
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public boolean updateMember(String memberId, String name, String passport,
-            String phoneNumber) {
-        Member member = getMemberById(memberId);
-        if (member == null) {
-            return false;
-        }
-        member.setName(name);
-        member.setPassport(passport);
-        member.setPhoneNumber(phoneNumber);
-        saveMembers();
-        return true;
     }
 
     private int deductPointsForApprovedRedemption(String memberId, int pointsToDeduct) {
@@ -277,7 +162,6 @@ public class LoyaltyServiceControl {
         }
         member.setPoint((int) newPoint);
         member.addLifetimePointsEarned(points);
-        promoteTierIfEligible(member);
         addTransaction(memberId, points, reservationId.trim());
         saveMembers();
         saveTransactions();
@@ -318,7 +202,9 @@ public class LoyaltyServiceControl {
         while (iterator.hasNext()) {
             Member current = iterator.next();
             boolean matchesCriteria = current.getPoint() >= minPoint
-                    && (!hasTargetTier || current.getTierId().equalsIgnoreCase(targetTierId));
+                    && (!hasTargetTier || TierPolicy
+                            .getTierId(current.getLifetimePointsEarned())
+                            .equalsIgnoreCase(targetTierId));
             if (matchesCriteria) {
                 sortedResult.add(current);
             }
@@ -333,68 +219,33 @@ public class LoyaltyServiceControl {
             return "Member Not Found";
         }
 
-        promoteTierIfEligible(member);
-        String currentTierId = member.getTierId();
+        int lifetimePointsEarned = member.getLifetimePointsEarned();
 
         StringBuilder promotion = new StringBuilder();
         promotion.append("Personalized Promotion for ").append(member.getName()).append("\n")
-                .append("Current tier: ").append(getTierNameById(currentTierId)).append("\n")
+                .append("Current tier: ").append(TierPolicy.getTierName(lifetimePointsEarned))
+                .append("\n")
                 .append("Available points: ").append(member.getPoint()).append("\n")
                 .append("Lifetime points earned: ")
-                .append(member.getLifetimePointsEarned()).append("\n");
+                .append(lifetimePointsEarned).append("\n");
 
         appendPointPaymentStatus(promotion, member);
         appendExpiringPointReminder(promotion, member.getMemberId(), 30);
 
-        if (currentTierId == null) {
-            promotion.append("Tier progress: No membership tier is currently configured.");
-            return promotion.toString();
-        }
-
-        Tier nextTier = getNextTier(currentTierId);
-        if (nextTier == null) {
+        int nextTierMinimum = TierPolicy.getNextTierMinimum(lifetimePointsEarned);
+        if (nextTierMinimum < 0) {
             promotion.append("Tier progress: You have reached the highest membership tier.");
         } else {
-            int pointNeeded = Math.max(
-                    nextTier.getMinPoint() - member.getLifetimePointsEarned(), 0);
+            int pointNeeded = nextTierMinimum - lifetimePointsEarned;
             promotion.append("Tier progress: Earn ").append(pointNeeded)
                     .append(" more qualifying points to reach ")
-                    .append(nextTier.getTierLevel()).append(".");
+                    .append(TierPolicy.getNextTierName(lifetimePointsEarned)).append(".");
         }
         return promotion.toString();
     }
 
     public void saveMembers() {
         memberDao.saveToFile(memberList);
-    }
-
-    public Iterator<Member> getUnreadTierUpgradeIterator() {
-        LinkedList<Member> upgradedMembers = new LinkedList<>();
-        for (Member member : memberList) {
-            if (hasUnreadTierUpgrade(member)) {
-                upgradedMembers.add(member);
-            }
-        }
-        return upgradedMembers.iterator();
-    }
-
-    public int getUnreadTierUpgradeCount() {
-        int count = 0;
-        for (Member member : memberList) {
-            if (hasUnreadTierUpgrade(member)) {
-                count++;
-            }
-        }
-        return count;
-    }
-
-    public void markTierUpgradesAsRead() {
-        for (Member member : memberList) {
-            if (hasUnreadTierUpgrade(member)) {
-                member.setLastNotifiedTierId(member.getTierId());
-            }
-        }
-        saveMembers();
     }
 
     // ==================== Point Transaction Control ====================
@@ -591,33 +442,7 @@ public class LoyaltyServiceControl {
 
     // ==================== Report Control ====================
 
-    // ==================== Tier and Member Helpers ====================
-
-    private void organizeTierRanges() {
-        sortByMinimumPoint();
-
-        for (int i = 1; i <= tierLinkedList.getNumberOfEntries(); i++) {
-            Tier current = tierLinkedList.getEntry(i);
-            if (i < tierLinkedList.getNumberOfEntries()) {
-                Tier next = tierLinkedList.getEntry(i + 1);
-                current.setMaxPoint(next.getMinPoint() - 1);
-            } else {
-                current.setMaxPoint(0);
-            }
-        }
-    }
-
-    private void sortByMinimumPoint() {
-        SortedArrayList<Tier> sortedTiers = new SortedArrayList<>();
-        for (Tier tier : tierLinkedList) {
-            sortedTiers.add(tier);
-        }
-
-        tierLinkedList.clear();
-        for (Tier tier : sortedTiers) {
-            tierLinkedList.add(tier);
-        }
-    }
+    // ==================== Member Helpers ====================
 
     private int parseNumericId(String value, String prefix) {
         if (value == null || !value.startsWith(prefix) || value.length() <= prefix.length()) {
@@ -627,67 +452,6 @@ public class LoyaltyServiceControl {
             return Integer.parseInt(value.substring(prefix.length()));
         } catch (NumberFormatException exception) {
             return 0;
-        }
-    }
-
-    private String normalizePhoneNumber(String phoneNumber) {
-        return phoneNumber.replaceAll("[^0-9]", "");
-    }
-
-    private boolean hasUnreadTierUpgrade(Member member) {
-        String previousTierId = member.getLastNotifiedTierId();
-        String currentTierId = member.getTierId();
-        if (previousTierId == null || currentTierId == null
-                || previousTierId.equalsIgnoreCase(currentTierId)) {
-            return false;
-        }
-
-        int previousMinimumPoint = getMinimumPoint(previousTierId);
-        int currentMinimumPoint = getMinimumPoint(currentTierId);
-        return previousMinimumPoint >= 0 && currentMinimumPoint > previousMinimumPoint;
-    }
-
-    /**
-     * Promotes a member when lifetime earned points qualify for a higher tier.
-     * Redeeming or expiring spendable points therefore never reduces tier
-     * progress or the member's achieved tier.
-     */
-    private boolean promoteTierIfEligible(Member member) {
-        String eligibleTierId = getTierIdByPoint(member.getLifetimePointsEarned());
-        if (eligibleTierId == null) {
-            return false;
-        }
-
-        String currentTierId = member.getTierId();
-        int currentMinimumPoint = getMinimumPoint(currentTierId);
-        int eligibleMinimumPoint = getMinimumPoint(eligibleTierId);
-        boolean hasNoValidCurrentTier = currentTierId == null || currentMinimumPoint < 0;
-
-        if (hasNoValidCurrentTier || eligibleMinimumPoint > currentMinimumPoint) {
-            assignTier(member, eligibleTierId);
-            return true;
-        }
-        return false;
-    }
-
-    private void assignTier(Member member, String newTierId) {
-        String previousTierId = member.getTierId();
-        member.setTierId(newTierId);
-
-        if (newTierId == null) {
-            member.setLastNotifiedTierId(null);
-            return;
-        }
-        if (previousTierId == null || member.getLastNotifiedTierId() == null
-                || member.getLastNotifiedTierId().isBlank()) {
-            member.setLastNotifiedTierId(newTierId);
-            return;
-        }
-
-        int previousMinimumPoint = getMinimumPoint(previousTierId);
-        int currentMinimumPoint = getMinimumPoint(newTierId);
-        if (previousMinimumPoint < 0 || currentMinimumPoint < previousMinimumPoint) {
-            member.setLastNotifiedTierId(newTierId);
         }
     }
 

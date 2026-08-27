@@ -7,12 +7,12 @@ import HousekeepingAndTaskLog.boundary.HousekeepingUI;
 import LoyaltyAndRewardsService.boundary.LoyaltyUI;
 import LoyaltyAndRewardsService.control.LoyaltyServiceControl;
 import LoyaltyAndRewardsService.entity.Member;
-import LoyaltyAndRewardsService.utility.Verification;
 import VIPPriorityRoomAllocation.boundary.ReservationUI;
-import common.control.StaffAuthenticationControl;
 import common.control.MemberIdentityControl;
 import common.src.ConsoleStyle;
+import common.src.InputHelper;
 import common.src.Logo;
+import common.utility.Validation;
 
 /**
  * Application entry point and the two public resort portals.
@@ -22,7 +22,6 @@ import common.src.Logo;
  */
 public class Main {
     private static final String CANCEL = "cancel";
-    private static int failedStaffAttempts;
     private static final int MAX_MEMBER_VERIFICATION_ATTEMPTS = 3;
     private static final Map<String, Integer> MEMBER_VERIFICATION_FAILURES =
             new HashMap<>();
@@ -32,10 +31,10 @@ public class Main {
 
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
-        StaffAuthenticationControl staffAuthentication = new StaffAuthenticationControl();
         boolean exit = false;
 
         while (!exit) {
+            InputHelper.clearScreen();
             displayMainMenu();
             String choice = readLine(scanner, "Select an option: ");
             if (choice == null) {
@@ -44,7 +43,7 @@ public class Main {
 
             switch (choice) {
                 case "1":
-                    staffLogin(scanner, staffAuthentication);
+                    staffPortal(scanner);
                     break;
                 case "2":
                     memberGuestPortal(scanner);
@@ -54,6 +53,7 @@ public class Main {
                     break;
                 default:
                     System.out.println(ConsoleStyle.error("Invalid option. Please enter 1, 2, or 0."));
+                    InputHelper.pressEnterToContinue(scanner);
                     break;
             }
         }
@@ -65,69 +65,20 @@ public class Main {
         Logo.displayMain();
         System.out.println(ConsoleStyle.menu(
                 "\n--- TARUMT Resort ---\n"
-                        + "1. Staff Login\n"
+                        + "1. Staff\n"
                         + "2. Member / Guest\n"
                         + "0. Exit\n"));
     }
 
     /**
-     * Authenticates staff before exposing any of the operational modules.
-     * Three failed attempts are allowed; entering 0 or cancel backs out.
-     */
-    private static void staffLogin(Scanner scanner,
-            StaffAuthenticationControl authentication) {
-        System.out.println(ConsoleStyle.title("\n--- Staff Login ---"));
-        System.out.println(ConsoleStyle.muted(
-                "Enter 0 or cancel at any prompt to return to the main menu."));
-
-        if (!authentication.isConfigured()) {
-            System.out.println(ConsoleStyle.error(
-                    "Staff login is not configured. Set RESORT_STAFF_USERNAME and "
-                            + "RESORT_STAFF_PASSWORD, or explicitly enable RESORT_DEMO_MODE=true."));
-            return;
-        }
-        if (failedStaffAttempts >= authentication.getMaxAttempts()) {
-            System.out.println(ConsoleStyle.error(
-                    "Staff login is locked for this application session."));
-            return;
-        }
-
-        while (failedStaffAttempts < authentication.getMaxAttempts()) {
-            String username = readLine(scanner, "Username: ");
-            if (isCancelled(username)) {
-                return;
-            }
-            String password = readLine(scanner, "Password: ");
-            if (isCancelled(password)) {
-                return;
-            }
-
-            if (authentication.authenticate(username, password)) {
-                failedStaffAttempts = 0;
-                System.out.println(ConsoleStyle.success("Staff login successful."));
-                staffPortal(scanner);
-                return;
-            }
-
-            failedStaffAttempts++;
-            int remaining = authentication.getMaxAttempts() - failedStaffAttempts;
-            if (remaining > 0) {
-                System.out.println(ConsoleStyle.error(
-                        "Invalid staff credentials. Attempts remaining: " + remaining));
-            }
-        }
-
-        System.out.println(ConsoleStyle.error("Staff login cancelled after too many failed attempts."));
-    }
-
-    /**
-     * The staff-only gateway to the four existing service modules.
-     * Module controls are created by their UI only after this authenticated
-     * session selects a module, preventing controls from being kept stale.
+     * The staff gateway to the four existing service modules.
+     * Module controls are created only after a module is selected, so each
+     * visit reads the latest persisted reservation and room state.
      */
     private static void staffPortal(Scanner scanner) {
         boolean back = false;
         while (!back) {
+            InputHelper.clearScreen();
             System.out.println(ConsoleStyle.title("\n--- Staff Portal ---"));
             System.out.println(ConsoleStyle.menu(
                     "1. VIP & Loyalty Tier Priority Room Allocation\n"
@@ -158,6 +109,7 @@ public class Main {
                     break;
                 default:
                     System.out.println(ConsoleStyle.error("Invalid staff option."));
+                    InputHelper.pressEnterToContinue(scanner);
                     break;
             }
         }
@@ -172,11 +124,12 @@ public class Main {
         boolean back = false;
 
         while (!back) {
+            InputHelper.clearScreen();
             System.out.println(ConsoleStyle.title("\n--- Member / Guest Portal ---"));
             System.out.println(ConsoleStyle.menu(
                     "1. Existing Member Login\n"
-                            + "2. Guest Registration\n"
-                            + "0. Back\n"));
+                        + "2. Register as Member\n"
+                        + "0. Back\n"));
             String choice = readLine(scanner, "Select an option: ");
             if (choice == null) {
                 return;
@@ -193,7 +146,8 @@ public class Main {
                     back = true;
                     break;
                 default:
-                    System.out.println(ConsoleStyle.error("Invalid member / guest option."));
+                    System.out.println(ConsoleStyle.error("Invalid member option."));
+                    InputHelper.pressEnterToContinue(scanner);
                     break;
             }
         }
@@ -209,6 +163,7 @@ public class Main {
         Member member = loyalty.getMemberById(memberId);
         if (member == null) {
             System.out.println(ConsoleStyle.error("Member ID not found."));
+            InputHelper.pressEnterToContinue(scanner);
             return;
         }
 
@@ -218,6 +173,7 @@ public class Main {
         if (failedAttempts >= MAX_MEMBER_VERIFICATION_ATTEMPTS) {
             System.out.println(ConsoleStyle.error(
                     "Member verification is locked for this application session."));
+            InputHelper.pressEnterToContinue(scanner);
             return;
         }
 
@@ -230,34 +186,30 @@ public class Main {
                         failedAttempts + 1);
             }
             System.out.println(ConsoleStyle.error("Member verification failed."));
+            InputHelper.pressEnterToContinue(scanner);
             return;
         }
 
         MEMBER_VERIFICATION_FAILURES.remove(normalizedMemberId);
-
         showMemberHome(scanner, loyalty, member);
     }
 
     private static void registerGuest(Scanner scanner, LoyaltyServiceControl loyalty) {
-        System.out.println(ConsoleStyle.title("\n--- Guest Registration ---"));
+        System.out.println(ConsoleStyle.title("\n--- Register as Member ---"));
         System.out.println(ConsoleStyle.muted("Enter 0 or cancel at any prompt to stop registration."));
 
         String name = promptMemberName(scanner);
         if (name == null) {
             return;
         }
-        if (!loyalty.isMemberNameAvailable(name, null)) {
-            System.out.println(ConsoleStyle.error("That member name is already in use."));
-            return;
-        }
-
         String passport = promptPassport(scanner);
         if (passport == null) {
             return;
         }
-        if (!loyalty.isPassportAvailable(passport, null)) {
+        if (!loyalty.isPassportAvailable(passport)) {
             System.out.println(ConsoleStyle.error(
                     "That passport is already registered to a member."));
+            InputHelper.pressEnterToContinue(scanner);
             return;
         }
 
@@ -265,9 +217,10 @@ public class Main {
         if (phoneNumber == null) {
             return;
         }
-        if (!loyalty.isPhoneNumberAvailable(phoneNumber, null)) {
+        if (!loyalty.isPhoneNumberAvailable(phoneNumber)) {
             System.out.println(ConsoleStyle.error(
                     "That phone number is already registered to a member."));
+            InputHelper.pressEnterToContinue(scanner);
             return;
         }
 
@@ -286,7 +239,7 @@ public class Main {
             if (isCancelled(value)) {
                 return null;
             }
-            if (Verification.isValidMemberName(value)) {
+            if (Validation.isValidMemberName(value)) {
                 return value.trim();
             }
             System.out.println(ConsoleStyle.error(
@@ -300,7 +253,7 @@ public class Main {
             if (isCancelled(value)) {
                 return null;
             }
-            if (Verification.isValidPassport(value)) {
+            if (Validation.isValidPassport(value)) {
                 return value.trim();
             }
             System.out.println(ConsoleStyle.error("Invalid passport. Use 5-20 letters or digits."));
@@ -313,7 +266,7 @@ public class Main {
             if (isCancelled(value)) {
                 return null;
             }
-            if (Verification.isValidPhoneNumber(value)) {
+            if (Validation.isValidPhoneNumber(value)) {
                 return value.trim();
             }
             System.out.println(ConsoleStyle.error("Invalid phone number."));
@@ -322,17 +275,19 @@ public class Main {
 
     private static void showMemberHome(Scanner scanner, LoyaltyServiceControl loyalty,
             Member member) {
-        System.out.println(ConsoleStyle.title("\n--- Member Home ---"));
-        System.out.println("Member ID : " + member.getMemberId());
-        System.out.println("Name      : " + member.getName());
-        System.out.println("Phone     : " + member.getPhoneNumber());
-        System.out.println("Tier      : " + loyalty.getTierName(member.getTierId()));
-        System.out.println("Points    : " + member.getPoint());
-        System.out.println("\n" + loyalty.generatePersonalizedPromotion(member.getMemberId()));
-
         while (true) {
+            InputHelper.clearScreen();
+            System.out.println(ConsoleStyle.title("\n--- Member Home ---"));
+            System.out.println("Member ID : " + member.getMemberId());
+            System.out.println("Name      : " + member.getName());
+            System.out.println("Phone     : " + member.getPhoneNumber());
+            System.out.println("Tier      : " + loyalty.getTierName(member));
+            System.out.println("Points    : " + member.getPoint());
+            displayMemberPromotionTable(
+                    loyalty.generatePersonalizedPromotion(member.getMemberId()));
             System.out.println(ConsoleStyle.menu(
                     "\n1. Make a Reservation\n"
+                            + "2. View My Reservations\n"
                             + "0. Back to Member / Guest Portal\n"));
             String choice = readLine(scanner, "Select an option: ");
             if (choice == null || choice.equals("0")) {
@@ -341,9 +296,63 @@ public class Main {
             if (choice.equals("1")) {
                 // ReservationUI.startMember is the member-only entry point.
                 new ReservationUI(scanner).startMember(member.getMemberId());
+            } else if (choice.equals("2")) {
+                new ReservationUI(scanner).viewMemberReservations(member.getMemberId());
+                InputHelper.pressEnterToContinue(scanner);
             } else {
                 System.out.println(ConsoleStyle.error("Invalid member home option."));
+                InputHelper.pressEnterToContinue(scanner);
             }
+        }
+    }
+
+    private static void displayMemberPromotionTable(String promotion) {
+        final int labelWidth = 24;
+        final int valueWidth = 76;
+        String border = "+" + "-".repeat(labelWidth + 2)
+                + "+" + "-".repeat(valueWidth + 2) + "+";
+
+        System.out.println(ConsoleStyle.title("\n--- Personalized Promotion ---"));
+        System.out.println(ConsoleStyle.tableBorder(border));
+        System.out.println(ConsoleStyle.tableHeader(String.format(
+                "| %-" + labelWidth + "s | %-" + valueWidth + "s |%n",
+                "Promotion Item", "Details")));
+        System.out.println(ConsoleStyle.tableBorder(border));
+
+        String[] lines = promotion.split("\\R");
+        for (String line : lines) {
+            int separator = line.indexOf(':');
+            if (separator < 0) {
+                continue;
+            }
+            String label = line.substring(0, separator).trim();
+            String value = line.substring(separator + 1).trim();
+            printPromotionRow(border, label, value, labelWidth, valueWidth);
+        }
+        System.out.println(ConsoleStyle.tableBorder(border));
+    }
+
+    private static void printPromotionRow(String border, String label, String value,
+            int labelWidth, int valueWidth) {
+        String remaining = value;
+        boolean firstLine = true;
+        while (!remaining.isEmpty()) {
+            int end = Math.min(valueWidth, remaining.length());
+            if (end < remaining.length()) {
+                int space = remaining.lastIndexOf(' ', end);
+                if (space > 0) {
+                    end = space;
+                }
+            }
+            String line = remaining.substring(0, end).trim();
+            System.out.printf("| %-" + labelWidth + "s | %-" + valueWidth + "s |%n",
+                    firstLine ? label : "", line);
+            remaining = remaining.substring(end).trim();
+            firstLine = false;
+        }
+        if (value.isEmpty()) {
+            System.out.printf("| %-" + labelWidth + "s | %-" + valueWidth + "s |%n",
+                    label, "");
         }
     }
 
