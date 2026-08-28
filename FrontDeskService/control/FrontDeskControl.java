@@ -5,6 +5,7 @@ import FrontDeskService.entity.LateCheckoutExtension;
 import HousekeepingAndTaskLog.control.HousekeepingControl;
 import HousekeepingAndTaskLog.entity.HousekeepingTask;
 import LoyaltyAndRewardsService.dao.RequestDao;
+import LoyaltyAndRewardsService.control.LoyaltyServiceControl;
 import LoyaltyAndRewardsService.entity.RedemptionRequest;
 import VIPPriorityRoomAllocation.dao.ReservationDAO;
 import VIPPriorityRoomAllocation.dao.RoomDAO;
@@ -31,24 +32,28 @@ public class FrontDeskControl {
     private final RequestDao requestDao;
     private final HousekeepingControl housekeepingControl;
     private final LateCheckoutExtensionDAO lateCheckoutExtensionDAO;
+    private final LoyaltyServiceControl loyaltyServiceControl;
     private final ListInterface<Reservation> reservations;
     private final ListInterface<Room> rooms;
     private final SearchTreeInterface<String, Reservation> confirmationIndex;
+    private int lastAwardedPoints;
+    private boolean lastLoyaltyAwardFailed;
 
     public FrontDeskControl() {
         this(new ReservationDAO(), new RoomDAO(), new RequestDao(),
-                new HousekeepingControl(false), new LateCheckoutExtensionDAO());
+                new HousekeepingControl(false), new LateCheckoutExtensionDAO(),
+                new LoyaltyServiceControl());
     }
 
     public FrontDeskControl(ReservationDAO reservationDAO, RoomDAO roomDAO) {
         this(reservationDAO, roomDAO, new RequestDao(), new HousekeepingControl(false),
-                new LateCheckoutExtensionDAO());
+                new LateCheckoutExtensionDAO(), new LoyaltyServiceControl());
     }
 
     public FrontDeskControl(ReservationDAO reservationDAO, RoomDAO roomDAO,
             RequestDao requestDao) {
         this(reservationDAO, roomDAO, requestDao, new HousekeepingControl(false),
-                new LateCheckoutExtensionDAO());
+                new LateCheckoutExtensionDAO(), new LoyaltyServiceControl());
     }
 
     /**
@@ -59,7 +64,7 @@ public class FrontDeskControl {
     public FrontDeskControl(ReservationDAO reservationDAO, RoomDAO roomDAO,
             RequestDao requestDao, HousekeepingControl housekeepingControl) {
         this(reservationDAO, roomDAO, requestDao, housekeepingControl,
-                new LateCheckoutExtensionDAO());
+                new LateCheckoutExtensionDAO(), new LoyaltyServiceControl());
     }
 
     /**
@@ -69,11 +74,21 @@ public class FrontDeskControl {
     public FrontDeskControl(ReservationDAO reservationDAO, RoomDAO roomDAO,
             RequestDao requestDao, HousekeepingControl housekeepingControl,
             LateCheckoutExtensionDAO lateCheckoutExtensionDAO) {
+        this(reservationDAO, roomDAO, requestDao, housekeepingControl,
+                lateCheckoutExtensionDAO, new LoyaltyServiceControl());
+    }
+
+    /** Full constructor used when module gateways need to be isolated or tested. */
+    public FrontDeskControl(ReservationDAO reservationDAO, RoomDAO roomDAO,
+            RequestDao requestDao, HousekeepingControl housekeepingControl,
+            LateCheckoutExtensionDAO lateCheckoutExtensionDAO,
+            LoyaltyServiceControl loyaltyServiceControl) {
         this.reservationDAO = reservationDAO;
         this.roomDAO = roomDAO;
         this.requestDao = requestDao;
         this.housekeepingControl = housekeepingControl;
         this.lateCheckoutExtensionDAO = lateCheckoutExtensionDAO;
+        this.loyaltyServiceControl = loyaltyServiceControl;
         reservations = reservationDAO.retrieveFromFile();
         rooms = roomDAO.retrieveFromFile();
         confirmationIndex = new BinarySearchTree<>();
@@ -247,6 +262,8 @@ public class FrontDeskControl {
 
     /** Completes a checked-in reservation's check-out. */
     public CheckOutResult checkOutReservation(String confirmationNumber) {
+        lastAwardedPoints = 0;
+        lastLoyaltyAwardFailed = false;
         Reservation reservation = findByConfirmationNumber(confirmationNumber);
         if (reservation == null) {
             return CheckOutResult.RESERVATION_NOT_FOUND;
@@ -271,7 +288,18 @@ public class FrontDeskControl {
         // the guest has completed the real check-out.
         lateCheckoutExtensionDAO.deleteByConfirmationNumber(
                 reservation.getConfirmationNumber());
+        awardCompletedStayPoints(reservation);
         return CheckOutResult.SUCCESS;
+    }
+
+    /** Number of loyalty points awarded by the most recent successful check-out. */
+    public int getLastAwardedPoints() {
+        return lastAwardedPoints;
+    }
+
+    /** Whether check-out succeeded but its loyalty award could not be persisted. */
+    public boolean didLastLoyaltyAwardFail() {
+        return lastLoyaltyAwardFailed;
     }
 
     /**
@@ -333,6 +361,30 @@ public class FrontDeskControl {
             }
         }
         return null;
+    }
+
+    private void awardCompletedStayPoints(Reservation reservation) {
+        if (reservation.getGuest() == null
+                || loyaltyServiceControl.getMemberById(
+                        reservation.getGuest().getGuestId()) == null) {
+            return;
+        }
+
+        try {
+            int awarded = loyaltyServiceControl.awardPointsForCompletedStay(
+                    reservation.getGuest().getGuestId(),
+                    reservation.getConfirmationNumber(), calculateBill(reservation),
+                    reservation.getCheckInDate());
+            if (awarded > 0) {
+                lastAwardedPoints = awarded;
+            } else if (awarded < 0) {
+                lastLoyaltyAwardFailed = true;
+            }
+        } catch (RuntimeException exception) {
+            // A completed operational check-out remains valid even if a separate
+            // loyalty file is temporarily unavailable. The UI reports the issue.
+            lastLoyaltyAwardFailed = true;
+        }
     }
 
     private void sortReservationsByBillDescending(ListInterface<Reservation> list) {

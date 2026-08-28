@@ -24,6 +24,7 @@ import common.utility.Validation;
  */
 public class LoyaltyServiceControl {
     private static final int POINTS_PER_RINGGIT = 1;
+    private static final int TIER_UPGRADE_ALERT_POINTS = 50;
     private static final String STATUS_PENDING = "Pending";
     private static final String STATUS_APPROVED = "Approved";
     private static final String STATUS_REJECTED = "Rejected";
@@ -35,6 +36,7 @@ public class LoyaltyServiceControl {
     private final MemberDao memberDao;
     private final PointTransactionDao pointTransactionDao;
     private final RequestDao requestDao;
+    private final MemberPromotionAnalyzer promotionAnalyzer;
     private ListInterface<Member> memberList;
     private ListInterface<PointTransaction> transactionList;
     private QueueInterface<RedemptionRequest> requestQueue;
@@ -45,14 +47,22 @@ public class LoyaltyServiceControl {
     // Initialization and persistence
 
     public LoyaltyServiceControl() {
-        this(new MemberDao(), new PointTransactionDao(), new RequestDao());
+        this(new MemberDao(), new PointTransactionDao(), new RequestDao(),
+                new MemberPromotionAnalyzer());
     }
 
     public LoyaltyServiceControl(MemberDao memberDao,
             PointTransactionDao pointTransactionDao, RequestDao requestDao) {
+        this(memberDao, pointTransactionDao, requestDao, new MemberPromotionAnalyzer());
+    }
+
+    public LoyaltyServiceControl(MemberDao memberDao,
+            PointTransactionDao pointTransactionDao, RequestDao requestDao,
+            MemberPromotionAnalyzer promotionAnalyzer) {
         this.memberDao = memberDao;
         this.pointTransactionDao = pointTransactionDao;
         this.requestDao = requestDao;
+        this.promotionAnalyzer = promotionAnalyzer;
 
         memberList = memberDao.retrieveFromFile();
         transactionList = pointTransactionDao.retrieveFromFile();
@@ -141,6 +151,13 @@ public class LoyaltyServiceControl {
 
     public int awardPointsForCompletedStay(String memberId, String reservationId,
             double bookingAmount) {
+        return awardPointsForCompletedStay(
+                memberId, reservationId, bookingAmount, null);
+    }
+
+    /** Awards base or history-promotion points for one completed stay. */
+    public int awardPointsForCompletedStay(String memberId, String reservationId,
+            double bookingAmount, LocalDate checkInDate) {
         Member member = getMemberById(memberId);
         if (member == null || reservationId == null || reservationId.isBlank()
                 || !Double.isFinite(bookingAmount) || bookingAmount <= 0) {
@@ -152,7 +169,12 @@ public class LoyaltyServiceControl {
             return 0;
         }
 
-        double calculatedPoints = Math.floor(bookingAmount * POINTS_PER_RINGGIT);
+        MemberPromotionAnalyzer.PromotionOffer offer =
+                promotionAnalyzer.analyze(memberId, sourceId);
+        double multiplier = offer.appliesTo(checkInDate)
+                ? offer.pointMultiplier() : 1.0;
+        double calculatedPoints = Math.floor(
+                bookingAmount * POINTS_PER_RINGGIT * multiplier);
         if (calculatedPoints <= 0 || calculatedPoints > Integer.MAX_VALUE) {
             return -1;
         }
@@ -189,6 +211,7 @@ public class LoyaltyServiceControl {
     }
 
     public String generatePersonalizedPromotion(String memberId) {
+        refreshRequestState();
         Member member = getMemberById(memberId);
         if (member == null) {
             return "Member Not Found";
@@ -210,8 +233,28 @@ public class LoyaltyServiceControl {
 
         appendPointPaymentStatus(promotion, member);
         appendExpiringPointReminder(promotion, member.getMemberId(), 30);
+        appendHistoryBasedPromotion(promotion, member.getMemberId());
 
         return promotion.toString();
+    }
+
+    /** Shows a tier alert only when the member is close to the next threshold. */
+    public String generateTierUpgradeNotification(String memberId) {
+        Member member = getMemberById(memberId);
+        if (member == null) {
+            return "";
+        }
+        int lifetimePoints = member.getLifetimePointsEarned();
+        Tier nextTier = Tier.fromPoints(lifetimePoints).getNextTier();
+        if (nextTier == null) {
+            return "";
+        }
+        int remainingPoints = nextTier.getMinPoint() - lifetimePoints;
+        return remainingPoints > 0 && remainingPoints <= TIER_UPGRADE_ALERT_POINTS
+                ? "Tier upgrade alert: Only " + remainingPoints
+                        + " more qualifying points to reach "
+                        + nextTier.getTierLevel() + "."
+                : "";
     }
 
     public void saveMembers() {
@@ -468,6 +511,12 @@ public class LoyaltyServiceControl {
         }
     }
 
+    private void appendHistoryBasedPromotion(StringBuilder promotion, String memberId) {
+        MemberPromotionAnalyzer.PromotionOffer offer = promotionAnalyzer.analyze(memberId);
+        promotion.append("History-based promotion: ")
+                .append(offer.message()).append("\n");
+    }
+
     private int expirePoints(LocalDate today) {
         int totalExpired = 0;
 
@@ -523,6 +572,13 @@ public class LoyaltyServiceControl {
                 requestQueue.enqueue(request);
             }
         }
+    }
+
+    private void refreshRequestState() {
+        requestHistory = requestDao.retrieveFromFile();
+        requestQueue = new LinkedQueue<>();
+        nextRequestNumber = 1;
+        rebuildPendingRequestQueue();
     }
 
     private boolean createPendingRequest(String memberId, String confirmationNumber,

@@ -16,6 +16,7 @@ import common.ui.ConsoleAnimation;
 import common.ui.InputHelper;
 import common.ui.InputHelper.EndOfInputException;
 import common.ui.Logo;
+import common.ui.MessageUI;
 import common.utility.Validation;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -183,6 +184,13 @@ public class FrontDeskUI {
                 "Updating room status...");
         if (result == CheckOutResult.SUCCESS) {
             ConsoleAnimation.success("Guest checked out successfully.");
+            if (control.getLastAwardedPoints() > 0) {
+                MessageUI.displaySuccess(control.getLastAwardedPoints()
+                        + " loyalty point(s) awarded for the completed stay.");
+            } else if (control.didLastLoyaltyAwardFail()) {
+                MessageUI.displayError("Check-out was saved, but loyalty points could not "
+                        + "be awarded. Staff should retry or review the loyalty files.");
+            }
             displayReservationDetails(
                     control.findByConfirmationNumber(reservation.getConfirmationNumber()));
         } else {
