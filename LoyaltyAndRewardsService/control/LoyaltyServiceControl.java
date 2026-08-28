@@ -14,7 +14,7 @@ import LoyaltyAndRewardsService.dao.RequestDao;
 import LoyaltyAndRewardsService.entity.Member;
 import LoyaltyAndRewardsService.entity.PointTransaction;
 import LoyaltyAndRewardsService.entity.RedemptionRequest;
-import common.domain.loyalty.TierPolicy;
+import LoyaltyAndRewardsService.entity.Tier;
 import common.utility.Validation;
 
 /**
@@ -78,7 +78,7 @@ public class LoyaltyServiceControl {
 
     public String getTierName(Member member) {
         return member == null ? "Unknown"
-                : TierPolicy.getTierName(member.getLifetimePointsEarned());
+                : Tier.fromPoints(member.getLifetimePointsEarned()).getTierLevel();
     }
 
     // Member operations
@@ -196,15 +196,15 @@ public class LoyaltyServiceControl {
 
         StringBuilder promotion = new StringBuilder();
         int lifetimePoints = member.getLifetimePointsEarned();
-        int nextTierMinimum = TierPolicy.getNextTierMinimum(lifetimePoints);
+        Tier nextTier = Tier.fromPoints(lifetimePoints).getNextTier();
 
-        if (nextTierMinimum < 0) {
+        if (nextTier == null) {
             promotion.append("Tier progress: You have reached the highest membership tier.\n");
         } else {
             promotion.append("Tier progress: Earn ")
-                    .append(nextTierMinimum - lifetimePoints)
+                    .append(nextTier.getMinPoint() - lifetimePoints)
                     .append(" more qualifying points to reach ")
-                    .append(TierPolicy.getNextTierName(lifetimePoints))
+                    .append(nextTier.getTierLevel())
                     .append(".\n");
         }
 

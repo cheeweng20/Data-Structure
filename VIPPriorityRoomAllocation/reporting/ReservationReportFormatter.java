@@ -1,6 +1,6 @@
 package VIPPriorityRoomAllocation.reporting;
 
-import common.domain.loyalty.LoyaltyTier;
+import LoyaltyAndRewardsService.entity.Tier;
 import VIPPriorityRoomAllocation.entity.Reservation;
 import VIPPriorityRoomAllocation.entity.ReservationStatus;
 import VIPPriorityRoomAllocation.entity.Room;
@@ -76,7 +76,7 @@ public final class ReservationReportFormatter {
                 (left, right) -> left.getAssignedRoom().getRoomNumber()
                         .compareToIgnoreCase(right.getAssignedRoom().getRoomNumber()));
         Iterator<Reservation> iterator = reservations.iterator();
-        int[] tierCounts = new int[LoyaltyTier.values().length];
+        int[] tierCounts = new int[Tier.getTiers().length];
 
         while (iterator.hasNext()) {
             Reservation reservation = iterator.next();
@@ -84,7 +84,7 @@ public final class ReservationReportFormatter {
                     && reservation.getAssignedRoom() != null
                     && reservation.getStatus() != ReservationStatus.REJECTED) {
                 reportReservations.add(reservation);
-                tierCounts[reservation.getGuest().getLoyaltyTier().ordinal()]++;
+                tierCounts[reservation.getGuest().getLoyaltyTier().getPriorityScore()]++;
             }
         }
 
@@ -184,9 +184,9 @@ public final class ReservationReportFormatter {
     private static void appendTierChartData(StringBuilder report, int[] tierCounts) {
         report.append("\n=== Loyalty Tier Allocation Chart Data ===\n");
         report.append(String.format("| %-14s | %-5s |%n", "Label", "Value"));
-        for (LoyaltyTier tier : LoyaltyTier.values()) {
+        for (Tier tier : Tier.getTiers()) {
             report.append(String.format("| %-14s | %-5d |%n",
-                    tier, tierCounts[tier.ordinal()]));
+                    tier, tierCounts[tier.getPriorityScore()]));
         }
     }
 }

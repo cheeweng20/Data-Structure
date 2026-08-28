@@ -13,10 +13,10 @@ import LoyaltyAndRewardsService.control.LoyaltyServiceControl.ExpiringPointSumma
 import LoyaltyAndRewardsService.entity.Member;
 import LoyaltyAndRewardsService.entity.PointTransaction;
 import LoyaltyAndRewardsService.entity.RedemptionRequest;
+import LoyaltyAndRewardsService.entity.Tier;
 import LoyaltyAndRewardsService.reporting.LoyaltyReportFormatter;
 import LoyaltyAndRewardsService.reporting.ReportPdfExporter;
 import LoyaltyAndRewardsService.reporting.ReportPdfExporter.ChartType;
-import common.domain.loyalty.TierPolicy;
 import common.ui.InputHelper;
 import common.ui.InputHelper.EndOfInputException;
 import common.ui.Logo;
@@ -283,13 +283,13 @@ public final class LoyaltyUI {
                 "| %-10s | %-20s | %10s | %10s |%n",
                 "Tier ID", "Tier Level", "Min Points", "Max Points")));
         System.out.println(ConsoleStyle.tableBorder(border));
-        for (String tierId : TierPolicy.getTierIds()) {
-            int maximumPoints = TierPolicy.getMaximumPoints(tierId);
+        for (Tier tier : Tier.getTiers()) {
+            int maximumPoints = tier.getMaxPoint();
             String maxPoints = maximumPoints == 0
                     ? "No limit" : String.valueOf(maximumPoints);
             System.out.printf("| %-10.10s | %-20.20s | %10d | %10s |%n",
-                    tierId, TierPolicy.getTierNameById(tierId),
-                    TierPolicy.getMinimumPoints(tierId), maxPoints);
+                    tier.getTierId(), tier.getTierLevel(),
+                    tier.getMinPoint(), maxPoints);
         }
         System.out.println(ConsoleStyle.tableBorder(border));
     }

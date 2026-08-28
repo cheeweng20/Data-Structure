@@ -70,7 +70,7 @@ public class Main {
 
     private static void displayMainMenu() {
         Logo.display();
-        System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("TARUMT RESORT",
+        System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("USER SELECTION",
                 "1|Staff", "2|Member / Guest", "0|Exit")));
     }
 

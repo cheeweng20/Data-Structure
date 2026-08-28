@@ -1,7 +1,6 @@
 package VIPPriorityRoomAllocation.dao;
 
-import common.domain.loyalty.LoyaltyTier;
-import common.domain.loyalty.TierPolicy;
+import LoyaltyAndRewardsService.entity.Tier;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
@@ -52,8 +51,7 @@ public class LoyaltyLookupDAO {
 
                 try {
                     int lifetimePointsEarned = Integer.parseInt(fields[5].trim());
-                    LoyaltyTier loyaltyTier = LoyaltyTier.fromTierName(
-                            TierPolicy.getTierName(lifetimePointsEarned));
+                    Tier loyaltyTier = Tier.fromPoints(lifetimePointsEarned);
                     return new LoyaltyProfile(memberIdValue, fields[1].trim(), phoneNumber,
                             loyaltyTier);
                 } catch (NumberFormatException exception) {
@@ -76,9 +74,9 @@ public class LoyaltyLookupDAO {
         private final String memberId;
         private final String name;
         private final String phoneNumber;
-        private final LoyaltyTier loyaltyTier;
+        private final Tier loyaltyTier;
 
-        public LoyaltyProfile(String memberId, String name, String phoneNumber, LoyaltyTier loyaltyTier) {
+        public LoyaltyProfile(String memberId, String name, String phoneNumber, Tier loyaltyTier) {
             this.memberId = memberId;
             this.name = name;
             this.phoneNumber = phoneNumber;
@@ -97,7 +95,7 @@ public class LoyaltyLookupDAO {
             return phoneNumber;
         }
 
-        public LoyaltyTier getLoyaltyTier() {
+        public Tier getLoyaltyTier() {
             return loyaltyTier;
         }
     }

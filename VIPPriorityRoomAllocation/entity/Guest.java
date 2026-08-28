@@ -1,6 +1,6 @@
 package VIPPriorityRoomAllocation.entity;
 
-import common.domain.loyalty.LoyaltyTier;
+import LoyaltyAndRewardsService.entity.Tier;
 import java.util.Objects;
 
 // Stores the guest profile used for priority room allocation.
@@ -12,17 +12,17 @@ public class Guest {
     private String guestId;
     private String fullName;
     private String phoneNumber;
-    private LoyaltyTier loyaltyTier;
+    private Tier loyaltyTier;
 
     public Guest() {
-        loyaltyTier = LoyaltyTier.CLASSIC;
+        loyaltyTier = Tier.CLASSIC;
     }
 
-    public Guest(String guestId, String fullName, String phoneNumber, LoyaltyTier loyaltyTier) {
+    public Guest(String guestId, String fullName, String phoneNumber, Tier loyaltyTier) {
         this.guestId = guestId;
         this.fullName = fullName;
         this.phoneNumber = phoneNumber;
-        this.loyaltyTier = loyaltyTier == null ? LoyaltyTier.CLASSIC : loyaltyTier;
+        this.loyaltyTier = loyaltyTier == null ? Tier.CLASSIC : loyaltyTier;
     }
 
     public String getGuestId() {
@@ -49,12 +49,12 @@ public class Guest {
         this.phoneNumber = phoneNumber;
     }
 
-    public LoyaltyTier getLoyaltyTier() {
-        return loyaltyTier == null ? LoyaltyTier.CLASSIC : loyaltyTier;
+    public Tier getLoyaltyTier() {
+        return loyaltyTier == null ? Tier.CLASSIC : loyaltyTier;
     }
 
-    public void setLoyaltyTier(LoyaltyTier loyaltyTier) {
-        this.loyaltyTier = loyaltyTier == null ? LoyaltyTier.CLASSIC : loyaltyTier;
+    public void setLoyaltyTier(Tier loyaltyTier) {
+        this.loyaltyTier = loyaltyTier == null ? Tier.CLASSIC : loyaltyTier;
     }
 
     @Override
