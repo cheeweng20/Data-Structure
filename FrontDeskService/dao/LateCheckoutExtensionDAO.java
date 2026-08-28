@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * Persists Front Desk late check-out extensions independently of reservations.
+ * @author Yi Ren
  */
 public class LateCheckoutExtensionDAO {
 

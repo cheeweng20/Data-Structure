@@ -4,7 +4,7 @@ import java.time.LocalDateTime;
 import java.util.Objects;
 
 /**
- * A temporary check-out extension managed by Front Desk.
+ * @author Yi Ren
  *
  * <p>This operational record is intentionally separate from a reservation:
  * it does not alter the booked check-out date or the reservation's billing

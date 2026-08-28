@@ -18,7 +18,7 @@ import java.util.Iterator;
 import java.util.Scanner;
 
 /** Console boundary for Front Desk guest services.
- * @author Front Desk Service team
+ * @author Yi Ren
  */
 public class FrontDeskUI {
     private final Scanner scanner;
