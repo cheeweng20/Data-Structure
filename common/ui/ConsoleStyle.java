@@ -13,6 +13,7 @@ public final class ConsoleStyle {
     private static final String RESET = ESC + "0m";
     private static final String BOLD = ESC + "1m";
     private static final String DIM = ESC + "2m";
+    private static final String BLACK = ESC + "30m";
     private static final String RED = ESC + "31m";
     private static final String GREEN = ESC + "32m";
     private static final String BLUE = ESC + "34m";
@@ -22,6 +23,9 @@ public final class ConsoleStyle {
     private static final String BLACK_BG = ESC + "40m";
     private static final String RED_BG = ESC + "41m";
     private static final String GREEN_BG = ESC + "42m";
+    private static final String YELLOW_BG = ESC + "43m";
+    private static final String CYAN_BG = ESC + "46m";
+    private static final String WHITE_BG = ESC + "47m";
 
     private static final boolean ENABLED = coloursEnabled();
 
@@ -115,6 +119,17 @@ public final class ConsoleStyle {
                 continue;
             }
 
+            if ("tiers".equalsIgnoreCase(number)) {
+                if (!justPrintedDivider) {
+                    menu.append(outerBorder).append('\n');
+                }
+                menu.append("| ").append(centreStyled(tierLegend(), totalWidth - 4))
+                        .append(" |\n");
+                menu.append(outerBorder).append('\n');
+                justPrintedDivider = true;
+                continue;
+            }
+
             // Keep navigation actions visually separate from module operations.
             if ("0".equals(number) && !justPrintedDivider) {
                 menu.append(divider).append('\n');
@@ -137,6 +152,28 @@ public final class ConsoleStyle {
         int leftPadding = (width - text.length()) / 2;
         return " ".repeat(leftPadding) + text
                 + " ".repeat(width - leftPadding - text.length());
+    }
+
+    private static String centreStyled(String text, int width) {
+        int visibleLength = text.replaceAll("\\u001B\\[[0-9;]*m", "").length();
+        if (visibleLength >= width) {
+            return text;
+        }
+        int leftPadding = (width - visibleLength) / 2;
+        return " ".repeat(leftPadding) + text
+                + " ".repeat(width - visibleLength - leftPadding);
+    }
+
+    private static String tierLegend() {
+        return "Tier: "
+                + tierBadge("Classic", WHITE + RED_BG) + " "
+                + tierBadge("Silver", BLACK + WHITE_BG) + " "
+                + tierBadge("Gold", BLACK + YELLOW_BG) + " "
+                + tierBadge("Platinum", BLACK + CYAN_BG);
+    }
+
+    private static String tierBadge(String label, String foregroundAndBackground) {
+        return style("[" + label + "]", BOLD + foregroundAndBackground);
     }
 
     public static String infoBadge() {

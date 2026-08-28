@@ -33,6 +33,9 @@ import common.utility.Validation;
  */
 public final class LoyaltyUI {
     private static final int DEFAULT_EXPIRY_ALERT_DAYS = 30;
+    private static final int INFORMATION_LABEL_WIDTH = 24;
+    private static final int INFORMATION_VALUE_WIDTH = 44;
+    private static final String INFORMATION_BORDER = "+--------------------------+----------------------------------------------+";
 
     private final Scanner scanner;
     private final LoyaltyServiceControl serviceControl;
@@ -106,7 +109,7 @@ public final class LoyaltyUI {
                 "section|LOYALTY MANAGEMENT",
                 "3|Redemption Requests", "4|Member List", "5|Tier Progression",
                 "section|REPORTING",
-                "6|Loyalty Reports", "0|Back")));
+                "6|Loyalty Reports", "tiers|", "0|Back")));
     }
 
     private void registerMember() {
@@ -152,15 +155,107 @@ public final class LoyaltyUI {
             return;
         }
 
-        System.out.println(ConsoleStyle.title("\n--- Member / Loyalty Information ---"));
-        System.out.println("Member ID       : " + member.getMemberId());
-        System.out.println("Name            : " + member.getName());
-        System.out.println("Passport        : " + member.getPassport());
-        System.out.println("Phone Number    : " + member.getPhoneNumber());
-        System.out.println("Available Points: " + member.getPoint());
-        System.out.printf("Total Expenses  : RM%,.2f%n", (double) member.getTotalExpenses());
-        System.out.println("Loyalty Tier    : " + serviceControl.getTierName(member));
-        System.out.println("\n" + serviceControl.generatePersonalizedPromotion(memberId));
+        displayInformationHeader("MEMBER / LOYALTY INFORMATION");
+        displayInformationSection("MEMBER PROFILE");
+        displayInformationRow("Member ID", member.getMemberId());
+        displayInformationRow("Name", member.getName());
+        displayInformationRow("Passport", member.getPassport());
+        displayInformationRow("Phone Number", member.getPhoneNumber());
+
+        System.out.println(ConsoleStyle.tableBorder(INFORMATION_BORDER));
+        displayInformationSection("LOYALTY STATUS");
+        displayInformationRow("Available Points", String.format("%,d", member.getPoint()));
+        displayInformationRow("Total Expenses", String.format("RM%,.2f",
+                (double) member.getTotalExpenses()));
+        displayInformationRow("Current Tier", serviceControl.getTierName(member));
+
+        System.out.println(ConsoleStyle.tableBorder(INFORMATION_BORDER));
+        displayInformationSection("POINT EXPIRY NOTIFICATION");
+        displayPointExpiryNotification(memberId);
+
+        System.out.println(ConsoleStyle.tableBorder(INFORMATION_BORDER));
+        displayInformationSection("MEMBER BENEFITS");
+        displayTierUpgradeNotification(memberId);
+        displayPromotionInformation(serviceControl.generatePersonalizedPromotion(memberId));
+        System.out.println(ConsoleStyle.tableBorder(INFORMATION_BORDER));
+    }
+
+    private void displayTierUpgradeNotification(String memberId) {
+        String notification = serviceControl.generateTierUpgradeNotification(memberId);
+        if (!notification.isBlank()) {
+            displayInformationRow("Tier Upgrade Alert", notification);
+        }
+    }
+
+    private void displayPointExpiryNotification(String memberId) {
+        ExpiringPointSummary summary = serviceControl.getMemberExpiringPointSummary(
+                memberId, DEFAULT_EXPIRY_ALERT_DAYS);
+        if (summary.transactionCount() == 0) {
+            displayInformationRow("Status", "No points expire within the next "
+                    + DEFAULT_EXPIRY_ALERT_DAYS + " days.");
+            return;
+        }
+        displayInformationRow("Expiring Points", summary.pointTotal() + " point(s) from "
+                + summary.transactionCount() + " transaction(s) expire within the next "
+                + DEFAULT_EXPIRY_ALERT_DAYS + " days.");
+    }
+
+    private void displayInformationHeader(String title) {
+        System.out.println();
+        System.out.println(ConsoleStyle.tableBorder(INFORMATION_BORDER));
+        System.out.println(ConsoleStyle.tableHeader(String.format("| %s |",
+                centreText(title, INFORMATION_BORDER.length() - 4))));
+        System.out.println(ConsoleStyle.tableBorder(INFORMATION_BORDER));
+    }
+
+    private void displayInformationSection(String title) {
+        System.out.println(ConsoleStyle.tableHeader(String.format("| %s |",
+                centreText(title, INFORMATION_BORDER.length() - 4))));
+        System.out.println(ConsoleStyle.tableBorder(INFORMATION_BORDER));
+    }
+
+    private void displayPromotionInformation(String promotionSummary) {
+        for (String line : promotionSummary.split("\\R")) {
+            if (line.startsWith("Expiry reminder:")) {
+                continue;
+            }
+            int separator = line.indexOf(':');
+            if (separator < 0) {
+                continue;
+            }
+            displayInformationRow(line.substring(0, separator).trim(),
+                    line.substring(separator + 1).trim());
+        }
+    }
+
+    private void displayInformationRow(String label, String value) {
+        String remaining = value == null ? "" : value;
+        boolean firstLine = true;
+
+        do {
+            String line = takeInformationLine(remaining);
+            System.out.printf("| %-" + INFORMATION_LABEL_WIDTH + "s | %-"
+                    + INFORMATION_VALUE_WIDTH + "s |%n", firstLine ? label : "", line);
+            remaining = remaining.substring(Math.min(line.length(), remaining.length())).trim();
+            firstLine = false;
+        } while (!remaining.isEmpty());
+    }
+
+    private String takeInformationLine(String value) {
+        if (value.length() <= INFORMATION_VALUE_WIDTH) {
+            return value;
+        }
+        int breakPosition = value.lastIndexOf(' ', INFORMATION_VALUE_WIDTH);
+        return value.substring(0, breakPosition > 0 ? breakPosition : INFORMATION_VALUE_WIDTH).trim();
+    }
+
+    private String centreText(String value, int width) {
+        if (value.length() >= width) {
+            return value.substring(0, width);
+        }
+        int leftPadding = (width - value.length()) / 2;
+        return " ".repeat(leftPadding) + value
+                + " ".repeat(width - value.length() - leftPadding);
     }
 
     private String promptValidMemberName() {
@@ -208,26 +303,10 @@ public final class LoyaltyUI {
     }
 
     private void displayStartupNotifications() {
-        ExpiringPointSummary expiringSummary =
-                serviceControl.getExpiringPointSummary(DEFAULT_EXPIRY_ALERT_DAYS);
-        int recentlyExpiredPoints = serviceControl.getRecentlyExpiredPointTotal();
         int pendingRequestCount = serviceControl.getPendingRequestCount();
 
         System.out.println();
         System.out.println(ConsoleStyle.title("=== Loyalty Notifications ==="));
-        if (recentlyExpiredPoints > 0) {
-            MessageUI.displayInfo(recentlyExpiredPoints
-                    + " unredeemed transaction point(s) expired; member balances were updated.");
-        }
-        if (expiringSummary.transactionCount() > 0) {
-            MessageUI.displayInfo(expiringSummary.pointTotal() + " unredeemed point(s) from "
-                    + expiringSummary.transactionCount() + " transaction(s) will expire within "
-                    + DEFAULT_EXPIRY_ALERT_DAYS + " days.");
-        } else {
-            MessageUI.displayInfo("No unredeemed points expire within "
-                    + DEFAULT_EXPIRY_ALERT_DAYS + " days.");
-        }
-
         if (pendingRequestCount > 0) {
             MessageUI.displayInfo(pendingRequestCount
                     + " redemption request(s) are waiting for processing.");

@@ -355,6 +355,26 @@ public class LoyaltyServiceControl {
         return new ExpiringPointSummary(transactionCount, pointTotal);
     }
 
+    /** Returns expiring-point information for one member only. */
+    public ExpiringPointSummary getMemberExpiringPointSummary(String memberId, int withinDays) {
+        if (memberId == null || memberId.isBlank() || withinDays < 0) {
+            return new ExpiringPointSummary(0, 0);
+        }
+
+        LocalDate today = LocalDate.now();
+        LocalDate cutoff = today.plusDays(withinDays);
+        int transactionCount = 0;
+        int pointTotal = 0;
+        for (PointTransaction transaction : transactionList) {
+            if (transaction.getMemberId().equalsIgnoreCase(memberId.trim())
+                    && expiresWithin(transaction, today, cutoff)) {
+                transactionCount++;
+                pointTotal += transaction.getPointsRemaining();
+            }
+        }
+        return new ExpiringPointSummary(transactionCount, pointTotal);
+    }
+
     public void saveTransactions() {
         pointTransactionDao.saveToFile(transactionList);
     }
