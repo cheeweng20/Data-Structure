@@ -1,6 +1,7 @@
 package LoyaltyAndRewardsService.dao;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -30,13 +31,14 @@ public class RequestDao {
     }
 
     public void saveToFile(ListInterface<RedemptionRequest> requests) {
+        createParentDirectory();
         try (PrintWriter writer = new PrintWriter(new FileWriter(fileName))) {
             writer.println(HEADER);
             for (RedemptionRequest request : requests) {
                 writer.println(request.toCsvLine());
             }
         } catch (IOException e) {
-            System.out.println("Error saving request file: " + e.getMessage());
+            throw new IllegalStateException("Unable to save request file.", e);
         }
     }
 
@@ -84,8 +86,16 @@ public class RequestDao {
             System.out.println("No existing request data found, creating new file.");
             saveToFile(requests);
         } catch (IOException e) {
-            System.out.println("Error reading request file: " + e.getMessage());
+            throw new IllegalStateException("Unable to read request file.", e);
         }
         return requests;
+    }
+
+    private void createParentDirectory() {
+        File file = new File(fileName);
+        File parent = file.getParentFile();
+        if (parent != null && !parent.exists() && !parent.mkdirs()) {
+            throw new IllegalStateException("Unable to create request data directory.");
+        }
     }
 }

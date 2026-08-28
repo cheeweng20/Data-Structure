@@ -15,7 +15,6 @@ public class Reservation implements Comparable<Reservation> {
     private Room assignedRoom; 
     private LocalDate checkInDate;
     private LocalDate checkOutDate;
-    private LocalDateTime temporaryCheckOutAt;
     private LocalDateTime bookingDateTime;
     private String paymentMethod;
     private String paymentStatus;
@@ -97,18 +96,6 @@ public class Reservation implements Comparable<Reservation> {
         this.bookingDateTime = bookingDateTime;
     }
 
-    /**
-     * Gets the temporary late check-out time, if Front Desk has recorded one.
-     * The scheduled check-out date remains unchanged so billing is unaffected.
-     */
-    public LocalDateTime getTemporaryCheckOutAt() {
-        return temporaryCheckOutAt;
-    }
-
-    public void setTemporaryCheckOutAt(LocalDateTime temporaryCheckOutAt) {
-        this.temporaryCheckOutAt = temporaryCheckOutAt;
-    }
-
     public String getPaymentMethod() {
         return paymentMethod;
     }
@@ -152,6 +139,7 @@ public class Reservation implements Comparable<Reservation> {
 
     @Override
     public int compareTo(Reservation other) {
+        // compareTo is the priority formula used by MaxHeapPriorityQueue
         int tierCompare = Integer.compare(
                 getGuest().getLoyaltyTier().getPriorityScore(), // higher tier score has higher heap priority
                 other.getGuest().getLoyaltyTier().getPriorityScore());

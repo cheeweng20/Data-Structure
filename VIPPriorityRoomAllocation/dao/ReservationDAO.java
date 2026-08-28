@@ -1,7 +1,7 @@
 package VIPPriorityRoomAllocation.dao;
 
 import VIPPriorityRoomAllocation.entity.Guest;
-import VIPPriorityRoomAllocation.entity.LoyaltyTier;
+import LoyaltyAndRewardsService.entity.Tier;
 import VIPPriorityRoomAllocation.entity.Reservation;
 import VIPPriorityRoomAllocation.entity.ReservationStatus;
 import VIPPriorityRoomAllocation.entity.Room;
@@ -27,7 +27,7 @@ public class ReservationDAO {
     private static final int INITIAL_CAPACITY = 100;
     private static final String HEADER = "ConfirmationNumber,GuestId,GuestName,PhoneNumber,LoyaltyTier,"
             + "AssignedRoomNumber,AssignedRoomPrice,AssignedRoomStatus,CheckInDate,CheckOutDate,"
-            + "BookingDateTime,PaymentMethod,PaymentStatus,Status,TemporaryCheckOutAt";
+            + "BookingDateTime,PaymentMethod,PaymentStatus,Status";
     private final String fileName;
 
     public ReservationDAO() {
@@ -72,9 +72,6 @@ public class ReservationDAO {
                         fields[11],
                         fields[12],
                         ReservationStatus.valueOf(fields[13]));
-                if (fields.length >= 15 && !fields[14].trim().isEmpty()) {
-                    reservation.setTemporaryCheckOutAt(LocalDateTime.parse(fields[14].trim()));
-                }
                 reservations.add(reservation);
             }
         } catch (FileNotFoundException ex) {
@@ -112,8 +109,8 @@ public class ReservationDAO {
         return new Room(fields[5], price, roomStatus);
     }
 
-    private LoyaltyTier parseLoyaltyTier(String value) {
-        return LoyaltyTier.fromTierName(value); // convert CSV text into enum
+    private Tier parseLoyaltyTier(String value) {
+        return Tier.fromTierName(value); // convert CSV text into a tier entity
     }
 
     private String toCsvLine(Reservation reservation) {
@@ -143,9 +140,7 @@ public class ReservationDAO {
                 + reservation.getBookingDateTime() + ","
                 + reservation.getPaymentMethod() + ","
                 + reservation.getPaymentStatus() + ","
-                + reservation.getStatus() + ","
-                + (reservation.getTemporaryCheckOutAt() == null
-                        ? "" : reservation.getTemporaryCheckOutAt());
+                + reservation.getStatus();
     }
 
     private void createReservationCSVFile() {

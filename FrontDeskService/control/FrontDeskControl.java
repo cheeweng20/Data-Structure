@@ -1,5 +1,9 @@
 package FrontDeskService.control;
 
+import FrontDeskService.dao.LateCheckoutExtensionDAO;
+import FrontDeskService.entity.LateCheckoutExtension;
+import HousekeepingAndTaskLog.control.HousekeepingControl;
+import HousekeepingAndTaskLog.entity.HousekeepingTask;
 import LoyaltyAndRewardsService.dao.RequestDao;
 import LoyaltyAndRewardsService.entity.RedemptionRequest;
 import VIPPriorityRoomAllocation.dao.ReservationDAO;
@@ -13,10 +17,11 @@ import adt.BinarySearchTree;
 import adt.ListInterface;
 import adt.SearchTreeInterface;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Iterator;
 
 /** Business rules for Front Desk guest service operations.
- * @author Front Desk Service team
+ * @author Yi Ren
  */
 public class FrontDeskControl {
     public static final String MEMBER_POINTS_PAYMENT_METHOD = "Member Points";
@@ -24,23 +29,51 @@ public class FrontDeskControl {
     private final ReservationDAO reservationDAO;
     private final RoomDAO roomDAO;
     private final RequestDao requestDao;
+    private final HousekeepingControl housekeepingControl;
+    private final LateCheckoutExtensionDAO lateCheckoutExtensionDAO;
     private final ListInterface<Reservation> reservations;
     private final ListInterface<Room> rooms;
     private final SearchTreeInterface<String, Reservation> confirmationIndex;
 
     public FrontDeskControl() {
-        this(new ReservationDAO(), new RoomDAO(), new RequestDao());
+        this(new ReservationDAO(), new RoomDAO(), new RequestDao(),
+                new HousekeepingControl(false), new LateCheckoutExtensionDAO());
     }
 
     public FrontDeskControl(ReservationDAO reservationDAO, RoomDAO roomDAO) {
-        this(reservationDAO, roomDAO, new RequestDao());
+        this(reservationDAO, roomDAO, new RequestDao(), new HousekeepingControl(false),
+                new LateCheckoutExtensionDAO());
     }
 
     public FrontDeskControl(ReservationDAO reservationDAO, RoomDAO roomDAO,
             RequestDao requestDao) {
+        this(reservationDAO, roomDAO, requestDao, new HousekeepingControl(false),
+                new LateCheckoutExtensionDAO());
+    }
+
+    /**
+     * Creates the control with an injectable Housekeeping gateway. The
+     * four-argument overload keeps late check-out notifications testable
+     * without changing the normal Front Desk workflow.
+     */
+    public FrontDeskControl(ReservationDAO reservationDAO, RoomDAO roomDAO,
+            RequestDao requestDao, HousekeepingControl housekeepingControl) {
+        this(reservationDAO, roomDAO, requestDao, housekeepingControl,
+                new LateCheckoutExtensionDAO());
+    }
+
+    /**
+     * Creates the control with Front Desk-owned late check-out storage. The
+     * extension is intentionally separate from the Reservation module.
+     */
+    public FrontDeskControl(ReservationDAO reservationDAO, RoomDAO roomDAO,
+            RequestDao requestDao, HousekeepingControl housekeepingControl,
+            LateCheckoutExtensionDAO lateCheckoutExtensionDAO) {
         this.reservationDAO = reservationDAO;
         this.roomDAO = roomDAO;
         this.requestDao = requestDao;
+        this.housekeepingControl = housekeepingControl;
+        this.lateCheckoutExtensionDAO = lateCheckoutExtensionDAO;
         reservations = reservationDAO.retrieveFromFile();
         rooms = roomDAO.retrieveFromFile();
         confirmationIndex = new BinarySearchTree<>();
@@ -54,6 +87,11 @@ public class FrontDeskControl {
 
     public Reservation findByConfirmationNumber(String confirmationNumber) {
         return confirmationIndex.search(confirmationNumber);
+    }
+
+    /** Returns the active Front Desk late check-out record, if one exists. */
+    public LateCheckoutExtension findLateCheckoutExtension(String confirmationNumber) {
+        return lateCheckoutExtensionDAO.findByConfirmationNumber(confirmationNumber);
     }
 
     /**
@@ -229,7 +267,61 @@ public class FrontDeskControl {
         savedRoom.setStatus(RoomStatus.NEEDS_CLEANING);
         reservation.setAssignedRoom(savedRoom);
         saveData();
+        // The operational extension belongs to Front Desk and expires once
+        // the guest has completed the real check-out.
+        lateCheckoutExtensionDAO.deleteByConfirmationNumber(
+                reservation.getConfirmationNumber());
         return CheckOutResult.SUCCESS;
+    }
+
+    /**
+     * Records a temporary late check-out from the Front Desk check-out flow
+     * and places a blocked notification task in Housekeeping. The temporary
+     * record is owned by Front Desk; it does not change Reservation data.
+     */
+    public LateCheckoutResult extendCheckOut(String confirmationNumber,
+            LocalDateTime extendedCheckOutAt, LocalDateTime expectedRoomReadyAt,
+            String reason) {
+        Reservation reservation = findByConfirmationNumber(confirmationNumber);
+        if (reservation == null) {
+            return new LateCheckoutResult(LateCheckoutStatus.RESERVATION_NOT_FOUND, null);
+        }
+        if (reservation.getStatus() != ReservationStatus.CHECKED_IN) {
+            return new LateCheckoutResult(LateCheckoutStatus.NOT_CHECKED_IN, null);
+        }
+        if (reservation.getAssignedRoom() == null) {
+            return new LateCheckoutResult(LateCheckoutStatus.ROOM_NOT_OCCUPIED, null);
+        }
+        if (extendedCheckOutAt == null || !extendedCheckOutAt.isAfter(LocalDateTime.now())) {
+            return new LateCheckoutResult(LateCheckoutStatus.INVALID_EXTENDED_CHECK_OUT_TIME,
+                    null);
+        }
+        if (expectedRoomReadyAt == null || expectedRoomReadyAt.isBefore(extendedCheckOutAt)) {
+            return new LateCheckoutResult(LateCheckoutStatus.INVALID_ROOM_READY_TIME, null);
+        }
+        if (reason == null || reason.trim().isEmpty()) {
+            return new LateCheckoutResult(LateCheckoutStatus.REASON_REQUIRED, null);
+        }
+
+        Room savedRoom = findRoomByNumber(reservation.getAssignedRoom().getRoomNumber());
+        if (savedRoom == null || savedRoom.getStatus() != RoomStatus.OCCUPIED) {
+            return new LateCheckoutResult(LateCheckoutStatus.ROOM_NOT_OCCUPIED, null);
+        }
+
+        String guestName = reservation.getGuest() == null
+                ? "Unknown guest" : reservation.getGuest().getFullName();
+        HousekeepingTask task = housekeepingControl.notifyLateCheckout(
+                savedRoom.getRoomNumber(), reservation.getConfirmationNumber(), guestName,
+                extendedCheckOutAt, expectedRoomReadyAt, reason.trim());
+        if (task == null) {
+            return new LateCheckoutResult(
+                    LateCheckoutStatus.HOUSEKEEPING_NOTIFICATION_FAILED, null);
+        }
+
+        lateCheckoutExtensionDAO.saveOrUpdate(new LateCheckoutExtension(
+                reservation.getConfirmationNumber(), extendedCheckOutAt,
+                expectedRoomReadyAt, reason.trim()));
+        return new LateCheckoutResult(LateCheckoutStatus.SUCCESS, task.getTaskId());
     }
 
     private Room findRoomByNumber(String roomNumber) {
@@ -310,5 +402,39 @@ public class FrontDeskControl {
         RESERVATION_NOT_FOUND,
         NOT_CHECKED_IN,
         ROOM_NOT_OCCUPIED
+    }
+
+    public enum LateCheckoutStatus {
+        SUCCESS,
+        RESERVATION_NOT_FOUND,
+        NOT_CHECKED_IN,
+        ROOM_NOT_OCCUPIED,
+        INVALID_EXTENDED_CHECK_OUT_TIME,
+        INVALID_ROOM_READY_TIME,
+        REASON_REQUIRED,
+        HOUSEKEEPING_NOTIFICATION_FAILED
+    }
+
+    /** Result of an extend-check-out request from the Front Desk. */
+    public static class LateCheckoutResult {
+        private final LateCheckoutStatus status;
+        private final String housekeepingTaskId;
+
+        public LateCheckoutResult(LateCheckoutStatus status, String housekeepingTaskId) {
+            this.status = status;
+            this.housekeepingTaskId = housekeepingTaskId;
+        }
+
+        public LateCheckoutStatus getStatus() {
+            return status;
+        }
+
+        public String getHousekeepingTaskId() {
+            return housekeepingTaskId;
+        }
+
+        public boolean isSuccessful() {
+            return status == LateCheckoutStatus.SUCCESS;
+        }
     }
 }

@@ -1,7 +1,7 @@
 package FrontDeskService.utility;
 
 /** Input checks used by the Front Desk boundary class.
- * @author Front Desk Service team
+ * @author Yi Ren
  */
 public final class FrontDeskValidator {
     private FrontDeskValidator() { }

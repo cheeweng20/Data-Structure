@@ -40,13 +40,13 @@ public class ReservationManager {
         this.reservationDAO = reservationDAO;
         this.roomDAO = roomDAO;
         this.loyaltyLookupDAO = loyaltyLookupDAO;
-        reservations = reservationDAO.retrieveFromFile();    // load reservation from the files
-        rooms = roomDAO.retrieveFromFile();                     // load room 
-        pendingPriorityReservations = new MaxHeapPriorityQueue<>();   //create empty queue 
-        rebuildPendingPriorityQueue(); //put all reservation ((Pending) into the queue
+        reservations = reservationDAO.retrieveFromFile();    // load reservations from CSV file
+        rooms = roomDAO.retrieveFromFile();                     // load rooms from CSV file
+        pendingPriorityReservations = new MaxHeapPriorityQueue<>();   // main non-linear ADT
+        rebuildPendingPriorityQueue(); // put all PENDING reservations back into the heap
     }
 
-    //Loyalty cheking
+    // loyalty checking by member ID or phone number
     public LoyaltyProfile findLoyaltyProfile(String guestId) {
         return loyaltyLookupDAO.findProfile(guestId);
     }
@@ -58,7 +58,7 @@ public class ReservationManager {
                 checkInDate, checkOutDate);
 
         reservations.add(reservation);
-        pendingPriorityReservations.enqueue(reservation);
+        pendingPriorityReservations.enqueue(reservation); // heap will reorder based on tier priority
         saveData();
         return reservation;
     }
@@ -72,14 +72,14 @@ public class ReservationManager {
         return pendingPriorityReservations.getNumberOfEntries();
     }
 
-    //allocate the room
+    // allocate available rooms by taking highest priority guest from heap first
     public AllocationResult allocateAvailableRooms() {
         int confirmedCount = 0;
         int rejectedCount = 0;
 
         while (!pendingPriorityReservations.isEmpty()) {
-            Reservation reservation = pendingPriorityReservations.dequeue();
-            Room room = findAvailableRoom();
+            Reservation reservation = pendingPriorityReservations.dequeue(); // highest tier comes out first
+            Room room = findAvailableRoom(); // sequentially find first AVAILABLE room
 
             if (room == null) {
                 reservation.setStatus(ReservationStatus.REJECTED);
@@ -96,7 +96,7 @@ public class ReservationManager {
         return new AllocationResult(confirmedCount, rejectedCount);
     }
 
-    // search reservations 
+    // sequential search, check each reservation one by one
     public Reservation findReservation(String searchValue) {
         if (searchValue == null) {
             return null;
@@ -154,10 +154,26 @@ public class ReservationManager {
                     && guest.getFullName().toLowerCase().contains(normalizedSearchValue);
 
             if (confirmationMatches || guestIdMatches || guestNameMatches) {
-                matches.add(reservation);
+                matches.add(reservation); // keep all matched records
             }
         }
 
+        return matches;
+    }
+
+    /** Returns only reservations owned by the exact member/guest ID. */
+    public ListInterface<Reservation> findReservationsByGuestId(String guestId) {
+        ListInterface<Reservation> matches = new ArrayList<>();
+        if (guestId == null || guestId.trim().isEmpty()) {
+            return matches;
+        }
+
+        for (Reservation reservation : reservations) {
+            Guest guest = reservation.getGuest();
+            if (guest != null && guest.getGuestId().equalsIgnoreCase(guestId.trim())) {
+                matches.add(reservation);
+            }
+        }
         return matches;
     }
 
@@ -214,7 +230,7 @@ public class ReservationManager {
             }
         }
 
-        return String.format("G%03d", highestNumber + 1);
+        return String.format("G%03d", highestNumber + 1); // non-member guest ID format
     }
 
     //Rebuild the pending priority queue from the reservations list
