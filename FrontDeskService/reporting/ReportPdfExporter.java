@@ -12,12 +12,31 @@ import static common.reporting.pdf.PdfDocumentWriter.appendText;
 /** Exports Front Desk table reports through the shared PDF document writer. */
 public final class ReportPdfExporter {
 
+    /** The chart shown for each Front Desk report PDF. */
+    public enum ChartType {
+        OUTSTANDING_BALANCE,
+        PAYMENT_METHOD
+    }
+
+    private static final int MAXIMUM_CHART_ITEMS = 8;
+
     private ReportPdfExporter() {
     }
 
-    /** Creates a paginated PDF copy of a Front Desk console report. */
+    /**
+     * Creates a paginated PDF copy of a Front Desk console report.
+     *
+     * <p>This overload remains available for existing callers. Front Desk's
+     * two known report titles automatically receive their matching chart.</p>
+     */
     public static Path export(String title, String report) throws IOException {
-        ListInterface<String> pageStreams = createPageStreams(title, report);
+        return export(title, report, inferChartType(title));
+    }
+
+    /** Creates a paginated Front Desk report PDF with its selected chart. */
+    public static Path export(String title, String report, ChartType chartType)
+            throws IOException {
+        ListInterface<String> pageStreams = createPageStreams(title, report, chartType);
         return PdfDocumentWriter.write(title, "front-desk-report", pageStreams);
     }
 
@@ -26,10 +45,12 @@ public final class ReportPdfExporter {
         return PdfDocumentWriter.open(pdfPath);
     }
 
-    private static ListInterface<String> createPageStreams(String title, String report) {
+    private static ListInterface<String> createPageStreams(String title, String report,
+            ChartType chartType) {
         ListInterface<String> streams = new ArrayList<>();
         int pageNumber = 1;
-        PageCanvas page = createPage(title, pageNumber);
+        ListInterface<ChartItem> chartItems = extractChartItems(report, chartType);
+        PageCanvas page = createPage(title, pageNumber, chartType, chartItems);
         int tablePhase = -1;
         int tableRowIndex = 0;
         ListInterface<String> tableHeader = null;
@@ -59,7 +80,7 @@ public final class ReportPdfExporter {
                 boolean header = tablePhase == 0;
                 if (page.y - 19 < 42) {
                     streams.add(page.stream.toString());
-                    page = createPage(title, ++pageNumber);
+                    page = createPage(title, ++pageNumber, chartType, chartItems);
                     if (!header && tablePhase == 2 && tableHeader != null) {
                         drawTableRow(page.stream, tableHeader, page.y, true, 0);
                         page.y -= 19;
@@ -82,7 +103,7 @@ public final class ReportPdfExporter {
             }
             if (page.y - 21 < 42) {
                 streams.add(page.stream.toString());
-                page = createPage(title, ++pageNumber);
+                page = createPage(title, ++pageNumber, chartType, chartItems);
             }
             drawSummaryRow(page.stream, line, page.y);
             page.y -= 21;
@@ -92,7 +113,8 @@ public final class ReportPdfExporter {
         return streams;
     }
 
-    private static PageCanvas createPage(String title, int pageNumber) {
+    private static PageCanvas createPage(String title, int pageNumber,
+            ChartType chartType, ListInterface<ChartItem> chartItems) {
         StringBuilder stream = new StringBuilder();
         stream.append("0.96 0.97 0.99 rg 0 0 ")
                 .append(PdfDocumentWriter.PAGE_WIDTH).append(' ')
@@ -105,6 +127,11 @@ public final class ReportPdfExporter {
         stream.append("0.78 0.82 0.88 RG 0.6 w 38 31 m 804 31 l S\n");
         appendText(stream, "F1", 7, 42, 18, 0.38, 0.43, 0.50,
                 "Front Desk Service");
+
+        if (pageNumber == 1 && chartType != null) {
+            drawChart(stream, chartTitle(chartType), chartItems);
+            return new PageCanvas(stream, 292);
+        }
         return new PageCanvas(stream, 507);
     }
 
@@ -171,6 +198,152 @@ public final class ReportPdfExporter {
                         .append(y - 5).append(" m ").append(cellX).append(' ')
                         .append(y + 13).append(" l S\n");
             }
+        }
+    }
+
+    /** Draws a first-page horizontal bar chart from the report's table rows. */
+    private static void drawChart(StringBuilder stream, String title,
+            ListInterface<ChartItem> items) {
+        stream.append("1 1 1 rg 38 316 766 194 re f\n")
+                .append("0.80 0.85 0.91 RG 0.6 w 38 316 766 194 re S\n");
+        appendText(stream, "F3", 12, 52, 492, 0.07, 0.13, 0.24, title);
+        appendText(stream, "F1", 8, 52, 477, 0.38, 0.43, 0.50,
+                "Bars show the total bill amount for each report category.");
+
+        if (items.isEmpty()) {
+            appendText(stream, "F1", 10, 52, 447, 0.45, 0.49, 0.55,
+                    "No chart data is available for this report.");
+            return;
+        }
+
+        int displayedItems = Math.min(items.getNumberOfEntries(), MAXIMUM_CHART_ITEMS);
+        double maximum = 1.0;
+        for (int position = 1; position <= displayedItems; position++) {
+            maximum = Math.max(maximum, items.getEntry(position).value);
+        }
+
+        if (items.getNumberOfEntries() > displayedItems) {
+            appendText(stream, "F1", 7.5, 610, 477, 0.38, 0.43, 0.50,
+                    "Showing top " + displayedItems + " of "
+                            + items.getNumberOfEntries() + " categories");
+        }
+
+        double y = 451;
+        for (int position = 1; position <= displayedItems; position++) {
+            ChartItem item = items.getEntry(position);
+            double barWidth = 455.0 * item.value / maximum;
+            appendText(stream, "F1", 8, 52, y + 2, 0.20, 0.24, 0.30,
+                    abbreviate(item.label, 19));
+            stream.append("0.20 0.55 0.86 rg 205 ").append(y).append(' ')
+                    .append(Math.max(2.0, barWidth)).append(" 12 re f\n");
+            appendText(stream, "F1", 8, 675, y + 2, 0.20, 0.24, 0.30,
+                    formatAmount(item.value));
+            y -= 17;
+        }
+    }
+
+    /** Extracts and groups chart values from the existing five-column report table. */
+    private static ListInterface<ChartItem> extractChartItems(String report,
+            ChartType chartType) {
+        ListInterface<ChartItem> items = new ArrayList<>();
+        if (report == null || chartType == null) {
+            return items;
+        }
+
+        for (String rawLine : report.split("\\R")) {
+            ListInterface<String> columns = parseTableColumns(rawLine.trim());
+            if (columns.getNumberOfEntries() != 5) {
+                continue;
+            }
+
+            Double amount = parseAmount(columns.getEntry(5));
+            if (amount == null) {
+                continue;
+            }
+
+            String label = chartType == ChartType.OUTSTANDING_BALANCE
+                    ? columns.getEntry(1) : columns.getEntry(4);
+            addChartAmount(items, label, amount);
+        }
+
+        sortChartItemsByAmountDescending(items);
+        return items;
+    }
+
+    private static void addChartAmount(ListInterface<ChartItem> items, String label,
+            double amount) {
+        String normalizedLabel = label == null || label.trim().isEmpty()
+                ? "Unspecified" : label.trim();
+        for (ChartItem item : items) {
+            if (item.label.equalsIgnoreCase(normalizedLabel)) {
+                item.value += amount;
+                return;
+            }
+        }
+        items.add(new ChartItem(normalizedLabel, amount));
+    }
+
+    private static void sortChartItemsByAmountDescending(ListInterface<ChartItem> items) {
+        for (int end = items.getNumberOfEntries(); end > 1; end--) {
+            for (int position = 1; position < end; position++) {
+                if (items.getEntry(position).value
+                        < items.getEntry(position + 1).value) {
+                    ChartItem temporary = items.getEntry(position);
+                    items.replace(position, items.getEntry(position + 1));
+                    items.replace(position + 1, temporary);
+                }
+            }
+        }
+    }
+
+    private static Double parseAmount(String value) {
+        if (value == null) {
+            return null;
+        }
+        try {
+            String normalized = value.replace("RM", "").trim();
+            int lastPeriod = normalized.lastIndexOf('.');
+            int lastComma = normalized.lastIndexOf(',');
+            if (lastComma > lastPeriod) {
+                normalized = normalized.replace(".", "").replace(',', '.');
+            } else {
+                normalized = normalized.replace(",", "");
+            }
+            double amount = Double.parseDouble(normalized);
+            return Double.isNaN(amount) || Double.isInfinite(amount) || amount < 0.0
+                    ? null : amount;
+        } catch (NumberFormatException exception) {
+            return null;
+        }
+    }
+
+    private static String formatAmount(double amount) {
+        return String.format("RM %.2f", amount);
+    }
+
+    private static ChartType inferChartType(String title) {
+        if ("Outstanding Balance Report".equalsIgnoreCase(title)) {
+            return ChartType.OUTSTANDING_BALANCE;
+        }
+        if ("Payment Method Room Report".equalsIgnoreCase(title)) {
+            return ChartType.PAYMENT_METHOD;
+        }
+        return null;
+    }
+
+    private static String chartTitle(ChartType chartType) {
+        return chartType == ChartType.OUTSTANDING_BALANCE
+                ? "Outstanding Balance Chart (RM by Room)"
+                : "Payment Method Chart (RM Billed)";
+    }
+
+    private static final class ChartItem {
+        private final String label;
+        private double value;
+
+        private ChartItem(String label, double value) {
+            this.label = label;
+            this.value = value;
         }
     }
 

@@ -2,6 +2,7 @@ package FrontDeskService.boundary;
 
 import FrontDeskService.control.FrontDeskControl;
 import FrontDeskService.reporting.ReportPdfExporter;
+import FrontDeskService.reporting.ReportPdfExporter.ChartType;
 import LoyaltyAndRewardsService.entity.PromotionOffer;
 import FrontDeskService.control.FrontDeskControl.CheckInResult;
 import FrontDeskService.control.FrontDeskControl.CheckOutResult;
@@ -276,7 +277,8 @@ public class FrontDeskUI {
 
         String report = buildOutstandingBalanceReport(reservations);
         System.out.println(report);
-        offerPdfExport("Outstanding Balance Report", report);
+        offerPdfExport("Outstanding Balance Report", report,
+                ChartType.OUTSTANDING_BALANCE);
     }
 
     private void paymentMethodReport() {
@@ -292,7 +294,8 @@ public class FrontDeskUI {
 
         String report = buildPaymentMethodReport(reservations);
         System.out.println(report);
-        offerPdfExport("Payment Method Room Report", report);
+        offerPdfExport("Payment Method Room Report", report,
+                ChartType.PAYMENT_METHOD);
     }
 
     private String buildOutstandingBalanceReport(ListInterface<Reservation> reservations) {
@@ -353,9 +356,9 @@ public class FrontDeskUI {
                 ? "Unassigned" : reservation.getAssignedRoom().getRoomNumber();
     }
 
-    private void offerPdfExport(String title, String report) {
+    private void offerPdfExport(String title, String report, ChartType chartType) {
         String selection = InputHelper.inputString(
-                scanner, "Generate report PDF and open it? (Y/N): ");
+                scanner, "Generate chart PDF and open it? (Y/N): ");
         if (!selection.equalsIgnoreCase("Y") && !selection.equalsIgnoreCase("Yes")) {
             return;
         }
@@ -363,7 +366,7 @@ public class FrontDeskUI {
         Path pdfPath;
         try {
             pdfPath = ConsoleAnimation.runIoWithSpinner(
-                    () -> ReportPdfExporter.export(title, report),
+                    () -> ReportPdfExporter.export(title, report, chartType),
                     "Generating report PDF");
         } catch (IOException exception) {
             MessageUI.displayError("Unable to generate PDF: " + exception.getMessage());
