@@ -9,7 +9,6 @@ import LoyaltyAndRewardsService.entity.PromotionOffer;
 import LoyaltyAndRewardsService.entity.RedemptionRequest;
 import LoyaltyAndRewardsService.entity.Tier;
 import LoyaltyAndRewardsService.utility.TransactionDateComparator;
-import VIPPriorityRoomAllocation.control.ReservationManager;
 import VIPPriorityRoomAllocation.dao.ReservationDAO;
 import VIPPriorityRoomAllocation.entity.Reservation;
 import VIPPriorityRoomAllocation.entity.ReservationStatus;
@@ -373,6 +372,11 @@ public class LoyaltyServiceControl {
             return false;
         }
 
+        if (!isValidPointPaymentReservation(memberId, confirmationNumber,
+                pointsRequested, "UNPAID")) {
+            return false;
+        }
+
         expirePointsAndSave();
 
         if (!createPendingRequest(memberId, confirmationNumber.trim(), pointsRequested)) {
@@ -395,19 +399,29 @@ public class LoyaltyServiceControl {
         }
 
         RedemptionRequest processed = requestQueue.dequeue();
+        boolean reservationIsPending = isValidPointPaymentReservation(
+                processed.getMemberId(), processed.getConfirmationNumber(),
+                processed.getPointsRequested(), "POINTS_PENDING");
 
         if (approve) {
-            if (applyApprovedRedemption(
-                    processed.getMemberId(), processed.getPointsRequested())) {
-                processed.setStatus(STATUS_APPROVED);
-                updateReservationPayment(processed, "Member Points", "PAID");
-            } else {
+            Member member = getMemberById(processed.getMemberId());
+            if (!reservationIsPending) {
+                processed.setStatus(STATUS_REJECTED);
+            } else if (member == null || member.getPoint() < processed.getPointsRequested()) {
                 processed.setStatus(STATUS_REJECTED_INSUFFICIENT_POINTS);
                 resetReservationPayment(processed);
+            } else if (updateReservationPayment(processed, "Member Points", "PAID")
+                    && applyApprovedRedemption(
+                            processed.getMemberId(), processed.getPointsRequested())) {
+                processed.setStatus(STATUS_APPROVED);
+            } else {
+                processed.setStatus(STATUS_REJECTED);
             }
         } else {
             processed.setStatus(STATUS_REJECTED);
-            resetReservationPayment(processed);
+            if (reservationIsPending) {
+                resetReservationPayment(processed);
+            }
         }
 
         saveRequests();
@@ -420,10 +434,19 @@ public class LoyaltyServiceControl {
     }
 
     // update reservation payment status after a redemption decision
-    private void updateReservationPayment(RedemptionRequest request, String paymentMethod,
+    private boolean updateReservationPayment(RedemptionRequest request, String paymentMethod,
             String paymentStatus) {
-        new ReservationManager().updatePayment(request.getConfirmationNumber(),
-                paymentMethod, paymentStatus);
+        ListInterface<Reservation> reservations = reservationDao.retrieveFromFile();
+        for (Reservation reservation : reservations) {
+            if (reservation.getConfirmationNumber().equalsIgnoreCase(
+                    request.getConfirmationNumber())) {
+                reservation.setPaymentMethod(paymentMethod);
+                reservation.setPaymentStatus(paymentStatus);
+                reservationDao.saveToFile(reservations);
+                return true;
+            }
+        }
+        return false;
     }
 
     private void resetReservationPayment(RedemptionRequest request) {
@@ -592,6 +615,34 @@ public class LoyaltyServiceControl {
         requestQueue.enqueue(request);
         requestHistory.add(request);
         return true;
+    }
+
+    /** Confirms that a points request still belongs to a payable reservation. */
+    private boolean isValidPointPaymentReservation(String memberId, String confirmationNumber,
+            int pointsRequested, String paymentStatus) {
+        if (memberId == null || confirmationNumber == null) {
+            return false;
+        }
+
+        for (Reservation reservation : reservationDao.retrieveFromFile()) {
+            if (!reservation.getConfirmationNumber().equalsIgnoreCase(confirmationNumber.trim())) {
+                continue;
+            }
+
+            if (reservation.getGuest() == null || reservation.getAssignedRoom() == null
+                    || !reservation.getGuest().getGuestId().equalsIgnoreCase(memberId.trim())
+                    || reservation.getStatus() != ReservationStatus.CONFIRMED
+                    || !paymentStatus.equalsIgnoreCase(reservation.getPaymentStatus())) {
+                return false;
+            }
+
+            long nights = Math.max(1, reservation.getCheckOutDate().toEpochDay()
+                    - reservation.getCheckInDate().toEpochDay());
+            double amount = nights * reservation.getAssignedRoom().getPricePerNight();
+            return calculatePointsForPaymentAmount(amount) == pointsRequested;
+        }
+
+        return false;
     }
 
     private boolean hasActiveRequestForReservation(String confirmationNumber) {
