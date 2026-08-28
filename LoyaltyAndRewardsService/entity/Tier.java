@@ -49,14 +49,14 @@ public final class Tier {
                 ? TIERS[priorityScore + 1] : null;
     }
 
-    public static Tier fromPoints(int lifetimePointsEarned) {
-        if (lifetimePointsEarned >= PLATINUM.minPoint) {
+    public static Tier fromPoints(int totalExpenses) {
+        if (totalExpenses >= PLATINUM.minPoint) {
             return PLATINUM;
         }
-        if (lifetimePointsEarned >= GOLD.minPoint) {
+        if (totalExpenses >= GOLD.minPoint) {
             return GOLD;
         }
-        if (lifetimePointsEarned >= SILVER.minPoint) {
+        if (totalExpenses >= SILVER.minPoint) {
             return SILVER;
         }
         return CLASSIC;

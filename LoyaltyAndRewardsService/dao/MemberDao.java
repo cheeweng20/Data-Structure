@@ -52,16 +52,16 @@ public class MemberDao {
                     String passport = fields[2].trim();
                     String phoneNumber = fields[3].trim();
                     int point = Integer.parseInt(fields[4].trim());
-                    int lifetimePointsEarned = Integer.parseInt(fields[5].trim());
+                    int totalExpenses = Integer.parseInt(fields[5].trim());
 
                     if (memberId.isEmpty() || name.isEmpty() || passport.isEmpty()
                             || phoneNumber.isEmpty() || point < 0
-                            || lifetimePointsEarned < point) {
+                            || totalExpenses < point) {
                         throw new IllegalArgumentException("invalid required member value");
                     }
 
                     members.add(new Member(memberId, name, passport, phoneNumber, point,
-                            lifetimePointsEarned));
+                            totalExpenses));
                 } catch (RuntimeException exception) {
                     System.out.println("Skipping invalid member record at line "
                             + lineNumber + ": " + exception.getMessage());
@@ -80,7 +80,7 @@ public class MemberDao {
     public void saveToFile(ListInterface<Member> members) {
         createParentDirectory();
         try (PrintWriter writer = new PrintWriter(new FileWriter(fileName))) {
-            writer.println("MemberId,Name,Passport,PhoneNumber,Point,LifetimePointsEarned");
+            writer.println("MemberId,Name,Passport,PhoneNumber,Point,TotalExpenses");
             for (Member member : members) {
                 writer.println(member.toCsvLine());
             }
@@ -92,7 +92,7 @@ public class MemberDao {
     private void createMemberCSVFile() {
         createParentDirectory();
         try (PrintWriter writer = new PrintWriter(fileName)) {
-            writer.println("MemberId,Name,Passport,PhoneNumber,Point,LifetimePointsEarned");
+            writer.println("MemberId,Name,Passport,PhoneNumber,Point,TotalExpenses");
 
             System.out.println("CSV File created success !");
         } catch (IOException e) {

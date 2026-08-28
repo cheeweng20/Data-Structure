@@ -50,8 +50,8 @@ public class LoyaltyLookupDAO {
                 }
 
                 try {
-                    int lifetimePointsEarned = Integer.parseInt(fields[5].trim());
-                    Tier loyaltyTier = Tier.fromPoints(lifetimePointsEarned);
+                    int totalExpenses = Integer.parseInt(fields[5].trim());
+                    Tier loyaltyTier = Tier.fromPoints(totalExpenses);
                     return new LoyaltyProfile(memberIdValue, fields[1].trim(), phoneNumber,
                             loyaltyTier);
                 } catch (NumberFormatException exception) {

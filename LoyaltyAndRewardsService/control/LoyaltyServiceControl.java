@@ -88,7 +88,7 @@ public class LoyaltyServiceControl {
 
     public String getTierName(Member member) {
         return member == null ? "Unknown"
-                : Tier.fromPoints(member.getLifetimePointsEarned()).getTierLevel();
+                : Tier.fromPoints(member.getTotalExpenses()).getTierLevel();
     }
 
     // Member operations
@@ -181,12 +181,12 @@ public class LoyaltyServiceControl {
 
         int points = (int) calculatedPoints;
         if (member.getPoint() > Integer.MAX_VALUE - points
-                || member.getLifetimePointsEarned() > Integer.MAX_VALUE - points) {
+                || member.getTotalExpenses() > Integer.MAX_VALUE - points) {
             return -1;
         }
 
         member.setPoint(member.getPoint() + points);
-        member.addLifetimePointsEarned(points);
+        member.addTotalExpenses(points);
         addTransaction(memberId, points, sourceId);
         saveMembersAndTransactions();
         return points;
@@ -218,15 +218,15 @@ public class LoyaltyServiceControl {
         }
 
         StringBuilder promotion = new StringBuilder();
-        int lifetimePoints = member.getLifetimePointsEarned();
-        Tier nextTier = Tier.fromPoints(lifetimePoints).getNextTier();
+        int totalExpenses = member.getTotalExpenses();
+        Tier nextTier = Tier.fromPoints(totalExpenses).getNextTier();
 
         if (nextTier == null) {
             promotion.append("Tier progress: You have reached the highest membership tier.\n");
         } else {
-            promotion.append("Tier progress: Earn ")
-                    .append(nextTier.getMinPoint() - lifetimePoints)
-                    .append(" more qualifying points to reach ")
+            promotion.append("Tier progress: Spend RM")
+                    .append(nextTier.getMinPoint() - totalExpenses)
+                    .append(" more to reach ")
                     .append(nextTier.getTierLevel())
                     .append(".\n");
         }
@@ -244,15 +244,15 @@ public class LoyaltyServiceControl {
         if (member == null) {
             return "";
         }
-        int lifetimePoints = member.getLifetimePointsEarned();
-        Tier nextTier = Tier.fromPoints(lifetimePoints).getNextTier();
+        int totalExpenses = member.getTotalExpenses();
+        Tier nextTier = Tier.fromPoints(totalExpenses).getNextTier();
         if (nextTier == null) {
             return "";
         }
-        int remainingPoints = nextTier.getMinPoint() - lifetimePoints;
+        int remainingPoints = nextTier.getMinPoint() - totalExpenses;
         return remainingPoints > 0 && remainingPoints <= TIER_UPGRADE_ALERT_POINTS
-                ? "Tier upgrade alert: Only " + remainingPoints
-                        + " more qualifying points to reach "
+                ? "Tier upgrade alert: Spend RM" + remainingPoints
+                        + " more to reach "
                         + nextTier.getTierLevel() + "."
                 : "";
     }

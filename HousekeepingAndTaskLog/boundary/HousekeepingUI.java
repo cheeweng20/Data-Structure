@@ -77,10 +77,12 @@ public class HousekeepingUI {
         System.out.println();
         Logo.display();
         System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("HOUSEKEEPING MENU",
+                "section|TASK MANAGEMENT",
                 "1|Add Cleaning Task",
                 "2|Update Room Cleaning Status",
                 "3|Roll Back Last Status Change",
                 "4|Search Task by Room",
+                "section|REPORTING",
                 "5|View Reports",
                 "0|Back to Main Menu")));
     }

@@ -46,23 +46,32 @@ public class ReservationUI {
 
             while (!exit) {
                 InputHelper.clearScreen();
-                displayStaffMenu();
+                displayMenu();
                 String choice = InputHelper.inputString(scanner, "Select an option: ").trim();
 
                 switch (choice) {
                     case "1":
-                        displayPendingPriorityReservations();
+                        makeReservation();
                         break;
                     case "2":
-                        allocateAvailableRooms();
+                        viewMemberReservations();
                         break;
                     case "3":
-                        searchReservation();
+                        payReservationWithPoints();
                         break;
                     case "4":
-                        displayReservations(reservationManager.getReservations());
+                        displayPendingPriorityReservations();
                         break;
                     case "5":
+                        allocateAvailableRooms();
+                        break;
+                    case "6":
+                        searchReservation();
+                        break;
+                    case "7":
+                        displayReservations(reservationManager.getReservations());
+                        break;
+                    case "8":
                         displayReportMenu();
                         break;
                     case "0":
@@ -71,7 +80,7 @@ public class ReservationUI {
                     default:
                         MessageUI.displayError("Invalid option. Please try again.");
                 }
-                if (!exit && !choice.equals("5")) {
+                if (!exit && !choice.equals("8")) {
                     InputHelper.pressEnterToContinue(scanner);
                 }
             }
@@ -80,49 +89,19 @@ public class ReservationUI {
         }
     }
 
-    /**
-     * Opens the customer-facing reservation functions for one member whose ID
-     * was already verified by the member portal.
-     */
-    public void startMember(String memberId) {
-        try {
-            LoyaltyProfile profile = loadMemberProfile(memberId);
-            if (profile == null || !profile.getMemberId().equalsIgnoreCase(memberId.trim())) {
-                MessageUI.displayError("Member record is no longer available. Please sign in again.");
-                return;
-            }
-            InputHelper.clearScreen();
-            submitReservationRequest(profile);
-        } catch (EndOfInputException exception) {
-            // EOF behaves like selecting Back.
-        }
-    }
-
-    /** Displays the signed-in member's reservations from Member Home. */
-    public void viewMemberReservations(String memberId) {
-        try {
-            InputHelper.clearScreen();
-            LoyaltyProfile profile = reservationManager.findLoyaltyProfile(memberId);
-            if (profile == null || !profile.getMemberId().equalsIgnoreCase(memberId.trim())) {
-                MessageUI.displayError("Member record is no longer available. Please sign in again.");
-                return;
-            }
-            displayReservations(ConsoleAnimation.runWithSpinner(
-                    () -> reservationManager.findReservationsByGuestId(profile.getMemberId()),
-                    "Fetching member reservations"));
-        } catch (EndOfInputException exception) {
-            // EOF behaves like returning to Member Home.
-        }
-    }
-
-    private void displayStaffMenu() {
+    private void displayMenu() {
         Logo.display();
-        System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("PRIORITY ROOM ALLOCATION",
-                "1|View Priority Waiting Queue",
-                "2|Allocate Rooms by Priority",
-                "3|Search Reservation",
-                "4|View All Reservations",
-                "5|View Reports",
+        System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("VIP PRIORITY ROOM ALLOCATION",
+                "section|RESERVATION SERVICES",
+                "1|Make Reservation",
+                "2|View Member Reservations",
+                "3|Pay Reservation with Member Points",
+                "section|RESERVATION MANAGEMENT",
+                "4|View Priority Waiting Queue",
+                "5|Allocate Rooms by Priority",
+                "6|Search Reservation",
+                "7|View All Reservations",
+                "8|View Reports",
                 "0|Back")));
     }
 
@@ -132,6 +111,31 @@ public class ReservationUI {
                 "Fetching member information...",
                 "Checking member records...",
                 "Preparing member reservation page...");
+    }
+
+    private void makeReservation() {
+        System.out.println("\n--- Make Reservation ---");
+        String memberId = promptRequiredText("Enter Member ID: ");
+        LoyaltyProfile profile = loadMemberProfile(memberId);
+        if (profile == null) {
+            MessageUI.displayError(
+                    "Member not found. Register through Loyalty & Rewards first.");
+            return;
+        }
+        submitReservationRequest(profile);
+    }
+
+    private void viewMemberReservations() {
+        System.out.println("\n--- View Member Reservations ---");
+        String memberId = promptRequiredText("Enter Member ID: ");
+        LoyaltyProfile profile = loadMemberProfile(memberId);
+        if (profile == null) {
+            MessageUI.displayError("Member not found.");
+            return;
+        }
+        displayReservations(ConsoleAnimation.runWithSpinner(
+                () -> reservationManager.findReservationsByGuestId(profile.getMemberId()),
+                "Fetching member reservations"));
     }
 
     private void payForReservation(LoyaltyProfile profile) {
@@ -191,19 +195,15 @@ public class ReservationUI {
         }
     }
 
-    /** Opens the signed-in member's point-payment flow directly. */
-    public void startMemberPayment(String memberId) {
-        try {
-            LoyaltyProfile profile = loadMemberProfile(memberId);
-            if (profile == null || !profile.getMemberId().equalsIgnoreCase(memberId.trim())) {
-                MessageUI.displayError("Member record is no longer available. Please sign in again.");
-                return;
-            }
-            InputHelper.clearScreen();
-            payForReservation(profile);
-        } catch (EndOfInputException exception) {
-            // EOF behaves like returning to Member Home.
+    private void payReservationWithPoints() {
+        System.out.println("\n--- Pay Reservation with Member Points ---");
+        String memberId = promptRequiredText("Enter Member ID: ");
+        LoyaltyProfile profile = loadMemberProfile(memberId);
+        if (profile == null) {
+            MessageUI.displayError("Member not found.");
+            return;
         }
+        payForReservation(profile);
     }
 
     private ListInterface<Reservation> findPayableReservations(String memberId) {

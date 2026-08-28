@@ -9,16 +9,16 @@ public class Member implements Comparable<Member> {
     private String passport;
     private String phoneNumber;
     private int point;
-    private int lifetimePointsEarned;
+    private int totalExpenses;
 
     public Member(String memberId, String name, String passport, String phoneNumber,
-            int point, int lifetimePointsEarned) {
+            int point, int totalExpenses) {
         this.memberId = memberId;
         this.name = name;
         this.passport = passport;
         this.phoneNumber = phoneNumber;
         this.point = point;
-        this.lifetimePointsEarned = lifetimePointsEarned;
+        this.totalExpenses = totalExpenses;
     }
 
     public String getMemberId() {
@@ -41,8 +41,8 @@ public class Member implements Comparable<Member> {
         return point;
     }
 
-    public int getLifetimePointsEarned() {
-        return lifetimePointsEarned;
+    public int getTotalExpenses() {
+        return totalExpenses;
     }
 
     public void setMemberId(String memberId) {
@@ -65,13 +65,13 @@ public class Member implements Comparable<Member> {
         this.point = point;
     }
 
-    public void setLifetimePointsEarned(int lifetimePointsEarned) {
-        this.lifetimePointsEarned = Math.max(lifetimePointsEarned, 0);
+    public void setTotalExpenses(int totalExpenses) {
+        this.totalExpenses = Math.max(totalExpenses, 0);
     }
 
-    public void addLifetimePointsEarned(int points) {
-        if (points > 0) {
-            lifetimePointsEarned += points;
+    public void addTotalExpenses(int expenseAmount) {
+        if (expenseAmount > 0) {
+            totalExpenses += expenseAmount;
         }
     }
 
@@ -82,7 +82,7 @@ public class Member implements Comparable<Member> {
 
     public String toCsvLine(){
         return memberId + "," + name + "," + passport + "," + phoneNumber + ","
-                + point + "," + lifetimePointsEarned;
+                + point + "," + totalExpenses;
     }
     
 }

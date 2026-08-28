@@ -77,8 +77,10 @@ public class FrontDeskUI {
     private void displayMenu() {
         Logo.display();
         System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("FRONT DESK SERVICE",
+                "section|GUEST STAY OPERATIONS",
                 "1|Check-In Guest",
                 "2|Check-Out Guest",
+                "section|BILLING AND REPORTING",
                 "3|View Billing Details",
                 "4|Outstanding Balance Report",
                 "5|Payment Method Report",
