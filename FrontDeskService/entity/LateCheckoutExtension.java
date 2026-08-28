@@ -14,17 +14,13 @@ public class LateCheckoutExtension {
 
     private final String confirmationNumber;
     private final LocalDateTime extendedCheckOutAt;
-    private final LocalDateTime expectedRoomReadyAt;
     private final String reason;
 
     public LateCheckoutExtension(String confirmationNumber,
-            LocalDateTime extendedCheckOutAt, LocalDateTime expectedRoomReadyAt,
-            String reason) {
+            LocalDateTime extendedCheckOutAt, String reason) {
         this.confirmationNumber = requireText(confirmationNumber, "confirmation number");
         this.extendedCheckOutAt = Objects.requireNonNull(extendedCheckOutAt,
                 "extended check-out time cannot be null");
-        this.expectedRoomReadyAt = Objects.requireNonNull(expectedRoomReadyAt,
-                "expected room-ready time cannot be null");
         this.reason = requireText(reason, "reason");
     }
 
@@ -34,10 +30,6 @@ public class LateCheckoutExtension {
 
     public LocalDateTime getExtendedCheckOutAt() {
         return extendedCheckOutAt;
-    }
-
-    public LocalDateTime getExpectedRoomReadyAt() {
-        return expectedRoomReadyAt;
     }
 
     public String getReason() {

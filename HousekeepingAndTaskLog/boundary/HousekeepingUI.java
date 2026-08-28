@@ -4,6 +4,8 @@ import HousekeepingAndTaskLog.control.HousekeepingControl;
 import HousekeepingAndTaskLog.entity.HousekeepingTask;
 import HousekeepingAndTaskLog.entity.StatusChange;
 import HousekeepingAndTaskLog.entity.TaskStatus;
+import HousekeepingAndTaskLog.reporting.HouseKeepingReportFormatter;
+import HousekeepingAndTaskLog.reporting.ReportPdfExporter;
 import adt.ListInterface;
 import common.ui.Logo;
 import common.ui.ConsoleStyle;
@@ -13,6 +15,8 @@ import common.ui.InputHelper;
 import common.ui.InputHelper.EndOfInputException;
 import common.utility.Validation;
 import java.time.LocalDate;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.Iterator;
@@ -218,17 +222,9 @@ public class HousekeepingUI {
                 "Calculating task status totals...",
                 "Preparing report...");
 
-        System.out.println("\n+----------------------------+----------+");
-        System.out.println("|      TASK STATUS SUMMARY REPORT       |");
-        System.out.println("+----------------------------+----------+");
-        System.out.printf("| %-26s | %8s |%n", "Status", "Total");
-        System.out.println("+----------------------------+----------+");
-
-        for (TaskStatus status : TaskStatus.values()) {
-            System.out.printf("| %-26s | %8d |%n", status, totals[status.ordinal()]);
-        }
-
-        System.out.println("+----------------------------+----------+");
+        String report = HouseKeepingReportFormatter.buildTaskStatusSummary(totals);
+        System.out.println(report);
+        offerPdfExport("Task Status Summary Report", report);
     }
 
     private void filterTasksByCreatedDateRange() {
@@ -245,11 +241,32 @@ public class HousekeepingUI {
         } while (endDate.isBefore(startDate));
 
         final LocalDate selectedEndDate = endDate;
-        displayTasks(ConsoleProgress.run(
+        ListInterface<HousekeepingTask> tasks = ConsoleProgress.run(
                 () -> housekeepingControl.filterTasksByCreatedDateRange(startDate, selectedEndDate),
                 "Fetching housekeeping information...",
                 "Filtering tasks by date range...",
-                "Preparing results..."));
+                "Preparing results...");
+        String report = HouseKeepingReportFormatter.buildTaskListReport(tasks);
+        System.out.println(report);
+        offerPdfExport("Tasks Created " + startDate + " to " + endDate, report);
+    }
+
+    private void offerPdfExport(String title, String report) {
+        String selection = InputHelper.inputString(scanner,
+                "Generate chart PDF and open it? (Y/N): ").trim();
+        if (!selection.equalsIgnoreCase("Y") && !selection.equalsIgnoreCase("Yes")) {
+            return;
+        }
+
+        try {
+            Path pdfPath = ReportPdfExporter.export(title, report);
+            System.out.println("PDF generated: " + pdfPath);
+            if (!ReportPdfExporter.open(pdfPath)) {
+                System.out.println("Open the PDF manually from the path shown above.");
+            }
+        } catch (IOException exception) {
+            System.out.println("Unable to generate or open PDF: " + exception.getMessage());
+        }
     }
 
     private String promptRoomNumber() {

@@ -4,6 +4,7 @@ import HousekeepingAndTaskLog.dao.HousekeepingTaskDAO;
 import HousekeepingAndTaskLog.entity.HousekeepingTask;
 import HousekeepingAndTaskLog.entity.StatusChange;
 import HousekeepingAndTaskLog.entity.TaskStatus;
+import FrontDeskService.dao.LateCheckoutExtensionDAO;
 import VIPPriorityRoomAllocation.dao.ReservationDAO;
 import VIPPriorityRoomAllocation.dao.RoomDAO;
 import VIPPriorityRoomAllocation.entity.Reservation;
@@ -28,6 +29,7 @@ public class HousekeepingControl {
     private final HousekeepingTaskDAO housekeepingTaskDAO;
     private final RoomDAO roomDAO;
     private final ReservationDAO reservationDAO;
+    private final LateCheckoutExtensionDAO lateCheckoutExtensionDAO;
     private final ListInterface<HousekeepingTask> tasks;
     private final ListInterface<Room> rooms;
     private final ListInterface<Reservation> reservations;
@@ -60,6 +62,7 @@ public class HousekeepingControl {
         this.housekeepingTaskDAO = housekeepingTaskDAO;
         this.roomDAO = roomDAO;
         this.reservationDAO = reservationDAO;
+        lateCheckoutExtensionDAO = new LateCheckoutExtensionDAO();
         tasks = housekeepingTaskDAO.retrieveFromFile();
         rooms = roomDAO.retrieveFromFile();
         reservations = reservationDAO.retrieveFromFile();
@@ -162,6 +165,29 @@ public class HousekeepingControl {
         return result;
     }
 
+    /**
+     * Rollback the automatic task created for a reservation when Front Desk
+     * records a late checkout before the guest has actually checked out.
+     */
+    public boolean removeAutoTaskForReservation(String roomNumber, String confirmationNumber) {
+        if (roomNumber == null || confirmationNumber == null) {
+            return false;
+        }
+
+        for (int position = 1; position <= tasks.getNumberOfEntries(); position++) {
+            HousekeepingTask task = tasks.getEntry(position);
+
+            if (task.getRoomNumber().equalsIgnoreCase(roomNumber)
+                    && isTaskForReservation(task, confirmationNumber)) {
+                tasks.remove(position);
+                saveData();
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public boolean roomExists(String roomNumber) {
         return findRoomByNumber(roomNumber) != null;
     }
@@ -258,9 +284,11 @@ public class HousekeepingControl {
     }
 
     private boolean isCleaningRequired(Reservation reservation) {
-        return reservation.getCheckOutDate().equals(LocalDate.now())
-                && reservation.getAssignedRoom() != null;
-                //&& reservation.getAssignedRoom().getStatus() == RoomStatus.NEEDS_CLEANING;
+        return reservation != null
+                && reservation.getCheckOutDate().equals(LocalDate.now())
+                && reservation.getAssignedRoom() != null
+                && lateCheckoutExtensionDAO.findByConfirmationNumber(
+                        reservation.getConfirmationNumber()) == null;
     }
 
     private boolean hasTaskForReservation(String confirmationNumber) {

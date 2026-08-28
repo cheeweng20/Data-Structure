@@ -3,7 +3,6 @@ package FrontDeskService.control;
 import FrontDeskService.dao.LateCheckoutExtensionDAO;
 import FrontDeskService.entity.LateCheckoutExtension;
 import HousekeepingAndTaskLog.control.HousekeepingControl;
-import HousekeepingAndTaskLog.entity.HousekeepingTask;
 import LoyaltyAndRewardsService.control.LoyaltyServiceControl;
 import VIPPriorityRoomAllocation.dao.ReservationDAO;
 import VIPPriorityRoomAllocation.dao.RoomDAO;
@@ -254,14 +253,9 @@ public class FrontDeskControl {
         return lastAppliedPromotionMessage;
     }
 
-    /**
-     * Records a temporary late check-out from the Front Desk check-out flow
-     * and places a blocked notification task in Housekeeping. The temporary
-     * record is owned by Front Desk; it does not change Reservation data.
-     */
+    /** Records a temporary late check-out and rollback any early housekeeping task. */
     public LateCheckoutResult extendCheckOut(String confirmationNumber,
-            LocalDateTime extendedCheckOutAt, LocalDateTime expectedRoomReadyAt,
-            String reason) {
+            LocalDateTime extendedCheckOutAt, String reason) {
         Reservation reservation = findByConfirmationNumber(confirmationNumber);
         if (reservation == null) {
             return new LateCheckoutResult(LateCheckoutStatus.RESERVATION_NOT_FOUND, null);
@@ -276,9 +270,6 @@ public class FrontDeskControl {
             return new LateCheckoutResult(LateCheckoutStatus.INVALID_EXTENDED_CHECK_OUT_TIME,
                     null);
         }
-        if (expectedRoomReadyAt == null || expectedRoomReadyAt.isBefore(extendedCheckOutAt)) {
-            return new LateCheckoutResult(LateCheckoutStatus.INVALID_ROOM_READY_TIME, null);
-        }
         if (reason == null || reason.trim().isEmpty()) {
             return new LateCheckoutResult(LateCheckoutStatus.REASON_REQUIRED, null);
         }
@@ -288,9 +279,10 @@ public class FrontDeskControl {
             return new LateCheckoutResult(LateCheckoutStatus.ROOM_NOT_OCCUPIED, null);
         }
 
+        housekeepingControl.removeAutoTaskForReservation(savedRoom.getRoomNumber(),
+                reservation.getConfirmationNumber());
         lateCheckoutExtensionDAO.saveOrUpdate(new LateCheckoutExtension(
-                reservation.getConfirmationNumber(), extendedCheckOutAt,
-                expectedRoomReadyAt, reason.trim()));
+                reservation.getConfirmationNumber(), extendedCheckOutAt, reason.trim()));
         return new LateCheckoutResult(LateCheckoutStatus.SUCCESS, null);
     }
 

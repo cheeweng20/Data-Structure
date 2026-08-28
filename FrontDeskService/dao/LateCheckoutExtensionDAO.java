@@ -19,8 +19,7 @@ import java.util.List;
 public class LateCheckoutExtensionDAO {
 
     private static final int INITIAL_CAPACITY = 10;
-    private static final String HEADER = "ConfirmationNumber,ExtendedCheckOutAt,"
-            + "ExpectedRoomReadyAt,Reason";
+    private static final String HEADER = "ConfirmationNumber,ExtendedCheckOutAt,Reason";
     private static final String DEFAULT_FILE_NAME
             = "FrontDeskService/src/late_checkout_extensions.csv";
     private final String fileName;
@@ -60,15 +59,14 @@ public class LateCheckoutExtensionDAO {
                     if (lineNumber == 1 && isHeader(fields)) {
                         continue;
                     }
-                    if (fields.size() < 4) {
+                    if (fields.size() < 3) {
                         continue;
                     }
 
-                    String reason = joinFields(fields, 3);
+                    String reason = joinFields(fields, fields.size() >= 4 ? 3 : 2);
                     extensions.add(new LateCheckoutExtension(
                             fields.get(0),
                             LocalDateTime.parse(fields.get(1).trim()),
-                            LocalDateTime.parse(fields.get(2).trim()),
                             reason));
                 } catch (RuntimeException exception) {
                     // Keep valid historical records available if one row is bad.
@@ -169,12 +167,11 @@ public class LateCheckoutExtensionDAO {
     private String toCsvLine(LateCheckoutExtension extension) {
         return escapeCsv(extension.getConfirmationNumber()) + ","
                 + escapeCsv(extension.getExtendedCheckOutAt().toString()) + ","
-                + escapeCsv(extension.getExpectedRoomReadyAt().toString()) + ","
                 + escapeCsv(extension.getReason());
     }
 
     private boolean isHeader(List<String> fields) {
-        return fields.size() >= 4
+        return fields.size() >= 3
                 && "ConfirmationNumber".equalsIgnoreCase(fields.get(0).trim())
                 && "ExtendedCheckOutAt".equalsIgnoreCase(fields.get(1).trim());
     }

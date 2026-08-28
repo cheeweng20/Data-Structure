@@ -208,29 +208,24 @@ public class FrontDeskUI {
 
     /**
      * This action lives inside Front Desk's Check-Out screen. It keeps the
-     * guest checked in and tells Housekeeping to hold cleaning for the room.
+     * guest checked in and removes any task created for today's checkout.
      */
     private void extendGuestCheckOut(Reservation reservation) {
         System.out.println("\n--- Extend Check-Out Time ---");
         LocalDateTime extendedCheckOutAt = promptFutureDateTime(
                 "Extended check-out time (yyyy-MM-dd HH:mm): ");
-        LocalDateTime expectedRoomReadyAt = promptRoomReadyTime(extendedCheckOutAt);
         String reason = promptRequiredText("Reason for extension: ");
 
         System.out.println("New temporary check-out time: " + extendedCheckOutAt);
-        System.out.println("Expected room-ready time    : " + expectedRoomReadyAt);
-        if (!confirmYes("Notify Housekeeping and save this extension? (Y/N): ")) {
+        if (!confirmYes("Save this extension? (Y/N): ")) {
             System.out.println("Extension cancelled.");
             return;
         }
 
         LateCheckoutResult result = control.extendCheckOut(
-                reservation.getConfirmationNumber(), extendedCheckOutAt,
-                expectedRoomReadyAt, reason);
+                reservation.getConfirmationNumber(), extendedCheckOutAt, reason);
         if (result.isSuccessful()) {
-            System.out.println("Check-out time extended. Housekeeping task "
-                    + result.getHousekeepingTaskId()
-                    + " is blocked until the guest checks out.");
+            System.out.println("Check-out time extended.");
             displayReservationDetails(
                     control.findByConfirmationNumber(reservation.getConfirmationNumber()));
         } else {
@@ -427,7 +422,6 @@ public class FrontDeskUI {
                 reservation.getConfirmationNumber());
         if (extension != null) {
             System.out.println("Extended Check-Out: " + extension.getExtendedCheckOutAt());
-            System.out.println("Expected Ready At : " + extension.getExpectedRoomReadyAt());
         }
         System.out.println("Number of Nights : " + nights);
         if (room != null) {
@@ -488,12 +482,8 @@ public class FrontDeskUI {
                 return "the assigned room is not occupied.";
             case INVALID_EXTENDED_CHECK_OUT_TIME:
                 return "the extended check-out time must be in the future.";
-            case INVALID_ROOM_READY_TIME:
-                return "the room-ready time cannot be before the extended check-out time.";
             case REASON_REQUIRED:
                 return "a reason is required.";
-            case HOUSEKEEPING_NOTIFICATION_FAILED:
-                return "Housekeeping could not be notified.";
             default:
                 return "unable to save the extension.";
         }
@@ -506,17 +496,6 @@ public class FrontDeskUI {
                 return value;
             }
             System.out.println("Enter a future date and time.");
-        }
-    }
-
-    private LocalDateTime promptRoomReadyTime(LocalDateTime extendedCheckOutAt) {
-        while (true) {
-            LocalDateTime value = promptDateTime(
-                    "Expected room-ready time (yyyy-MM-dd HH:mm): ");
-            if (!value.isBefore(extendedCheckOutAt)) {
-                return value;
-            }
-            System.out.println("Room-ready time cannot be before the extended check-out time.");
         }
     }
 
