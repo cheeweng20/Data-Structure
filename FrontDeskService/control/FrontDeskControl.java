@@ -288,20 +288,10 @@ public class FrontDeskControl {
             return new LateCheckoutResult(LateCheckoutStatus.ROOM_NOT_OCCUPIED, null);
         }
 
-        String guestName = reservation.getGuest() == null
-                ? "Unknown guest" : reservation.getGuest().getFullName();
-        HousekeepingTask task = housekeepingControl.notifyLateCheckout(
-                savedRoom.getRoomNumber(), reservation.getConfirmationNumber(), guestName,
-                extendedCheckOutAt, expectedRoomReadyAt, reason.trim());
-        if (task == null) {
-            return new LateCheckoutResult(
-                    LateCheckoutStatus.HOUSEKEEPING_NOTIFICATION_FAILED, null);
-        }
-
         lateCheckoutExtensionDAO.saveOrUpdate(new LateCheckoutExtension(
                 reservation.getConfirmationNumber(), extendedCheckOutAt,
                 expectedRoomReadyAt, reason.trim()));
-        return new LateCheckoutResult(LateCheckoutStatus.SUCCESS, task.getTaskId());
+        return new LateCheckoutResult(LateCheckoutStatus.SUCCESS, null);
     }
 
     private Room findRoomByNumber(String roomNumber) {
