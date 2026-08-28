@@ -4,13 +4,9 @@ import HousekeepingAndTaskLog.control.HousekeepingControl;
 import HousekeepingAndTaskLog.entity.HousekeepingTask;
 import HousekeepingAndTaskLog.entity.StatusChange;
 import HousekeepingAndTaskLog.entity.TaskStatus;
-import HousekeepingAndTaskLog.utility.HousekeepingReportPdfExporter;
 import HousekeepingAndTaskLog.utility.HousekeepingValidator;
-import adt.ArrayList;
 import adt.ListInterface;
 import common.src.Logo;
-import java.io.IOException;
-import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -180,25 +176,17 @@ public class HousekeepingUI {
     }
 
     private void displayStatusSummaryReport() {
-        String report = buildStatusSummaryReport();
-        System.out.println("\n" + report);
-        offerPdfExport("Task Status Summary Report", report, housekeepingControl.getTasks());
-    }
-
-    private String buildStatusSummaryReport() {
-        StringBuilder report = new StringBuilder();
-        report.append("+----------------------------+----------+\n")
-                .append("|       TASK STATUS SUMMARY REPORT      |\n")
-                .append("+----------------------------+----------+\n")
-                .append(String.format("| %-26s | %8s |%n", "Status", "Total"))
-                .append("+----------------------------+----------+\n");
+        System.out.println("\n+----------------------------+----------+");
+        System.out.println("|      TASK STATUS SUMMARY REPORT       |");
+        System.out.println("+----------------------------+----------+");
+        System.out.printf("| %-26s | %8s |%n", "Status", "Total");
+        System.out.println("+----------------------------+----------+");
 
         for (TaskStatus status : TaskStatus.values()) {
-            report.append(String.format("| %-26s | %8d |%n", status,
-                    housekeepingControl.countByStatus(status)));
+            System.out.printf("| %-26s | %8d |%n", status, housekeepingControl.countByStatus(status));
         }
 
-        return report.append("+----------------------------+----------+").toString();
+        System.out.println("+----------------------------+----------+");
     }
 
     private void filterTasksByCreatedDateRange() {
@@ -214,11 +202,7 @@ public class HousekeepingUI {
             }
         } while (endDate.isBefore(startDate));
 
-        ListInterface<HousekeepingTask> tasks = housekeepingControl
-                .filterTasksByCreatedDateRange(startDate, endDate);
-        String report = buildTaskTableReport(tasks);
-        System.out.println(report);
-        offerPdfExport("Tasks Created " + startDate + " to " + endDate, report, tasks);
+        displayTasks(housekeepingControl.filterTasksByCreatedDateRange(startDate, endDate));
     }
 
     private String promptRoomNumber() {
@@ -303,58 +287,19 @@ public class HousekeepingUI {
     }
 
     private void displayTasks(ListInterface<HousekeepingTask> tasks) {
-        System.out.println(buildTaskTableReport(tasks));
-    }
-
-    private String buildTaskTableReport(ListInterface<HousekeepingTask> tasks) {
         if (tasks.isEmpty()) {
-            return "No housekeeping task record found.";
-        }
-
-        StringBuilder report = new StringBuilder();
-        appendTaskTableHeader(report);
-        Iterator<HousekeepingTask> iterator = tasks.iterator();
-
-        while (iterator.hasNext()) {
-            appendTaskLine(report, iterator.next());
-        }
-
-        return report.append("+----------+--------------+------------------------+---------------------+---------------------+")
-                .toString();
-    }
-
-    private void offerPdfExport(String title, String report, ListInterface<HousekeepingTask> tasks) {
-        System.out.print("Generate chart PDF and open it? (Y/N): ");
-        String selection = scanner.nextLine().trim();
-        if (!selection.equalsIgnoreCase("Y") && !selection.equalsIgnoreCase("Yes")) {
+            System.out.println("No housekeeping task record found.");
             return;
         }
 
-        ListInterface<String> labels = new ArrayList<>();
-        ListInterface<Integer> values = new ArrayList<>();
-        for (TaskStatus status : TaskStatus.values()) {
-            int total = 0;
-            Iterator<HousekeepingTask> iterator = tasks.iterator();
-            while (iterator.hasNext()) {
-                if (iterator.next().getStatus() == status) {
-                    total++;
-                }
-            }
-            if (total > 0) {
-                labels.add(status.toString());
-                values.add(total);
-            }
+        printTableHeader();
+        Iterator<HousekeepingTask> iterator = tasks.iterator();
+
+        while (iterator.hasNext()) {
+            printTaskLine(iterator.next());
         }
 
-        try {
-            Path pdfPath = HousekeepingReportPdfExporter.export(title, report, labels, values);
-            System.out.println("PDF generated: " + pdfPath);
-            if (!HousekeepingReportPdfExporter.open(pdfPath)) {
-                System.out.println("Open the PDF manually from the path shown above.");
-            }
-        } catch (IOException exception) {
-            System.out.println("Unable to generate or open PDF: " + exception.getMessage());
-        }
+        printTableBorder();
     }
 
     private void displayTaskDetails(HousekeepingTask task) {
@@ -372,19 +317,6 @@ public class HousekeepingUI {
         System.out.printf("| %-8s | %-12s | %-22s | %-19s | %-19s |%n",
                 "Task ID", "Room", "Status", "Created At", "Completed At");
         printTableBorder();
-    }
-
-    private void appendTaskTableHeader(StringBuilder report) {
-        report.append("+----------+--------------+------------------------+---------------------+---------------------+\n")
-                .append(String.format("| %-8s | %-12s | %-22s | %-19s | %-19s |%n",
-                        "Task ID", "Room", "Status", "Created At", "Completed At"))
-                .append("+----------+--------------+------------------------+---------------------+---------------------+\n");
-    }
-
-    private void appendTaskLine(StringBuilder report, HousekeepingTask task) {
-        report.append(String.format("| %-8s | %-12s | %-22s | %-19s | %-19s |%n",
-                task.getTaskId(), task.getRoomNumber(), task.getStatus(), task.getCreatedAt(),
-                task.getCompletedAt()));
     }
 
     private void printTaskLine(HousekeepingTask task) {
