@@ -1,7 +1,7 @@
 package VIPPriorityRoomAllocation.dao;
 
 import VIPPriorityRoomAllocation.entity.Guest;
-import VIPPriorityRoomAllocation.entity.LoyaltyTier;
+import LoyaltyAndRewardsService.entity.Tier;
 import VIPPriorityRoomAllocation.entity.Reservation;
 import VIPPriorityRoomAllocation.entity.ReservationStatus;
 import VIPPriorityRoomAllocation.entity.Room;
@@ -109,8 +109,8 @@ public class ReservationDAO {
         return new Room(fields[5], price, roomStatus);
     }
 
-    private LoyaltyTier parseLoyaltyTier(String value) {
-        return LoyaltyTier.fromTierName(value); // convert CSV text into enum
+    private Tier parseLoyaltyTier(String value) {
+        return Tier.fromTierName(value); // convert CSV text into a tier entity
     }
 
     private String toCsvLine(Reservation reservation) {
