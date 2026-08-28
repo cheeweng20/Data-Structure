@@ -24,6 +24,7 @@ import common.ui.MessageUI;
 import common.ui.ConsoleStyle;
 import common.ui.ConsoleProgress;
 import common.ui.ConsoleAnimation;
+import common.utility.Validation;
 
 /**
  * Handles all actor interaction for loyalty and rewards use cases.
@@ -56,6 +57,12 @@ public final class LoyaltyUI {
                 boolean openedSubmenu = false;
                 switch (menuSelected) {
                     case 1:
+                        registerMember();
+                        break;
+                    case 2:
+                        viewMemberLoyaltyInformation();
+                        break;
+                    case 3:
                         if (serviceControl.isMemberEmpty()) {
                             MessageUI.displayInfo("No member records found.");
                             break;
@@ -63,13 +70,13 @@ public final class LoyaltyUI {
                         requestOperator();
                         openedSubmenu = true;
                         break;
-                    case 2:
+                    case 4:
                         displayMemberTable();
                         break;
-                    case 3:
+                    case 5:
                         displayTierTable();
                         break;
-                    case 4:
+                    case 6:
                         reportOperator();
                         openedSubmenu = true;
                         break;
@@ -94,8 +101,110 @@ public final class LoyaltyUI {
     private void displayMenu() {
         Logo.display();
         System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("LOYALTY AND REWARDS",
-                "1|Redemption Requests", "2|Member List", "3|Tier Progression",
-                "4|Report", "0|Back")));
+                "section|MEMBER SERVICES",
+                "1|Register as Member", "2|View Member / Loyalty Information",
+                "section|LOYALTY MANAGEMENT",
+                "3|Redemption Requests", "4|Member List", "5|Tier Progression",
+                "section|REPORTING",
+                "6|Loyalty Reports", "0|Back")));
+    }
+
+    private void registerMember() {
+        System.out.println(ConsoleStyle.title("\n--- Register as Member ---"));
+
+        String name = promptValidMemberName();
+        String passport = promptValidPassport();
+        if (!serviceControl.isPassportAvailable(passport)) {
+            MessageUI.displayError("This passport is already registered.");
+            return;
+        }
+
+        String phoneNumber = promptValidPhoneNumber();
+        if (!serviceControl.isPhoneNumberAvailable(phoneNumber)) {
+            MessageUI.displayError("This phone number is already registered.");
+            return;
+        }
+
+        if (!confirmYes("Confirm registration? (Y/N): ")) {
+            MessageUI.displayInfo("Member registration cancelled.");
+            return;
+        }
+
+        String memberId = ConsoleProgress.run(
+                () -> serviceControl.createMember(name, passport, phoneNumber),
+                "Processing member details...",
+                "Creating member profile...",
+                "Saving member record...");
+        MessageUI.displaySuccess("Member registered successfully.");
+        System.out.println("Member ID: " + memberId);
+    }
+
+    private void viewMemberLoyaltyInformation() {
+        if (serviceControl.isMemberEmpty()) {
+            MessageUI.displayInfo("No member records found.");
+            return;
+        }
+
+        String memberId = InputHelper.inputString(scanner, "Enter Member ID: ").trim();
+        Member member = serviceControl.getMemberById(memberId);
+        if (member == null) {
+            MessageUI.displayError("Member not found.");
+            return;
+        }
+
+        System.out.println(ConsoleStyle.title("\n--- Member / Loyalty Information ---"));
+        System.out.println("Member ID       : " + member.getMemberId());
+        System.out.println("Name            : " + member.getName());
+        System.out.println("Passport        : " + member.getPassport());
+        System.out.println("Phone Number    : " + member.getPhoneNumber());
+        System.out.println("Available Points: " + member.getPoint());
+        System.out.printf("Total Expenses  : RM%,.2f%n", (double) member.getTotalExpenses());
+        System.out.println("Loyalty Tier    : " + serviceControl.getTierName(member));
+        System.out.println("\n" + serviceControl.generatePersonalizedPromotion(memberId));
+    }
+
+    private String promptValidMemberName() {
+        while (true) {
+            String name = InputHelper.inputString(scanner, "Name: ").trim();
+            if (Validation.isValidMemberName(name)) {
+                return name;
+            }
+            MessageUI.displayError(
+                    "Invalid name. Use 3-20 letters, spaces, apostrophes, hyphens, or dots.");
+        }
+    }
+
+    private String promptValidPassport() {
+        while (true) {
+            String passport = InputHelper.inputString(scanner, "Passport: ").trim();
+            if (Validation.isValidPassport(passport)) {
+                return passport;
+            }
+            MessageUI.displayError("Invalid passport. Use 5-20 letters or digits.");
+        }
+    }
+
+    private String promptValidPhoneNumber() {
+        while (true) {
+            String phoneNumber = InputHelper.inputString(scanner, "Phone Number: ").trim();
+            if (Validation.isValidPhoneNumber(phoneNumber)) {
+                return phoneNumber;
+            }
+            MessageUI.displayError("Invalid phone number.");
+        }
+    }
+
+    private boolean confirmYes(String prompt) {
+        while (true) {
+            String choice = InputHelper.inputString(scanner, prompt).trim();
+            if (choice.equalsIgnoreCase("Y")) {
+                return true;
+            }
+            if (choice.equalsIgnoreCase("N")) {
+                return false;
+            }
+            MessageUI.displayError("Please enter Y or N.");
+        }
     }
 
     private void displayStartupNotifications() {
@@ -145,7 +254,7 @@ public final class LoyaltyUI {
         System.out.println(ConsoleStyle.tableBorder(border));
         System.out.print(ConsoleStyle.tableHeader(String.format(
                 "| %-10s | %-20s | %-16s | %-16s | %10s | %10s | %-14s |%n",
-                "Member ID", "Name", "Passport", "Phone Number", "Available", "Lifetime",
+                "Member ID", "Name", "Passport", "Phone Number", "Available", "Expenses",
                 "Tier")));
         System.out.println(ConsoleStyle.tableBorder(border));
         for (int i = 1; i <= memberCount; i++) {
@@ -154,7 +263,7 @@ public final class LoyaltyUI {
                     "| %-10.10s | %-20.20s | %-16.16s | %-16.16s | %10d | %10d | %-14.14s |%n",
                     member.getMemberId(), member.getName(), member.getPassport(),
                     member.getPhoneNumber(), member.getPoint(),
-                    member.getLifetimePointsEarned(),
+                    member.getTotalExpenses(),
                     serviceControl.getTierName(member));
         }
         System.out.println(ConsoleStyle.tableBorder(border));

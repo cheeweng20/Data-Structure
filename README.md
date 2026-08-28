@@ -8,14 +8,16 @@ javac -d bin $sources
 java -cp bin Main
 ```
 
-## Main portals
+## Main application flow
 
-- **Staff Login**: reservation queue/allocation/reports, housekeeping, front
-  desk, and loyalty/reward administration (including the redemption queue).
-- **Member / Guest**: existing members enter their Member ID; guests register
-  as members before opening the personal reservation page.
+The application has one functional main menu:
 
-Set `RESORT_STAFF_USERNAME` and `RESORT_STAFF_PASSWORD` before starting the
-application. For a local demonstration only, set `RESORT_DEMO_MODE=true` to
-explicitly enable the demo login `staff` / `staff123` when custom credentials
-are not configured.
+- **VIP Priority Room Allocation**: make and manage reservations, view the
+  priority queue, allocate rooms, and submit member-points payment requests.
+- **Loyalty & Rewards**: register members, view loyalty information, process
+  redemption requests, and view member/tier/report data.
+- **Front Desk Service**: check guests in or out and view billing reports.
+- **Housekeeping & Task Log**: manage room-cleaning tasks and reports.
+
+Use the same member ID issued by Loyalty & Rewards when making or viewing a
+reservation in the VIP module.

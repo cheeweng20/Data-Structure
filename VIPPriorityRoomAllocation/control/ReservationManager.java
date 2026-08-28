@@ -133,6 +133,20 @@ public class ReservationManager {
         return null;
     }
 
+    /** Updates and persists the payment state for one reservation. */
+    public boolean updatePayment(String confirmationNumber, String paymentMethod,
+            String paymentStatus) {
+        Reservation reservation = findByConfirmationNumber(confirmationNumber);
+        if (reservation == null) {
+            return false;
+        }
+
+        reservation.setPaymentMethod(paymentMethod == null ? "" : paymentMethod.trim());
+        reservation.setPaymentStatus(paymentStatus == null ? "UNPAID" : paymentStatus.trim());
+        saveData();
+        return true;
+    }
+
     public ListInterface<Reservation> findMatchingReservations(String searchValue) {
         ListInterface<Reservation> matches = new ArrayList<>();
 

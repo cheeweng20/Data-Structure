@@ -15,6 +15,7 @@ import LoyaltyAndRewardsService.entity.Member;
 import LoyaltyAndRewardsService.entity.PointTransaction;
 import LoyaltyAndRewardsService.entity.RedemptionRequest;
 import LoyaltyAndRewardsService.entity.Tier;
+import VIPPriorityRoomAllocation.control.ReservationManager;
 import common.utility.Validation;
 
 /**
@@ -88,7 +89,7 @@ public class LoyaltyServiceControl {
 
     public String getTierName(Member member) {
         return member == null ? "Unknown"
-                : Tier.fromPoints(member.getLifetimePointsEarned()).getTierLevel();
+                : Tier.fromPoints(member.getTotalExpenses()).getTierLevel();
     }
 
     // Member operations
@@ -181,12 +182,12 @@ public class LoyaltyServiceControl {
 
         int points = (int) calculatedPoints;
         if (member.getPoint() > Integer.MAX_VALUE - points
-                || member.getLifetimePointsEarned() > Integer.MAX_VALUE - points) {
+                || member.getTotalExpenses() > Integer.MAX_VALUE - points) {
             return -1;
         }
 
         member.setPoint(member.getPoint() + points);
-        member.addLifetimePointsEarned(points);
+        member.addTotalExpenses(points);
         addTransaction(memberId, points, sourceId);
         saveMembersAndTransactions();
         return points;
@@ -218,15 +219,15 @@ public class LoyaltyServiceControl {
         }
 
         StringBuilder promotion = new StringBuilder();
-        int lifetimePoints = member.getLifetimePointsEarned();
-        Tier nextTier = Tier.fromPoints(lifetimePoints).getNextTier();
+        int totalExpenses = member.getTotalExpenses();
+        Tier nextTier = Tier.fromPoints(totalExpenses).getNextTier();
 
         if (nextTier == null) {
             promotion.append("Tier progress: You have reached the highest membership tier.\n");
         } else {
-            promotion.append("Tier progress: Earn ")
-                    .append(nextTier.getMinPoint() - lifetimePoints)
-                    .append(" more qualifying points to reach ")
+            promotion.append("Tier progress: Spend RM")
+                    .append(nextTier.getMinPoint() - totalExpenses)
+                    .append(" more to reach ")
                     .append(nextTier.getTierLevel())
                     .append(".\n");
         }
@@ -238,21 +239,40 @@ public class LoyaltyServiceControl {
         return promotion.toString();
     }
 
+    /** Returns a booking promotion only when the member currently qualifies for one. */
+    public String getEligibleBookingPromotionMessage(String memberId) {
+        MemberPromotionAnalyzer.PromotionOffer offer = promotionAnalyzer.analyze(memberId);
+        return offer.pointMultiplier() > 1.0 ? offer.message() : "";
+    }
+
+    /** Returns the applied-promotion message for a completed stay, if any. */
+    public String getAppliedBookingPromotionMessage(String memberId, String reservationId,
+            LocalDate checkInDate) {
+        MemberPromotionAnalyzer.PromotionOffer offer =
+                promotionAnalyzer.analyze(memberId, reservationId);
+        if (!offer.appliesTo(checkInDate) || offer.pointMultiplier() <= 1.0) {
+            return "";
+        }
+        String stayType = offer.eligiblePattern() == MemberPromotionAnalyzer.StayPattern.WEEKEND
+                ? "weekend" : "weekday";
+        return "Promotion applied: 1.5x points earned for this " + stayType + " stay.";
+    }
+
     /** Shows a tier alert only when the member is close to the next threshold. */
     public String generateTierUpgradeNotification(String memberId) {
         Member member = getMemberById(memberId);
         if (member == null) {
             return "";
         }
-        int lifetimePoints = member.getLifetimePointsEarned();
-        Tier nextTier = Tier.fromPoints(lifetimePoints).getNextTier();
+        int totalExpenses = member.getTotalExpenses();
+        Tier nextTier = Tier.fromPoints(totalExpenses).getNextTier();
         if (nextTier == null) {
             return "";
         }
-        int remainingPoints = nextTier.getMinPoint() - lifetimePoints;
+        int remainingPoints = nextTier.getMinPoint() - totalExpenses;
         return remainingPoints > 0 && remainingPoints <= TIER_UPGRADE_ALERT_POINTS
-                ? "Tier upgrade alert: Only " + remainingPoints
-                        + " more qualifying points to reach "
+                ? "Tier upgrade alert: Spend RM" + remainingPoints
+                        + " more to reach "
                         + nextTier.getTierLevel() + "."
                 : "";
     }
@@ -394,11 +414,14 @@ public class LoyaltyServiceControl {
             if (applyApprovedRedemption(
                     processed.getMemberId(), processed.getPointsRequested())) {
                 processed.setStatus(STATUS_APPROVED);
+                updateReservationPayment(processed, "Member Points", "PAID");
             } else {
                 processed.setStatus(STATUS_REJECTED_INSUFFICIENT_POINTS);
+                resetReservationPayment(processed);
             }
         } else {
             processed.setStatus(STATUS_REJECTED);
+            resetReservationPayment(processed);
         }
 
         saveRequests();
@@ -408,6 +431,17 @@ public class LoyaltyServiceControl {
         }
 
         return processed;
+    }
+
+    /** Keeps the reservation bill in sync with a Loyalty redemption decision. */
+    private void updateReservationPayment(RedemptionRequest request, String paymentMethod,
+            String paymentStatus) {
+        new ReservationManager().updatePayment(request.getConfirmationNumber(),
+                paymentMethod, paymentStatus);
+    }
+
+    private void resetReservationPayment(RedemptionRequest request) {
+        updateReservationPayment(request, "", "UNPAID");
     }
 
     public Iterator<RedemptionRequest> getRequestIterator() {

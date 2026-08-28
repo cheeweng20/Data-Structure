@@ -4,9 +4,7 @@ import FrontDeskService.dao.LateCheckoutExtensionDAO;
 import FrontDeskService.entity.LateCheckoutExtension;
 import HousekeepingAndTaskLog.control.HousekeepingControl;
 import HousekeepingAndTaskLog.entity.HousekeepingTask;
-import LoyaltyAndRewardsService.dao.RequestDao;
 import LoyaltyAndRewardsService.control.LoyaltyServiceControl;
-import LoyaltyAndRewardsService.entity.RedemptionRequest;
 import VIPPriorityRoomAllocation.dao.ReservationDAO;
 import VIPPriorityRoomAllocation.dao.RoomDAO;
 import VIPPriorityRoomAllocation.entity.Reservation;
@@ -25,11 +23,10 @@ import java.util.Iterator;
  * @author Yi Ren
  */
 public class FrontDeskControl {
-    public static final String MEMBER_POINTS_PAYMENT_METHOD = "Member Points";
+    private static final String MEMBER_POINTS_PAYMENT_METHOD = "Member Points";
 
     private final ReservationDAO reservationDAO;
     private final RoomDAO roomDAO;
-    private final RequestDao requestDao;
     private final HousekeepingControl housekeepingControl;
     private final LateCheckoutExtensionDAO lateCheckoutExtensionDAO;
     private final LoyaltyServiceControl loyaltyServiceControl;
@@ -38,32 +35,22 @@ public class FrontDeskControl {
     private final SearchTreeInterface<String, Reservation> confirmationIndex;
     private int lastAwardedPoints;
     private boolean lastLoyaltyAwardFailed;
+    private String lastAppliedPromotionMessage;
 
     public FrontDeskControl() {
-        this(new ReservationDAO(), new RoomDAO(), new RequestDao(),
-                new HousekeepingControl(false), new LateCheckoutExtensionDAO(),
+        this(new ReservationDAO(), new RoomDAO(), new HousekeepingControl(false),
+                new LateCheckoutExtensionDAO(),
                 new LoyaltyServiceControl());
     }
 
     public FrontDeskControl(ReservationDAO reservationDAO, RoomDAO roomDAO) {
-        this(reservationDAO, roomDAO, new RequestDao(), new HousekeepingControl(false),
+        this(reservationDAO, roomDAO, new HousekeepingControl(false),
                 new LateCheckoutExtensionDAO(), new LoyaltyServiceControl());
     }
 
     public FrontDeskControl(ReservationDAO reservationDAO, RoomDAO roomDAO,
-            RequestDao requestDao) {
-        this(reservationDAO, roomDAO, requestDao, new HousekeepingControl(false),
-                new LateCheckoutExtensionDAO(), new LoyaltyServiceControl());
-    }
-
-    /**
-     * Creates the control with an injectable Housekeeping gateway. The
-     * four-argument overload keeps late check-out notifications testable
-     * without changing the normal Front Desk workflow.
-     */
-    public FrontDeskControl(ReservationDAO reservationDAO, RoomDAO roomDAO,
-            RequestDao requestDao, HousekeepingControl housekeepingControl) {
-        this(reservationDAO, roomDAO, requestDao, housekeepingControl,
+            HousekeepingControl housekeepingControl) {
+        this(reservationDAO, roomDAO, housekeepingControl,
                 new LateCheckoutExtensionDAO(), new LoyaltyServiceControl());
     }
 
@@ -72,20 +59,19 @@ public class FrontDeskControl {
      * extension is intentionally separate from the Reservation module.
      */
     public FrontDeskControl(ReservationDAO reservationDAO, RoomDAO roomDAO,
-            RequestDao requestDao, HousekeepingControl housekeepingControl,
+            HousekeepingControl housekeepingControl,
             LateCheckoutExtensionDAO lateCheckoutExtensionDAO) {
-        this(reservationDAO, roomDAO, requestDao, housekeepingControl,
+        this(reservationDAO, roomDAO, housekeepingControl,
                 lateCheckoutExtensionDAO, new LoyaltyServiceControl());
     }
 
     /** Full constructor used when module gateways need to be isolated or tested. */
     public FrontDeskControl(ReservationDAO reservationDAO, RoomDAO roomDAO,
-            RequestDao requestDao, HousekeepingControl housekeepingControl,
+            HousekeepingControl housekeepingControl,
             LateCheckoutExtensionDAO lateCheckoutExtensionDAO,
             LoyaltyServiceControl loyaltyServiceControl) {
         this.reservationDAO = reservationDAO;
         this.roomDAO = roomDAO;
-        this.requestDao = requestDao;
         this.housekeepingControl = housekeepingControl;
         this.lateCheckoutExtensionDAO = lateCheckoutExtensionDAO;
         this.loyaltyServiceControl = loyaltyServiceControl;
@@ -148,38 +134,6 @@ public class FrontDeskControl {
         return Math.max(1, nights) * reservation.getAssignedRoom().getPricePerNight();
     }
 
-    /**
-     * Reads the original point-payment request data for a newly approved,
-     * full-payment redemption. Reading from the DAO each time keeps Front Desk
-     * current when Loyalty approves a request after this screen was opened.
-     */
-    public boolean hasApprovedMemberPointsPayment(Reservation reservation) {
-        if (reservation == null || reservation.getGuest() == null) {
-            return false;
-        }
-
-        int requiredPoints = pointsRequiredForFullPayment(reservation);
-        if (requiredPoints <= 0) {
-            return false;
-        }
-
-        Iterator<RedemptionRequest> iterator = requestDao.retrieveFromFile().iterator();
-        while (iterator.hasNext()) {
-            RedemptionRequest request = iterator.next();
-            boolean sameReservation = request.getConfirmationNumber()
-                    .equalsIgnoreCase(reservation.getConfirmationNumber());
-            boolean sameMember = request.getMemberId()
-                    .equalsIgnoreCase(reservation.getGuest().getGuestId());
-            boolean approved = "Approved".equalsIgnoreCase(request.getStatus());
-            boolean paysInFull = request.getPointsRequested() >= requiredPoints;
-
-            if (sameReservation && sameMember && approved && paysInFull) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     /** Returns unpaid reservations ordered by their bill, highest first. */
     public ListInterface<Reservation> getOutstandingBalanceReport() {
         ListInterface<Reservation> result = new ArrayList<>();
@@ -237,22 +191,14 @@ public class FrontDeskControl {
         }
 
         boolean alreadyPaid = "PAID".equalsIgnoreCase(reservation.getPaymentStatus());
-        boolean approvedMemberPointsPayment = !alreadyPaid
-                && hasApprovedMemberPointsPayment(reservation);
-        if (!alreadyPaid && !approvedMemberPointsPayment
-                && (paymentMethod == null || paymentMethod.trim().isEmpty())) {
+        if (!alreadyPaid && (paymentMethod == null || paymentMethod.trim().isEmpty())) {
             return CheckInResult.PAYMENT_REQUIRED;
-        }
-        if (!alreadyPaid && MEMBER_POINTS_PAYMENT_METHOD.equals(paymentMethod)
-                && !approvedMemberPointsPayment) {
-            return CheckInResult.MEMBER_POINTS_PAYMENT_NOT_APPROVED;
         }
 
         savedRoom.setStatus(RoomStatus.OCCUPIED);
         reservation.setAssignedRoom(savedRoom);
         if (!alreadyPaid) {
-            reservation.setPaymentMethod(approvedMemberPointsPayment
-                    ? MEMBER_POINTS_PAYMENT_METHOD : paymentMethod);
+            reservation.setPaymentMethod(paymentMethod);
             reservation.setPaymentStatus("PAID");
         }
         reservation.setStatus(ReservationStatus.CHECKED_IN);
@@ -264,6 +210,7 @@ public class FrontDeskControl {
     public CheckOutResult checkOutReservation(String confirmationNumber) {
         lastAwardedPoints = 0;
         lastLoyaltyAwardFailed = false;
+        lastAppliedPromotionMessage = "";
         Reservation reservation = findByConfirmationNumber(confirmationNumber);
         if (reservation == null) {
             return CheckOutResult.RESERVATION_NOT_FOUND;
@@ -300,6 +247,11 @@ public class FrontDeskControl {
     /** Whether check-out succeeded but its loyalty award could not be persisted. */
     public boolean didLastLoyaltyAwardFail() {
         return lastLoyaltyAwardFailed;
+    }
+
+    /** Promotion message for the most recent successful loyalty award. */
+    public String getLastAppliedPromotionMessage() {
+        return lastAppliedPromotionMessage;
     }
 
     /**
@@ -364,6 +316,9 @@ public class FrontDeskControl {
     }
 
     private void awardCompletedStayPoints(Reservation reservation) {
+        if (MEMBER_POINTS_PAYMENT_METHOD.equalsIgnoreCase(reservation.getPaymentMethod())) {
+            return;
+        }
         if (reservation.getGuest() == null
                 || loyaltyServiceControl.getMemberById(
                         reservation.getGuest().getGuestId()) == null) {
@@ -371,12 +326,16 @@ public class FrontDeskControl {
         }
 
         try {
+            String promotionMessage = loyaltyServiceControl.getAppliedBookingPromotionMessage(
+                    reservation.getGuest().getGuestId(), reservation.getConfirmationNumber(),
+                    reservation.getCheckInDate());
             int awarded = loyaltyServiceControl.awardPointsForCompletedStay(
                     reservation.getGuest().getGuestId(),
                     reservation.getConfirmationNumber(), calculateBill(reservation),
                     reservation.getCheckInDate());
             if (awarded > 0) {
                 lastAwardedPoints = awarded;
+                lastAppliedPromotionMessage = promotionMessage;
             } else if (awarded < 0) {
                 lastLoyaltyAwardFailed = true;
             }
@@ -419,15 +378,6 @@ public class FrontDeskControl {
         }
     }
 
-    private int pointsRequiredForFullPayment(Reservation reservation) {
-        double bill = calculateBill(reservation);
-        if (!Double.isFinite(bill) || bill <= 0) {
-            return -1;
-        }
-        long points = (long) Math.ceil(bill); // 1 point = RM1; 10 points = RM10.
-        return points <= Integer.MAX_VALUE ? (int) points : -1;
-    }
-
     private String paymentMethodLabel(Reservation reservation) {
         String paymentMethod = reservation.getPaymentMethod();
         return paymentMethod == null || paymentMethod.trim().isEmpty()
@@ -445,8 +395,7 @@ public class FrontDeskControl {
         NOT_CONFIRMED,
         CHECK_IN_DATE_NOT_REACHED,
         ROOM_NOT_RESERVED,
-        PAYMENT_REQUIRED,
-        MEMBER_POINTS_PAYMENT_NOT_APPROVED
+        PAYMENT_REQUIRED
     }
 
     public enum CheckOutResult {

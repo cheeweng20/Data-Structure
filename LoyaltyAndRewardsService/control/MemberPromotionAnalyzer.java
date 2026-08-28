@@ -6,7 +6,11 @@ import VIPPriorityRoomAllocation.entity.ReservationStatus;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 
-/** Selects a promotion by analysing a member's completed booking history. */
+/**
+ * Selects a promotion by analysing a member's completed booking history.
+ *
+ * @author Chee Weng
+ */
 public final class MemberPromotionAnalyzer {
     private static final int MINIMUM_HISTORY_SIZE = 2;
     private static final double HISTORY_POINT_MULTIPLIER = 1.5;
@@ -78,9 +82,9 @@ public final class MemberPromotionAnalyzer {
                 ? StayPattern.WEEKEND : StayPattern.WEEKDAY;
         String patternName = pattern == StayPattern.WEEKEND ? "weekend" : "weekday";
         return new PromotionOffer(
-                "Based on your " + historySize + " previous stays, you prefer "
-                        + patternName + " bookings. Earn 1.5x points on your next "
-                        + patternName + " stay.",
+                "You are eligible to earn 1.5x points when booking a " + patternName
+                        + " stay and paying with Cash, Credit / Debit Card, Touch n Go, "
+                        + "or Online Banking.",
                 HISTORY_POINT_MULTIPLIER, pattern, historySize);
     }
 

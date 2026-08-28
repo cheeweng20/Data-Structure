@@ -7,6 +7,8 @@ package common.ui;
  * or by running Java with {@code -Dcli.color=false}.</p>
  */
 public final class ConsoleStyle {
+    /** Menu width matches the 76-character TARUMT Resort logo. */
+    private static final int MENU_LABEL_WIDTH = 66;
     private static final String ESC = "\u001B[";
     private static final String RESET = ESC + "0m";
     private static final String BOLD = ESC + "1m";
@@ -78,7 +80,7 @@ public final class ConsoleStyle {
 
     /** Builds the shared numbered menu used by every resort screen. */
     public static String menuBox(String title, String... items) {
-        int labelWidth = Math.max(40, title == null ? 0 : title.length());
+        int labelWidth = Math.max(MENU_LABEL_WIDTH, title == null ? 0 : title.length());
         for (String item : items) {
             int separator = item.indexOf('|');
             String label = separator < 0 ? item : item.substring(separator + 1);
@@ -94,15 +96,37 @@ public final class ConsoleStyle {
         menu.append(outerBorder).append('\n');
         menu.append(String.format("| %s |%n", centre(title == null ? "" : title,
                 totalWidth - 4)));
-        menu.append(divider).append('\n');
+        boolean firstItemIsSection = items.length > 0
+                && items[0].toLowerCase().startsWith("section|");
+        menu.append(firstItemIsSection ? outerBorder : divider).append('\n');
+        boolean justPrintedDivider = true;
         for (String item : items) {
             int separator = item.indexOf('|');
             String number = separator < 0 ? "" : item.substring(0, separator);
             String label = separator < 0 ? item : item.substring(separator + 1);
+
+            if ("section".equalsIgnoreCase(number)) {
+                if (!justPrintedDivider) {
+                    menu.append(outerBorder).append('\n');
+                }
+                menu.append(String.format("| %s |%n", centre(label, totalWidth - 4)));
+                menu.append(outerBorder).append('\n');
+                justPrintedDivider = true;
+                continue;
+            }
+
+            // Keep navigation actions visually separate from module operations.
+            if ("0".equals(number) && !justPrintedDivider) {
+                menu.append(divider).append('\n');
+            }
+
             menu.append(String.format("| %-4s| %-" + labelWidth + "s |%n",
                     number, label));
+            justPrintedDivider = false;
         }
-        menu.append(divider);
+        if (!justPrintedDivider) {
+            menu.append(divider);
+        }
         return menu.toString();
     }
 

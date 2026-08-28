@@ -1,6 +1,10 @@
 package LoyaltyAndRewardsService.entity;
 
-/** Stores one loyalty tier and the four available tier definitions. */
+/**
+ * Stores one loyalty tier and the four available tier definitions.
+ *
+ * @author Chee Weng
+ */
 public final class Tier {
     public static final Tier CLASSIC = new Tier("T003", "Classic", 0, 199, 0);
     public static final Tier SILVER = new Tier("T002", "Silver", 200, 499, 1);
@@ -49,14 +53,14 @@ public final class Tier {
                 ? TIERS[priorityScore + 1] : null;
     }
 
-    public static Tier fromPoints(int lifetimePointsEarned) {
-        if (lifetimePointsEarned >= PLATINUM.minPoint) {
+    public static Tier fromPoints(int totalExpenses) {
+        if (totalExpenses >= PLATINUM.minPoint) {
             return PLATINUM;
         }
-        if (lifetimePointsEarned >= GOLD.minPoint) {
+        if (totalExpenses >= GOLD.minPoint) {
             return GOLD;
         }
-        if (lifetimePointsEarned >= SILVER.minPoint) {
+        if (totalExpenses >= SILVER.minPoint) {
             return SILVER;
         }
         return CLASSIC;
