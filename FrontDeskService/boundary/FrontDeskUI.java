@@ -6,11 +6,17 @@ import FrontDeskService.control.FrontDeskControl.CheckOutResult;
 import FrontDeskService.control.FrontDeskControl.LateCheckoutResult;
 import FrontDeskService.control.FrontDeskControl.LateCheckoutStatus;
 import FrontDeskService.entity.LateCheckoutExtension;
-import FrontDeskService.utility.FrontDeskValidator;
 import VIPPriorityRoomAllocation.entity.Reservation;
 import VIPPriorityRoomAllocation.entity.ReservationStatus;
 import VIPPriorityRoomAllocation.entity.Room;
 import adt.ListInterface;
+import common.ui.ConsoleStyle;
+import common.ui.ConsoleProgress;
+import common.ui.ConsoleAnimation;
+import common.ui.InputHelper;
+import common.ui.InputHelper.EndOfInputException;
+import common.ui.Logo;
+import common.utility.Validation;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
@@ -30,43 +36,52 @@ public class FrontDeskUI {
     }
 
     public void start() {
-        boolean exit = false;
-        while (!exit) {
-            displayMenu();
-            switch (scanner.nextLine().trim()) {
-                case "1":
-                    checkInGuest();
-                    break;
-                case "2":
-                    checkOutGuest();
-                    break;
-                case "3":
-                    viewBilling();
-                    break;
-                case "4":
-                    outstandingBalanceReport();
-                    break;
-                case "5":
-                    paymentMethodReport();
-                    break;
-                case "0":
-                    exit = true;
-                    break;
-                default:
-                    System.out.println("Invalid option. Please try again.");
+        try {
+            boolean exit = false;
+            while (!exit) {
+                InputHelper.clearScreen();
+                displayMenu();
+                String choice = InputHelper.inputString(scanner, "Select an option: ").trim();
+                switch (choice) {
+                    case "1":
+                        checkInGuest();
+                        break;
+                    case "2":
+                        checkOutGuest();
+                        break;
+                    case "3":
+                        viewBilling();
+                        break;
+                    case "4":
+                        outstandingBalanceReport();
+                        break;
+                    case "5":
+                        paymentMethodReport();
+                        break;
+                    case "0":
+                        exit = true;
+                        break;
+                    default:
+                        System.out.println("Invalid option. Please try again.");
+                }
+                if (!exit) {
+                    InputHelper.pressEnterToContinue(scanner);
+                }
             }
+        } catch (EndOfInputException exception) {
+            // EOF behaves like selecting Back.
         }
     }
 
     private void displayMenu() {
-        System.out.println("\n--- Front Desk Service ---");
-        System.out.println("1. Guest Check-In");
-        System.out.println("2. Guest Check-Out");
-        System.out.println("3. View Billing Details");
-        System.out.println("4. Outstanding Balance Report");
-        System.out.println("5. Payment Method Report");
-        System.out.println("0. Back");
-        System.out.print("Select an option: ");
+        Logo.display();
+        System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("FRONT DESK SERVICE",
+                "1|Check-In Guest",
+                "2|Guest Check-Out",
+                "3|View Billing Details",
+                "4|Outstanding Balance Report",
+                "5|Payment Method Report",
+                "0|Back")));
     }
 
     private void checkInGuest() {
@@ -95,23 +110,24 @@ public class FrontDeskUI {
 
         String paymentMethod = reservation.getPaymentMethod();
         if (!"PAID".equalsIgnoreCase(reservation.getPaymentStatus())) {
-            if (control.hasApprovedMemberPointsPayment(reservation)) {
-                paymentMethod = FrontDeskControl.MEMBER_POINTS_PAYMENT_METHOD;
-                System.out.println("Approved member-points payment found."
-                        + " No additional payment is required.");
-            } else {
-                paymentMethod = promptPaymentMethod();
-                if (!confirmYes("Confirm payment? (Y/N): ")) {
-                    System.out.println("Payment cancelled. Check-in not completed.");
-                    return;
-                }
+            boolean approvedMemberPointsPayment =
+                    control.hasApprovedMemberPointsPayment(reservation);
+            paymentMethod = promptPaymentMethod(approvedMemberPointsPayment);
+            if (!confirmYes("Confirm payment? (Y/N): ")) {
+                System.out.println("Payment cancelled. Check-in not completed.");
+                return;
             }
         }
 
-        CheckInResult result = control.checkInReservation(
-                reservation.getConfirmationNumber(), paymentMethod);
+        final String selectedPaymentMethod = paymentMethod;
+        CheckInResult result = ConsoleProgress.run(
+                () -> control.checkInReservation(
+                        reservation.getConfirmationNumber(), selectedPaymentMethod),
+                "Verifying reservation details...",
+                "Processing payment and check-in...",
+                "Updating room status...");
         if (result == CheckInResult.SUCCESS) {
-            System.out.println("Check-in successful.");
+            ConsoleAnimation.success("Check-in successful.");
             displayReservationDetails(
                     control.findByConfirmationNumber(reservation.getConfirmationNumber()));
         } else {
@@ -133,10 +149,11 @@ public class FrontDeskUI {
         }
 
         displayReservationDetails(reservation);
-        System.out.println("\n1. Complete Guest Check-Out");
-        System.out.println("2. Extend Check-Out Time (Notify Housekeeping)");
-        System.out.println("0. Cancel");
-        System.out.print("Select an option: ");
+        System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("GUEST CHECK-OUT",
+                "1|Complete Guest Check-Out",
+                "2|Extend Check-Out Time (Notify Housekeeping)",
+                "0|Cancel")));
+        System.out.print(ConsoleStyle.prompt("Select an option: "));
 
         switch (scanner.nextLine().trim()) {
             case "1":
@@ -159,14 +176,17 @@ public class FrontDeskUI {
             return;
         }
 
-        CheckOutResult result = control.checkOutReservation(
-                reservation.getConfirmationNumber());
+        CheckOutResult result = ConsoleProgress.run(
+                () -> control.checkOutReservation(reservation.getConfirmationNumber()),
+                "Verifying guest stay...",
+                "Processing check-out...",
+                "Updating room status...");
         if (result == CheckOutResult.SUCCESS) {
-            System.out.println("Guest checked out successfully.");
+            ConsoleAnimation.success("Guest checked out successfully.");
             displayReservationDetails(
                     control.findByConfirmationNumber(reservation.getConfirmationNumber()));
         } else {
-            System.out.println("Check-out failed: " + getCheckOutFailureMessage(result));
+            ConsoleAnimation.error("Check-out failed: " + getCheckOutFailureMessage(result));
         }
     }
 
@@ -221,11 +241,19 @@ public class FrontDeskUI {
 
     private void outstandingBalanceReport() {
         System.out.println("\nOutstanding balance report (sorted by amount, highest first)");
-        displayReservationList(control.getOutstandingBalanceReport());
+        displayReservationList(ConsoleProgress.run(
+                control::getOutstandingBalanceReport,
+                "Fetching billing information...",
+                "Calculating outstanding balances...",
+                "Preparing report..."));
     }
 
     private void paymentMethodReport() {
-        ListInterface<Reservation> reservations = control.getPaymentMethodReport();
+        ListInterface<Reservation> reservations = ConsoleProgress.run(
+                control::getPaymentMethodReport,
+                "Fetching payment information...",
+                "Grouping paid reservations...",
+                "Preparing report...");
         if (reservations.isEmpty()) {
             System.out.println("\nNo paid room records found.");
             return;
@@ -253,14 +281,16 @@ public class FrontDeskUI {
     }
 
     private Reservation findReservationByConfirmationNumber() {
-        System.out.print("8-digit confirmation number: ");
-        String confirmationNumber = scanner.nextLine().trim();
-        if (!FrontDeskValidator.isConfirmationNumber(confirmationNumber)) {
+        String confirmationNumber = InputHelper.inputString(
+                scanner, "8-digit confirmation number: ").trim();
+        if (!Validation.isValidConfirmationNumber(confirmationNumber)) {
             System.out.println("Confirmation number must contain exactly 8 digits.");
             return null;
         }
 
-        Reservation reservation = control.findByConfirmationNumber(confirmationNumber);
+        Reservation reservation = ConsoleAnimation.runWithSpinner(
+                () -> control.findByConfirmationNumber(confirmationNumber),
+                "Fetching reservation information");
         if (reservation == null) {
             System.out.println("Guest record not found.");
         }
@@ -306,8 +336,11 @@ public class FrontDeskUI {
     }
 
     private ListInterface<Reservation> findReservationsByPrompt() {
-        return control.findMatchingReservations(promptRequiredText(
-                "Enter reservation ID / Member ID / Guest Name: "));
+        String searchValue = promptRequiredText(
+                "Enter reservation ID / Member ID / Guest Name: ");
+        return ConsoleAnimation.runWithSpinner(
+                () -> control.findMatchingReservations(searchValue),
+                "Searching reservation records");
     }
 
     private void displayReservationList(ListInterface<Reservation> reservations) {
@@ -338,16 +371,31 @@ public class FrontDeskUI {
                 ? "Unspecified" : paymentMethod.trim();
     }
 
-    private String promptPaymentMethod() {
+    private String promptPaymentMethod(boolean memberPointsApproved) {
         while (true) {
-            System.out.println("\n--- Payment Method ---");
-            System.out.println("1. Cash");
-            System.out.println("2. Credit / Debit Card");
-            System.out.println("3. Touch n Go");
-            System.out.println("4. Online Banking");
-            System.out.print("Select payment method: ");
+            if (memberPointsApproved) {
+                System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("PAYMENT METHOD",
+                        "1|Member Points (Approved)", "2|Cash",
+                        "3|Credit / Debit Card", "4|Touch n Go", "5|Online Banking")));
+                String choice = InputHelper.inputString(
+                        scanner, "Select payment method: ").trim();
+                if ("1".equals(choice)) {
+                    return FrontDeskControl.MEMBER_POINTS_PAYMENT_METHOD;
+                }
+                if (choice.equals("2") || choice.equals("3")
+                        || choice.equals("4") || choice.equals("5")) {
+                    System.out.println("An approved points-payment request exists. "
+                            + "Please select Member Points.");
+                } else {
+                    System.out.println("Invalid payment method. Please select 1 to 5.");
+                }
+                continue;
+            }
 
-            switch (scanner.nextLine().trim()) {
+            System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("PAYMENT METHOD",
+                    "1|Cash", "2|Credit / Debit Card", "3|Touch n Go",
+                    "4|Online Banking")));
+            switch (InputHelper.inputString(scanner, "Select payment method: ").trim()) {
                 case "1":
                     return "Cash";
                 case "2":
@@ -397,16 +445,16 @@ public class FrontDeskUI {
     private void displayCheckInFailure(CheckInResult result) {
         switch (result) {
             case PAYMENT_REQUIRED:
-                System.out.println("Check-in failed: payment is required.");
+                ConsoleAnimation.error("Check-in failed: payment is required.");
                 break;
             case MEMBER_POINTS_PAYMENT_NOT_APPROVED:
-                System.out.println("Check-in failed: the member-points request is not approved.");
+                ConsoleAnimation.error("Check-in failed: the member-points request is not approved.");
                 break;
             case ROOM_NOT_RESERVED:
-                System.out.println("Check-in failed: the assigned room is not reserved.");
+                ConsoleAnimation.error("Check-in failed: the assigned room is not reserved.");
                 break;
             default:
-                System.out.println("Check-in failed: " + getCheckInFailureMessage(result));
+                ConsoleAnimation.error("Check-in failed: " + getCheckInFailureMessage(result));
         }
     }
 
@@ -492,8 +540,7 @@ public class FrontDeskUI {
 
     private String promptRequiredText(String prompt) {
         while (true) {
-            System.out.print(prompt);
-            String value = scanner.nextLine().trim();
+            String value = InputHelper.inputString(scanner, prompt).trim();
             if (!value.isEmpty()) {
                 return value;
             }
@@ -504,8 +551,8 @@ public class FrontDeskUI {
     private int promptPositiveInteger(String prompt) {
         while (true) {
             try {
-                System.out.print(prompt);
-                int value = Integer.parseInt(scanner.nextLine().trim());
+                int value = Integer.parseInt(
+                        InputHelper.inputString(scanner, prompt).trim());
                 if (value > 0) {
                     return value;
                 }
@@ -518,8 +565,7 @@ public class FrontDeskUI {
 
     private boolean confirmYes(String prompt) {
         while (true) {
-            System.out.print(prompt);
-            String answer = scanner.nextLine().trim();
+            String answer = InputHelper.inputString(scanner, prompt).trim();
             if (answer.equalsIgnoreCase("Y")) {
                 return true;
             }

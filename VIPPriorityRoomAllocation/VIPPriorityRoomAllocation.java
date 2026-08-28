@@ -9,7 +9,6 @@ import VIPPriorityRoomAllocation.boundary.ReservationUI;
 public class VIPPriorityRoomAllocation {
 
     public static void VIPPriorityRoomAllocationMain(Scanner input) {
-        input.nextLine();
         ReservationUI reservationUI = new ReservationUI(input);
         reservationUI.start();
     }
