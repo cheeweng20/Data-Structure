@@ -3,6 +3,10 @@ package HousekeepingAndTaskLog.entity;
 import java.time.LocalDateTime;
 import VIPPriorityRoomAllocation.entity.Room.RoomStatus;
 
+/**
+ * @author Zhe Sheng
+ */
+
 public class StatusChange {
 
     private String taskId;

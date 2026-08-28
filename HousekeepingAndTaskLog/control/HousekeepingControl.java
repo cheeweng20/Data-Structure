@@ -18,6 +18,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Iterator;
 
+/**
+ * @author Zhe Sheng
+ */
+
 public class HousekeepingControl {
 
     private static final String CHECKED_OUT_REMARK_PREFIX = "Checked-out reservation: ";

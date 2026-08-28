@@ -4,6 +4,10 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+/**
+ * @author Zhe Sheng
+ */
+
 public class HousekeepingTask implements Serializable {
 
     private static final long serialVersionUID = 1L;
