@@ -96,7 +96,9 @@ public final class ConsoleStyle {
         menu.append(outerBorder).append('\n');
         menu.append(String.format("| %s |%n", centre(title == null ? "" : title,
                 totalWidth - 4)));
-        menu.append(divider).append('\n');
+        boolean firstItemIsSection = items.length > 0
+                && items[0].toLowerCase().startsWith("section|");
+        menu.append(firstItemIsSection ? outerBorder : divider).append('\n');
         boolean justPrintedDivider = true;
         for (String item : items) {
             int separator = item.indexOf('|');
@@ -105,11 +107,10 @@ public final class ConsoleStyle {
 
             if ("section".equalsIgnoreCase(number)) {
                 if (!justPrintedDivider) {
-                    menu.append(divider).append('\n');
+                    menu.append(outerBorder).append('\n');
                 }
-                menu.append(String.format("| %-4s| %s |%n", "",
-                        centre(label, labelWidth)));
-                menu.append(divider).append('\n');
+                menu.append(String.format("| %s |%n", centre(label, totalWidth - 4)));
+                menu.append(outerBorder).append('\n');
                 justPrintedDivider = true;
                 continue;
             }

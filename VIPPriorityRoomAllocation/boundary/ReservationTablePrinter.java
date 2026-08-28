@@ -21,18 +21,19 @@ final class ReservationTablePrinter {
             return;
         }
 
-        String border = "+-----+------------+--------------------+-----------+----------+------------+------------+-------------+";
+        String border = "+-----+------------+--------------------+-----------+----------+------------+----------------+----------------+";
         System.out.println("\n--- All Reservations ---");
         System.out.println(border);
-        System.out.printf("| %-3s | %-10s | %-18s | %-9s | %-8s | %-10s | %-10s | %-11s |%n",
-                "No.", "Res ID", "Guest Name", "Tier", "Room", "Check-In", "Payment", "Status");
+        System.out.printf("| %-3s | %-10s | %-18s | %-9s | %-8s | %-10s | %-14s | %-14s |%n",
+                "No.", "Res ID", "Guest Name", "Tier", "Room", "Check-In",
+                "Payment Status", "Status");
         System.out.println(border);
 
         int number = 1;
         for (Reservation reservation : reservations) {
             Room room = reservation.getAssignedRoom();
             String roomNumber = room == null ? "-" : room.getRoomNumber();
-            System.out.printf("| %-3d | %-10s | %-18.18s | %-9s | %-8s | %-10s | %-10s | %-11s |%n",
+            System.out.printf("| %-3d | %-10s | %-18.18s | %-9s | %-8s | %-10s | %-14s | %-14s |%n",
                     number++,
                     reservation.getConfirmationNumber(),
                     reservation.getGuest().getFullName(),

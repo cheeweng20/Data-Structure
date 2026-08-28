@@ -1,2 +1,4 @@
 RequestId,MemberId,ConfirmationNumber,PointsRequested,RequestDate,Status
 R001,M001,12559389,200,2026-08-28,Approved
+R002,M001,62899023,200,2026-08-28,Approved
+R003,M001,16552705,200,2026-08-28,Approved

@@ -106,20 +106,21 @@ public class FrontDeskUI {
         }
 
         displayReservationDetails(reservation);
-        if (!confirmYes("Confirm guest check-in? (Y/N): ")) {
-            System.out.println("Check-in cancelled.");
-            return;
-        }
-
         String paymentMethod = reservation.getPaymentMethod();
-        if (!"PAID".equalsIgnoreCase(reservation.getPaymentStatus())) {
-            boolean approvedMemberPointsPayment =
-                    control.hasApprovedMemberPointsPayment(reservation);
-            paymentMethod = promptPaymentMethod(approvedMemberPointsPayment);
+        if ("PAID".equalsIgnoreCase(reservation.getPaymentStatus())) {
+            System.out.println("Payment has already been completed using "
+                    + paymentMethodLabel(reservation) + ".");
+        } else {
+            paymentMethod = promptPaymentMethod();
             if (!confirmYes("Confirm payment? (Y/N): ")) {
                 System.out.println("Payment cancelled. Check-in not completed.");
                 return;
             }
+        }
+
+        if (!confirmYes("Confirm guest check-in? (Y/N): ")) {
+            System.out.println("Check-in cancelled.");
+            return;
         }
 
         final String selectedPaymentMethod = paymentMethod;
@@ -187,8 +188,13 @@ public class FrontDeskUI {
         if (result == CheckOutResult.SUCCESS) {
             ConsoleAnimation.success("Guest checked out successfully.");
             if (control.getLastAwardedPoints() > 0) {
-                MessageUI.displaySuccess(control.getLastAwardedPoints()
-                        + " loyalty point(s) awarded for the completed stay.");
+                String promotionMessage = control.getLastAppliedPromotionMessage();
+                String earnedPoints = String.valueOf(control.getLastAwardedPoints());
+                if (!promotionMessage.isBlank()) {
+                    int originalPoints = (int) Math.floor(control.calculateBill(reservation));
+                    earnedPoints += " (" + originalPoints + " * 1.5)";
+                }
+                System.out.println("Points Earned   : " + earnedPoints);
             } else if (control.didLastLoyaltyAwardFail()) {
                 MessageUI.displayError("Check-out was saved, but loyalty points could not "
                         + "be awarded. Staff should retry or review the loyalty files.");
@@ -319,14 +325,14 @@ public class FrontDeskUI {
         }
 
         System.out.println("\n--- Matching Reservations ---");
-        String border = "+-----+--------------+----------------------+-----------+------------+";
+        String border = "+-----+--------------+----------------------+-----------+----------------+";
         System.out.println(border);
-        System.out.printf("| %-3s | %-12s | %-20s | %-9s | %-10s |%n",
+        System.out.printf("| %-3s | %-12s | %-20s | %-9s | %-14s |%n",
                 "No.", "Reservation", "Guest", "Tier", "Status");
         System.out.println(border);
         for (int position = 1; position <= matches.getNumberOfEntries(); position++) {
             Reservation reservation = matches.getEntry(position);
-            System.out.printf("| %-3d | %-12s | %-20.20s | %-9s | %-10s |%n",
+            System.out.printf("| %-3d | %-12s | %-20.20s | %-9s | %-14s |%n",
                     position,
                     reservation.getConfirmationNumber(),
                     reservation.getGuest().getFullName(),
@@ -381,27 +387,8 @@ public class FrontDeskUI {
                 ? "Unspecified" : paymentMethod.trim();
     }
 
-    private String promptPaymentMethod(boolean memberPointsApproved) {
+    private String promptPaymentMethod() {
         while (true) {
-            if (memberPointsApproved) {
-                System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("PAYMENT METHOD",
-                        "1|Member Points (Approved)", "2|Cash",
-                        "3|Credit / Debit Card", "4|Touch n Go", "5|Online Banking")));
-                String choice = InputHelper.inputString(
-                        scanner, "Select payment method: ").trim();
-                if ("1".equals(choice)) {
-                    return FrontDeskControl.MEMBER_POINTS_PAYMENT_METHOD;
-                }
-                if (choice.equals("2") || choice.equals("3")
-                        || choice.equals("4") || choice.equals("5")) {
-                    System.out.println("An approved points-payment request exists. "
-                            + "Please select Member Points.");
-                } else {
-                    System.out.println("Invalid payment method. Please select 1 to 5.");
-                }
-                continue;
-            }
-
             System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("PAYMENT METHOD",
                     "1|Cash", "2|Credit / Debit Card", "3|Touch n Go",
                     "4|Online Banking")));
@@ -456,9 +443,6 @@ public class FrontDeskUI {
         switch (result) {
             case PAYMENT_REQUIRED:
                 ConsoleAnimation.error("Check-in failed: payment is required.");
-                break;
-            case MEMBER_POINTS_PAYMENT_NOT_APPROVED:
-                ConsoleAnimation.error("Check-in failed: the member-points request is not approved.");
                 break;
             case ROOM_NOT_RESERVED:
                 ConsoleAnimation.error("Check-in failed: the assigned room is not reserved.");

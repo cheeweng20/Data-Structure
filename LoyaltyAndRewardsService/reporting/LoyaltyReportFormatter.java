@@ -4,7 +4,11 @@ import LoyaltyAndRewardsService.entity.PointTransaction;
 import adt.SortedArrayList;
 import java.time.LocalDate;
 
-/** Builds the textual loyalty reports displayed by the UI and exported to PDF. */
+/**
+ * Builds the textual loyalty reports displayed by the UI and exported to PDF.
+ *
+ * @author Chee Weng
+ */
 public final class LoyaltyReportFormatter {
     private LoyaltyReportFormatter() {
     }

@@ -122,7 +122,20 @@ public class ReservationUI {
                     "Member not found. Register through Loyalty & Rewards first.");
             return;
         }
+        displayEligiblePromotion(profile.getMemberId());
         submitReservationRequest(profile);
+    }
+
+    private void displayEligiblePromotion(String memberId) {
+        String promotion = new LoyaltyServiceControl()
+                .getEligibleBookingPromotionMessage(memberId);
+        if (promotion.isBlank()) {
+            return;
+        }
+
+        System.out.println(ConsoleStyle.title("\n--- Promotion Available ---"));
+        MessageUI.displaySuccess("This member qualifies for a booking promotion.");
+        System.out.println(promotion);
     }
 
     private void viewMemberReservations() {
@@ -170,28 +183,35 @@ public class ReservationUI {
 
         System.out.println("1. Member Points");
         String choice = InputHelper.inputString(scanner, "Select payment method: ").trim();
-
-        if ("1".equals(choice)) {
-            if (!confirmYes("Submit this points-payment request? (Y/N): ")) {
-                MessageUI.displayInfo("Points payment cancelled.");
-                return;
-            }
-
-            boolean submitted = ConsoleProgress.run(
-                    () -> loyalty.submitPointPaymentRequest(
-                            profile.getMemberId(), reservation.getConfirmationNumber(), amount),
-                    "Processing points payment...",
-                    "Updating payment request...",
-                    "Saving payment status...");
-            if (submitted) {
-                MessageUI.displaySuccess(
-                        "Points-payment request submitted for staff approval.");
-            } else {
-                MessageUI.displayError("Unable to submit points payment. Check available "
-                        + "points or an existing request.");
-            }
-        } else {
+        if (!"1".equals(choice)) {
             MessageUI.displayError("Invalid payment method.");
+            return;
+        }
+        if (!confirmYes("Submit this points-payment request? (Y/N): ")) {
+            MessageUI.displayInfo("Points payment cancelled.");
+            return;
+        }
+
+        boolean submitted = ConsoleProgress.run(
+                () -> loyalty.submitPointPaymentRequest(
+                        profile.getMemberId(), reservation.getConfirmationNumber(), amount),
+                "Processing points payment...",
+                "Updating payment request...",
+                "Saving payment status...");
+        if (!submitted) {
+            MessageUI.displayError("Unable to submit points payment. Check available "
+                    + "points or an existing request.");
+            return;
+        }
+
+        if (reservationManager.updatePayment(
+                reservation.getConfirmationNumber(), "Member Points", "POINTS_PENDING")) {
+            MessageUI.displaySuccess("Points-payment request submitted for staff approval.");
+            System.out.println("Payment Status : POINTS_PENDING");
+            System.out.println("Payment Method : Member Points");
+        } else {
+            MessageUI.displayError("Request was submitted, but the reservation payment "
+                    + "status could not be updated.");
         }
     }
 
@@ -210,8 +230,7 @@ public class ReservationUI {
         ListInterface<Reservation> payableReservations = new ArrayList<>();
         ListInterface<Reservation> memberReservations =
                 reservationManager.findReservationsByGuestId(memberId);
-        ListInterface<RedemptionRequest> paymentRequests =
-                new RequestDao().retrieveFromFile();
+        ListInterface<RedemptionRequest> paymentRequests = new RequestDao().retrieveFromFile();
 
         for (Reservation reservation : memberReservations) {
             if (reservation.getStatus() == ReservationStatus.CONFIRMED
@@ -233,7 +252,6 @@ public class ReservationUI {
                     .equalsIgnoreCase(reservation.getGuest().getGuestId());
             boolean requestStillActive = request.getStatus() != null
                     && !request.getStatus().toLowerCase().startsWith("rejected");
-
             if (sameReservation && sameMember && requestStillActive) {
                 return true;
             }
@@ -247,16 +265,12 @@ public class ReservationUI {
         System.out.printf("| %-3s | %-10s | %-8s | %-10s | %-10s | %-12s |%n",
                 "No.", "Res ID", "Room", "Check-In", "Check-Out", "Amount (RM)");
         System.out.println(border);
-
         for (int position = 1; position <= reservations.getNumberOfEntries(); position++) {
             Reservation reservation = reservations.getEntry(position);
             System.out.printf("| %-3d | %-10s | %-8s | %-10s | %-10s | %12.2f |%n",
-                    position,
-                    reservation.getConfirmationNumber(),
-                    reservation.getAssignedRoom().getRoomNumber(),
-                    reservation.getCheckInDate(),
-                    reservation.getCheckOutDate(),
-                    calculateReservationAmount(reservation));
+                    position, reservation.getConfirmationNumber(),
+                    reservation.getAssignedRoom().getRoomNumber(), reservation.getCheckInDate(),
+                    reservation.getCheckOutDate(), calculateReservationAmount(reservation));
         }
         System.out.println(border);
         System.out.println("Enter 0 to cancel.");
@@ -264,8 +278,7 @@ public class ReservationUI {
 
     private int promptReservationSelection(int reservationCount) {
         while (true) {
-            String input = InputHelper.inputString(scanner,
-                    "Select reservation number: ").trim();
+            String input = InputHelper.inputString(scanner, "Select reservation number: ").trim();
             try {
                 int selection = Integer.parseInt(input);
                 if (selection == 0 || (selection >= 1 && selection <= reservationCount)) {
