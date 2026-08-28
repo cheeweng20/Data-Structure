@@ -324,9 +324,9 @@ public class HousekeepingControl {
     }
 
     private boolean isCleaningRequired(Reservation reservation) {
-        return reservation.getStatus() == ReservationStatus.CHECKED_OUT
-                && reservation.getAssignedRoom() != null
-                && reservation.getAssignedRoom().getStatus() == RoomStatus.NEEDS_CLEANING;
+        return reservation.getCheckOutDate().equals(LocalDate.now())
+                && reservation.getAssignedRoom() != null;
+                //&& reservation.getAssignedRoom().getStatus() == RoomStatus.NEEDS_CLEANING;
     }
 
     private boolean hasTaskForReservation(String confirmationNumber) {
