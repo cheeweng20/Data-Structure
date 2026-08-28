@@ -4,6 +4,7 @@ import FrontDeskService.dao.LateCheckoutExtensionDAO;
 import FrontDeskService.entity.LateCheckoutExtension;
 import HousekeepingAndTaskLog.control.HousekeepingControl;
 import LoyaltyAndRewardsService.control.LoyaltyServiceControl;
+import LoyaltyAndRewardsService.entity.PromotionOffer;
 import VIPPriorityRoomAllocation.dao.ReservationDAO;
 import VIPPriorityRoomAllocation.dao.RoomDAO;
 import VIPPriorityRoomAllocation.entity.Reservation;
@@ -34,7 +35,7 @@ public class FrontDeskControl {
     private final SearchTreeInterface<String, Reservation> confirmationIndex;
     private int lastAwardedPoints;
     private boolean lastLoyaltyAwardFailed;
-    private String lastAppliedPromotionMessage;
+    private PromotionOffer lastAppliedPromotionOffer;
 
     public FrontDeskControl() {
         this(new ReservationDAO(), new RoomDAO(), new HousekeepingControl(false),
@@ -209,7 +210,7 @@ public class FrontDeskControl {
     public CheckOutResult checkOutReservation(String confirmationNumber) {
         lastAwardedPoints = 0;
         lastLoyaltyAwardFailed = false;
-        lastAppliedPromotionMessage = "";
+        lastAppliedPromotionOffer = null;
         Reservation reservation = findByConfirmationNumber(confirmationNumber);
         if (reservation == null) {
             return CheckOutResult.RESERVATION_NOT_FOUND;
@@ -248,9 +249,9 @@ public class FrontDeskControl {
         return lastLoyaltyAwardFailed;
     }
 
-    /** Promotion message for the most recent successful loyalty award. */
-    public String getLastAppliedPromotionMessage() {
-        return lastAppliedPromotionMessage;
+    /** Promotion data for the most recent successful loyalty award. */
+    public PromotionOffer getLastAppliedPromotionOffer() {
+        return lastAppliedPromotionOffer;
     }
 
     /** Records a temporary late check-out and rollback any early housekeeping task. */
@@ -308,7 +309,7 @@ public class FrontDeskControl {
         }
 
         try {
-            String promotionMessage = loyaltyServiceControl.getAppliedBookingPromotionMessage(
+            PromotionOffer offer = loyaltyServiceControl.getAppliedBookingPromotionOffer(
                     reservation.getGuest().getGuestId(), reservation.getConfirmationNumber(),
                     reservation.getCheckInDate());
             int awarded = loyaltyServiceControl.awardPointsForCompletedStay(
@@ -317,7 +318,7 @@ public class FrontDeskControl {
                     reservation.getCheckInDate());
             if (awarded > 0) {
                 lastAwardedPoints = awarded;
-                lastAppliedPromotionMessage = promotionMessage;
+                lastAppliedPromotionOffer = offer;
             } else if (awarded < 0) {
                 lastLoyaltyAwardFailed = true;
             }

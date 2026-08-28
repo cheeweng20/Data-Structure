@@ -9,9 +9,9 @@ import java.util.Scanner;
 
 import adt.SortedArrayList;
 import LoyaltyAndRewardsService.control.LoyaltyServiceControl;
-import LoyaltyAndRewardsService.control.LoyaltyServiceControl.ExpiringPointSummary;
 import LoyaltyAndRewardsService.entity.Member;
 import LoyaltyAndRewardsService.entity.PointTransaction;
+import LoyaltyAndRewardsService.entity.PromotionOffer;
 import LoyaltyAndRewardsService.entity.RedemptionRequest;
 import LoyaltyAndRewardsService.entity.Tier;
 import LoyaltyAndRewardsService.reporting.LoyaltyReportFormatter;
@@ -96,8 +96,6 @@ public final class LoyaltyUI {
             }
         } catch (EndOfInputException exception) {
             // EOF behaves like selecting Back.
-        } finally {
-            serviceControl.saveAll();
         }
     }
 
@@ -175,28 +173,35 @@ public final class LoyaltyUI {
 
         System.out.println(ConsoleStyle.tableBorder(INFORMATION_BORDER));
         displayInformationSection("MEMBER BENEFITS");
-        displayTierUpgradeNotification(memberId);
-        displayPromotionInformation(serviceControl.generatePersonalizedPromotion(memberId));
+        displayTierUpgradeNotification(member);
+        displayPromotionInformation(member);
         System.out.println(ConsoleStyle.tableBorder(INFORMATION_BORDER));
     }
 
-    private void displayTierUpgradeNotification(String memberId) {
-        String notification = serviceControl.generateTierUpgradeNotification(memberId);
-        if (!notification.isBlank()) {
-            displayInformationRow("Tier Upgrade Alert", notification);
+    private void displayTierUpgradeNotification(Member member) {
+        int remainingPoints = serviceControl.getTierUpgradePointsRemaining(member.getMemberId());
+        if (remainingPoints > 0 && remainingPoints <= 50) {
+            Tier nextTier = Tier.fromPoints(member.getTotalExpenses()).getNextTier();
+            displayInformationRow("Tier Upgrade Alert", "Spend RM" + remainingPoints
+                    + " more to reach " + nextTier.getTierLevel() + ".");
         }
     }
 
     private void displayPointExpiryNotification(String memberId) {
-        ExpiringPointSummary summary = serviceControl.getMemberExpiringPointSummary(
-                memberId, DEFAULT_EXPIRY_ALERT_DAYS);
-        if (summary.getTransactionCount() == 0) {
-            displayInformationRow("Status", "No points expire within the next "
+        SortedArrayList<PointTransaction> transactions =
+                serviceControl.generateMemberExpiringReport(
+                        memberId, DEFAULT_EXPIRY_ALERT_DAYS);
+        int pointTotal = 0;
+        for (PointTransaction transaction : transactions) {
+            pointTotal += transaction.getPointsRemaining();
+        }
+        if (transactions.isEmpty()) {
+            displayInformationRow("Point Expiry", "No points expire within the next "
                     + DEFAULT_EXPIRY_ALERT_DAYS + " days.");
             return;
         }
-        displayInformationRow("Expiring Points", summary.getPointTotal() + " point(s) from "
-                + summary.getTransactionCount() + " transaction(s) expire within the next "
+        displayInformationRow("Point Expiry", pointTotal + " point(s) from "
+                + transactions.getNumberOfEntries() + " transaction(s) expire within the next "
                 + DEFAULT_EXPIRY_ALERT_DAYS + " days.");
     }
 
@@ -214,18 +219,44 @@ public final class LoyaltyUI {
         System.out.println(ConsoleStyle.tableBorder(INFORMATION_BORDER));
     }
 
-    private void displayPromotionInformation(String promotionSummary) {
-        for (String line : promotionSummary.split("\\R")) {
-            if (line.startsWith("Expiry reminder:")) {
-                continue;
-            }
-            int separator = line.indexOf(':');
-            if (separator < 0) {
-                continue;
-            }
-            displayInformationRow(line.substring(0, separator).trim(),
-                    line.substring(separator + 1).trim());
+    private void displayPromotionInformation(Member member) {
+        Tier nextTier = Tier.fromPoints(member.getTotalExpenses()).getNextTier();
+        if (nextTier == null) {
+            displayInformationRow("Tier Progress",
+                    "You have reached the highest membership tier.");
+        } else {
+            int remainingPoints = nextTier.getMinPoint() - member.getTotalExpenses();
+            displayInformationRow("Tier Progress", "Spend RM" + remainingPoints
+                    + " more to reach " + nextTier.getTierLevel() + ".");
         }
+
+        int pendingPoints = serviceControl.getPendingPointsForMember(member.getMemberId());
+        if (pendingPoints > 0) {
+            int availablePoints = serviceControl.getAvailablePointsForPayment(member.getMemberId());
+            displayInformationRow("Points on Hold", pendingPoints
+                    + " points reserved by pending request(s); "
+                    + availablePoints + " points remain available.");
+        }
+
+        PromotionOffer offer = serviceControl.getBookingPromotionOffer(member.getMemberId());
+        displayInformationRow("History-based Promotion", formatPromotionOffer(offer));
+    }
+
+    private String formatPromotionOffer(PromotionOffer offer) {
+        int completedStays = offer.getCompletedStayCount();
+        int weekendStays = offer.getWeekendStayCount();
+        if (completedStays < 2) {
+            return "Complete at least two stays to unlock a booking-history offer.";
+        }
+        if (weekendStays * 2 == completedStays) {
+            return "Your completed stays are evenly split between weekends and weekdays; "
+                    + "complete another stay to reveal a preferred booking pattern.";
+        }
+        String stayType = weekendStays * 2 > completedStays ? "weekend" : "weekday";
+        return "You are eligible to earn " + offer.getPointMultiplier()
+                + "x points when booking a " + stayType
+                + " stay and paying with Cash, Credit / Debit Card, Touch n Go, "
+                + "or Online Banking.";
     }
 
     private void displayInformationRow(String label, String value) {

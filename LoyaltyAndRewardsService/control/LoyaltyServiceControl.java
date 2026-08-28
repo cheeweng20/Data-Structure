@@ -1,22 +1,26 @@
 package LoyaltyAndRewardsService.control;
 
-import java.time.LocalDate;
-import java.util.Iterator;
-
-import adt.LinkedQueue;
-import adt.ListInterface;
-import adt.QueueInterface;
-import adt.SortedArrayList;
-
 import LoyaltyAndRewardsService.dao.MemberDao;
 import LoyaltyAndRewardsService.dao.PointTransactionDao;
 import LoyaltyAndRewardsService.dao.RequestDao;
 import LoyaltyAndRewardsService.entity.Member;
 import LoyaltyAndRewardsService.entity.PointTransaction;
+import LoyaltyAndRewardsService.entity.PromotionOffer;
 import LoyaltyAndRewardsService.entity.RedemptionRequest;
 import LoyaltyAndRewardsService.entity.Tier;
+import LoyaltyAndRewardsService.utility.TransactionDateComparator;
 import VIPPriorityRoomAllocation.control.ReservationManager;
+import VIPPriorityRoomAllocation.dao.ReservationDAO;
+import VIPPriorityRoomAllocation.entity.Reservation;
+import VIPPriorityRoomAllocation.entity.ReservationStatus;
 import common.utility.Validation;
+import adt.LinkedQueue;
+import adt.ListInterface;
+import adt.QueueInterface;
+import adt.SortedArrayList;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.util.Iterator;
 
 /**
  * Initializes and coordinates the Loyalty and Rewards subsystem.
@@ -25,74 +29,49 @@ import common.utility.Validation;
  */
 public class LoyaltyServiceControl {
     private static final int POINTS_PER_RINGGIT = 1;
-    private static final int TIER_UPGRADE_ALERT_POINTS = 50;
+    private static final int MINIMUM_HISTORY_SIZE = 2;
+    private static final double HISTORY_POINT_MULTIPLIER = 1.5;
     private static final String STATUS_PENDING = "Pending";
     private static final String STATUS_APPROVED = "Approved";
     private static final String STATUS_REJECTED = "Rejected";
     private static final String STATUS_REJECTED_INSUFFICIENT_POINTS = "Rejected - insufficient points";
 
-    public static class ExpiringPointSummary {
-        private final int transactionCount;
-        private final int pointTotal;
-
-        public ExpiringPointSummary(int transactionCount, int pointTotal) {
-            this.transactionCount = transactionCount;
-            this.pointTotal = pointTotal;
-        }
-
-        public int getTransactionCount() {
-            return transactionCount;
-        }
-
-        public int getPointTotal() {
-            return pointTotal;
-        }
-    }
-
     private final MemberDao memberDao;
     private final PointTransactionDao pointTransactionDao;
     private final RequestDao requestDao;
-    private final MemberPromotionAnalyzer promotionAnalyzer;
+    private final ReservationDAO reservationDao;
     private ListInterface<Member> memberList;
     private ListInterface<PointTransaction> transactionList;
     private QueueInterface<RedemptionRequest> requestQueue;
     private ListInterface<RedemptionRequest> requestHistory;
     private int nextRequestNumber;
-    private int recentlyExpiredPointTotal;
-
-    // Initialization and persistence
 
     public LoyaltyServiceControl() {
         this(new MemberDao(), new PointTransactionDao(), new RequestDao(),
-                new MemberPromotionAnalyzer());
+                new ReservationDAO());
     }
 
     public LoyaltyServiceControl(MemberDao memberDao,
             PointTransactionDao pointTransactionDao, RequestDao requestDao) {
-        this(memberDao, pointTransactionDao, requestDao, new MemberPromotionAnalyzer());
+        this(memberDao, pointTransactionDao, requestDao, new ReservationDAO());
     }
 
     public LoyaltyServiceControl(MemberDao memberDao,
             PointTransactionDao pointTransactionDao, RequestDao requestDao,
-            MemberPromotionAnalyzer promotionAnalyzer) {
+            ReservationDAO reservationDao) {
         this.memberDao = memberDao;
         this.pointTransactionDao = pointTransactionDao;
         this.requestDao = requestDao;
-        this.promotionAnalyzer = promotionAnalyzer;
+        this.reservationDao = reservationDao;
 
-        memberList = memberDao.retrieveFromFile();
-        transactionList = pointTransactionDao.retrieveFromFile();
+        memberList = memberDao.retrieveFromFile(); // load members from CSV file
+        transactionList = pointTransactionDao.retrieveFromFile(); // load point transactions from CSV file
         requestQueue = new LinkedQueue<>();
-        requestHistory = requestDao.retrieveFromFile();
+        requestHistory = requestDao.retrieveFromFile(); // load redemption requests from CSV file
         nextRequestNumber = 1;
-        rebuildPendingRequestQueue();
+        rebuildPendingRequestQueue(); // add pending requests back into the queue
 
-        recentlyExpiredPointTotal = expirePointsAndSave();
-    }
-
-    public void saveAll() {
-        saveMembersAndTransactions();
-        saveRequests();
+        expirePointsAndSave();
     }
 
     private void saveMembersAndTransactions() {
@@ -100,14 +79,11 @@ public class LoyaltyServiceControl {
         saveTransactions();
     }
 
-    // Tier operations
-
+    // return membership tier based on total points
     public String getTierName(Member member) {
         return member == null ? "Unknown"
                 : Tier.fromPoints(member.getTotalExpenses()).getTierLevel();
     }
-
-    // Member operations
 
     public int getMemberCount() {
         return memberList.getNumberOfEntries();
@@ -117,6 +93,7 @@ public class LoyaltyServiceControl {
         return memberList.isEmpty();
     }
 
+    // create a new loyalty member
     public String createMember(String name, String passport, String phoneNumber) {
         String memberId = generateMemberId();
         memberList.add(new Member(memberId, name, passport, phoneNumber, 0, 0));
@@ -167,11 +144,10 @@ public class LoyaltyServiceControl {
 
     public int awardPointsForCompletedStay(String memberId, String reservationId,
             double bookingAmount) {
-        return awardPointsForCompletedStay(
-                memberId, reservationId, bookingAmount, null);
+        return awardPointsForCompletedStay(memberId, reservationId, bookingAmount, null);
     }
 
-    /** Awards base or history-promotion points for one completed stay. */
+    // award base points or promotion points after a completed stay
     public int awardPointsForCompletedStay(String memberId, String reservationId,
             double bookingAmount, LocalDate checkInDate) {
         Member member = getMemberById(memberId);
@@ -185,9 +161,8 @@ public class LoyaltyServiceControl {
             return 0;
         }
 
-        MemberPromotionAnalyzer.PromotionOffer offer =
-                promotionAnalyzer.analyze(memberId, sourceId);
-        double multiplier = offer.appliesTo(checkInDate)
+        PromotionOffer offer = analyzePromotion(memberId, sourceId);
+        double multiplier = isPromotionApplicable(offer, checkInDate)
                 ? offer.getPointMultiplier() : 1.0;
         double calculatedPoints = Math.floor(
                 bookingAmount * POINTS_PER_RINGGIT * multiplier);
@@ -196,19 +171,24 @@ public class LoyaltyServiceControl {
         }
 
         int points = (int) calculatedPoints;
+        int expenseAmount = (int) Math.floor(bookingAmount);
         if (member.getPoint() > Integer.MAX_VALUE - points
-                || member.getTotalExpenses() > Integer.MAX_VALUE - points) {
+                || member.getTotalExpenses() > Integer.MAX_VALUE - expenseAmount) {
             return -1;
         }
 
         member.setPoint(member.getPoint() + points);
-        member.addTotalExpenses(points);
+        member.addTotalExpenses(expenseAmount);
         addTransaction(memberId, points, sourceId);
         saveMembersAndTransactions();
         return points;
     }
 
     public Member getMemberById(String memberId) {
+        return findMemberById(memberId);
+    }
+
+    private Member findMemberById(String memberId) {
         for (int i = 1; i <= memberList.getNumberOfEntries(); i++) {
             Member member = memberList.getEntry(i);
             if (member.getMemberId().equalsIgnoreCase(memberId)) {
@@ -226,78 +206,71 @@ public class LoyaltyServiceControl {
         return String.format("M%03d", highestNumber + 1);
     }
 
-    public String generatePersonalizedPromotion(String memberId) {
-        refreshRequestState();
+    public PromotionOffer getBookingPromotionOffer(String memberId) {
+        return analyzePromotion(memberId, null);
+    }
+
+    public PromotionOffer getAppliedBookingPromotionOffer(String memberId,
+            String reservationId, LocalDate checkInDate) {
+        PromotionOffer offer = analyzePromotion(memberId, reservationId);
+        return isPromotionApplicable(offer, checkInDate) ? offer : null;
+    }
+
+    private PromotionOffer analyzePromotion(String memberId,
+            String excludedConfirmationNumber) {
+        int historySize = 0;
+        int weekendStays = 0;
+        for (Reservation reservation : reservationDao.retrieveFromFile()) {
+            if (!belongsToMember(reservation, memberId)
+                    || isExcluded(reservation, excludedConfirmationNumber)
+                    || !isHistoricalStay(reservation)) {
+                continue;
+            }
+            historySize++;
+            if (isWeekendStay(reservation)) {
+                weekendStays++;
+            }
+        }
+
+        if (historySize < MINIMUM_HISTORY_SIZE) {
+            return new PromotionOffer(historySize, weekendStays, 1.0);
+        }
+
+        if (weekendStays * 2 == historySize) {
+            return new PromotionOffer(historySize, weekendStays, 1.0);
+        }
+
+        return new PromotionOffer(historySize, weekendStays, HISTORY_POINT_MULTIPLIER);
+    }
+
+    private boolean isPromotionApplicable(PromotionOffer offer, LocalDate checkInDate) {
+        if (checkInDate == null || offer.getPointMultiplier() <= 1.0) {
+            return false;
+        }
+        boolean weekend = isWeekend(checkInDate);
+        boolean weekendPreferred = offer.getWeekendStayCount() * 2
+                > offer.getCompletedStayCount();
+        return weekendPreferred ? weekend : !weekend;
+    }
+
+    public int getTierUpgradePointsRemaining(String memberId) {
         Member member = getMemberById(memberId);
         if (member == null) {
-            return "Member Not Found";
-        }
-
-        StringBuilder promotion = new StringBuilder();
-        int totalExpenses = member.getTotalExpenses();
-        Tier nextTier = Tier.fromPoints(totalExpenses).getNextTier();
-
-        if (nextTier == null) {
-            promotion.append("Tier progress: You have reached the highest membership tier.\n");
-        } else {
-            promotion.append("Tier progress: Spend RM")
-                    .append(nextTier.getMinPoint() - totalExpenses)
-                    .append(" more to reach ")
-                    .append(nextTier.getTierLevel())
-                    .append(".\n");
-        }
-
-        appendPointPaymentStatus(promotion, member);
-        appendExpiringPointReminder(promotion, member.getMemberId(), 30);
-        appendHistoryBasedPromotion(promotion, member.getMemberId());
-
-        return promotion.toString();
-    }
-
-    /** Returns a booking promotion only when the member currently qualifies for one. */
-    public String getEligibleBookingPromotionMessage(String memberId) {
-        MemberPromotionAnalyzer.PromotionOffer offer = promotionAnalyzer.analyze(memberId);
-        return offer.getPointMultiplier() > 1.0 ? offer.getMessage() : "";
-    }
-
-    /** Returns the applied-promotion message for a completed stay, if any. */
-    public String getAppliedBookingPromotionMessage(String memberId, String reservationId,
-            LocalDate checkInDate) {
-        MemberPromotionAnalyzer.PromotionOffer offer =
-                promotionAnalyzer.analyze(memberId, reservationId);
-        if (!offer.appliesTo(checkInDate) || offer.getPointMultiplier() <= 1.0) {
-            return "";
-        }
-        String stayType = offer.getEligiblePattern() == MemberPromotionAnalyzer.StayPattern.WEEKEND
-                ? "weekend" : "weekday";
-        return "Promotion applied: 1.5x points earned for this " + stayType + " stay.";
-    }
-
-    /** Shows a tier alert only when the member is close to the next threshold. */
-    public String generateTierUpgradeNotification(String memberId) {
-        Member member = getMemberById(memberId);
-        if (member == null) {
-            return "";
+            return -1;
         }
         int totalExpenses = member.getTotalExpenses();
         Tier nextTier = Tier.fromPoints(totalExpenses).getNextTier();
         if (nextTier == null) {
-            return "";
+            return -1;
         }
-        int remainingPoints = nextTier.getMinPoint() - totalExpenses;
-        return remainingPoints > 0 && remainingPoints <= TIER_UPGRADE_ALERT_POINTS
-                ? "Tier upgrade alert: Spend RM" + remainingPoints
-                        + " more to reach "
-                        + nextTier.getTierLevel() + "."
-                : "";
+        return nextTier.getMinPoint() - totalExpenses;
     }
 
-    public void saveMembers() {
+    private void saveMembers() {
         memberDao.saveToFile(memberList);
     }
 
-    // Point transaction operations
-
+    // add a point transaction after points are awarded
     private void addTransaction(String memberId, int points, String sourceReference) {
         LocalDate earnedDate = LocalDate.now();
         LocalDate expiryDate = earnedDate.plusYears(1);
@@ -335,6 +308,7 @@ public class LoyaltyServiceControl {
         }
     }
 
+    // remove points that have passed their expiry date
     /**
      * Expires unused transaction points after their expiry date and deducts the
      * available amount from the member's spendable balance without changing the
@@ -342,7 +316,7 @@ public class LoyaltyServiceControl {
      *
      * @return the total number of unused transaction points that expired
      */
-    public int expirePointsAndSave() {
+    private int expirePointsAndSave() {
         int expiredPoints = expirePoints(LocalDate.now());
         if (expiredPoints > 0) {
             saveMembersAndTransactions();
@@ -350,51 +324,29 @@ public class LoyaltyServiceControl {
         return expiredPoints;
     }
 
-    public int getRecentlyExpiredPointTotal() {
-        return recentlyExpiredPointTotal;
-    }
-
-    public ExpiringPointSummary getExpiringPointSummary(int withinDays) {
-        LocalDate today = LocalDate.now();
-        LocalDate cutoff = today.plusDays(withinDays);
-        int transactionCount = 0;
-        int pointTotal = 0;
-
-        for (PointTransaction transaction : transactionList) {
-            if (expiresWithin(transaction, today, cutoff)) {
-                transactionCount++;
-                pointTotal += transaction.getPointsRemaining();
-            }
-        }
-
-        return new ExpiringPointSummary(transactionCount, pointTotal);
-    }
-
-    /** Returns expiring-point information for one member only. */
-    public ExpiringPointSummary getMemberExpiringPointSummary(String memberId, int withinDays) {
+    public SortedArrayList<PointTransaction> generateMemberExpiringReport(
+            String memberId, int withinDays) {
+        SortedArrayList<PointTransaction> sortedResult = new SortedArrayList<>();
         if (memberId == null || memberId.isBlank() || withinDays < 0) {
-            return new ExpiringPointSummary(0, 0);
+            return sortedResult;
         }
 
         LocalDate today = LocalDate.now();
         LocalDate cutoff = today.plusDays(withinDays);
-        int transactionCount = 0;
-        int pointTotal = 0;
         for (PointTransaction transaction : transactionList) {
-            if (transaction.getMemberId().equalsIgnoreCase(memberId.trim())
+            if (belongsToMember(transaction, memberId.trim())
                     && expiresWithin(transaction, today, cutoff)) {
-                transactionCount++;
-                pointTotal += transaction.getPointsRemaining();
+                sortedResult.add(transaction);
             }
         }
-        return new ExpiringPointSummary(transactionCount, pointTotal);
+        return sortedResult;
     }
 
-    public void saveTransactions() {
+    private void saveTransactions() {
         pointTransactionDao.saveToFile(transactionList);
     }
 
-    public String generateTransactionId() {
+    private String generateTransactionId() {
         int highestNumber = 0;
         for (PointTransaction transaction : transactionList) {
             highestNumber = Math.max(highestNumber,
@@ -403,8 +355,7 @@ public class LoyaltyServiceControl {
         return String.format("TS%03d", highestNumber + 1);
     }
 
-    // Redemption request operations
-
+    // submit and process member point-payment requests
     public int calculatePointsForPaymentAmount(double paymentAmount) {
         double points = Math.ceil(paymentAmount * POINTS_PER_RINGGIT);
         return points > 0 && points <= Integer.MAX_VALUE ? (int) points : -1;
@@ -468,7 +419,7 @@ public class LoyaltyServiceControl {
         return processed;
     }
 
-    /** Keeps the reservation bill in sync with a Loyalty redemption decision. */
+    // update reservation payment status after a redemption decision
     private void updateReservationPayment(RedemptionRequest request, String paymentMethod,
             String paymentStatus) {
         new ReservationManager().updatePayment(request.getConfirmationNumber(),
@@ -497,12 +448,11 @@ public class LoyaltyServiceControl {
         return count;
     }
 
-    public void saveRequests() {
+    private void saveRequests() {
         requestDao.saveToFile(requestHistory);
     }
 
-    // Shared ID helpers
-
+    // helper methods
     private int parseNumericId(String value, String prefix) {
         if (value == null || !value.startsWith(prefix) || value.length() <= prefix.length()) {
             return 0;
@@ -514,14 +464,12 @@ public class LoyaltyServiceControl {
         }
     }
 
-    // Point transaction helpers
-
     private PointTransaction findOldestAvailableTransaction(String memberId) {
         PointTransaction oldest = null;
         LocalDate today = LocalDate.now();
 
         for (PointTransaction current : transactionList) {
-            boolean belongsToMember = current.getMemberId().equalsIgnoreCase(memberId);
+            boolean belongsToMember = belongsToMember(current, memberId);
             if (belongsToMember && hasUnexpiredPoints(current, today)
                     && (oldest == null || current.compareTo(oldest) < 0)) {
                 oldest = current;
@@ -542,48 +490,32 @@ public class LoyaltyServiceControl {
         return false;
     }
 
-    private void appendPointPaymentStatus(StringBuilder promotion, Member member) {
-        int pendingPoints = getPendingPointsForMember(member.getMemberId());
-        if (pendingPoints <= 0) {
-            return;
-        }
-
-        int redeemablePoints = getRedeemablePoints(member.getMemberId());
-        promotion.append("Points on hold: ").append(pendingPoints)
-                .append(" points reserved by pending request(s); ")
-                .append(redeemablePoints).append(" points remain available.\n");
+    private static boolean belongsToMember(Reservation reservation, String memberId) {
+        return reservation.getGuest() != null && memberId != null
+                && reservation.getGuest().getGuestId().equalsIgnoreCase(memberId.trim());
     }
 
-    private void appendExpiringPointReminder(StringBuilder promotion, String memberId,
-            int withinDays) {
-        LocalDate today = LocalDate.now();
-        LocalDate cutoff = today.plusDays(withinDays);
-        LocalDate earliestExpiryDate = null;
-        int expiringPoints = 0;
-
-        for (PointTransaction transaction : transactionList) {
-            boolean belongsToMember = transaction.getMemberId().equalsIgnoreCase(memberId);
-            if (belongsToMember && expiresWithin(transaction, today, cutoff)) {
-                expiringPoints += transaction.getPointsRemaining();
-                if (earliestExpiryDate == null
-                        || transaction.getExpiryDate().isBefore(earliestExpiryDate)) {
-                    earliestExpiryDate = transaction.getExpiryDate();
-                }
-            }
-        }
-
-        if (expiringPoints > 0) {
-            promotion.append("Expiry reminder: ").append(expiringPoints)
-                    .append(" points will expire within ").append(withinDays)
-                    .append(" days; earliest expiry is ").append(earliestExpiryDate)
-                    .append(".\n");
-        }
+    private static boolean belongsToMember(PointTransaction transaction, String memberId) {
+        return transaction.getMemberId().equalsIgnoreCase(memberId);
     }
 
-    private void appendHistoryBasedPromotion(StringBuilder promotion, String memberId) {
-        MemberPromotionAnalyzer.PromotionOffer offer = promotionAnalyzer.analyze(memberId);
-        promotion.append("History-based promotion: ")
-                .append(offer.getMessage()).append("\n");
+    private static boolean isExcluded(Reservation reservation, String confirmationNumber) {
+        return confirmationNumber != null
+                && reservation.getConfirmationNumber()
+                        .equalsIgnoreCase(confirmationNumber.trim());
+    }
+
+    private static boolean isHistoricalStay(Reservation reservation) {
+        return reservation.getStatus() == ReservationStatus.CHECKED_OUT;
+    }
+
+    private static boolean isWeekendStay(Reservation reservation) {
+        return isWeekend(reservation.getCheckInDate());
+    }
+
+    private static boolean isWeekend(LocalDate date) {
+        return date.getDayOfWeek() == DayOfWeek.SATURDAY
+                || date.getDayOfWeek() == DayOfWeek.SUNDAY;
     }
 
     private int expirePoints(LocalDate today) {
@@ -598,7 +530,7 @@ public class LoyaltyServiceControl {
             transaction.setPointsRemaining(0);
             totalExpired += expiringPoints;
 
-            Member member = getMemberById(transaction.getMemberId());
+            Member member = findMemberById(transaction.getMemberId());
             if (member != null) {
                 int deducted = Math.min(member.getPoint(), expiringPoints);
                 member.setPoint(member.getPoint() - deducted);
@@ -626,8 +558,6 @@ public class LoyaltyServiceControl {
                 && !transaction.getExpiryDate().isAfter(cutoff);
     }
 
-    // Redemption request helpers
-
     private int getRedeemablePoints(String memberId) {
         Member member = getMemberById(memberId);
         return member == null ? -1
@@ -641,13 +571,6 @@ public class LoyaltyServiceControl {
                 requestQueue.enqueue(request);
             }
         }
-    }
-
-    private void refreshRequestState() {
-        requestHistory = requestDao.retrieveFromFile();
-        requestQueue = new LinkedQueue<>();
-        nextRequestNumber = 1;
-        rebuildPendingRequestQueue();
     }
 
     private boolean createPendingRequest(String memberId, String confirmationNumber,
@@ -685,7 +608,7 @@ public class LoyaltyServiceControl {
         return false;
     }
 
-    private int getPendingPointsForMember(String memberId) {
+    public int getPendingPointsForMember(String memberId) {
         int pendingPoints = 0;
         Iterator<RedemptionRequest> iterator = requestQueue.getIterator();
         while (iterator.hasNext()) {
@@ -708,12 +631,11 @@ public class LoyaltyServiceControl {
         }
     }
 
-    // Reporting
-
+    // generate point transaction report within the selected date range
     public SortedArrayList<PointTransaction> generateTransactionReport(
             LocalDate startDate, LocalDate endDate) {
         SortedArrayList<PointTransaction> sortedResult = new SortedArrayList<>(
-                (left, right) -> left.getEarnedDate().compareTo(right.getEarnedDate()));
+                new TransactionDateComparator());
         for (PointTransaction current : transactionList) {
             if (isWithinRange(current.getEarnedDate(), startDate, endDate)) {
                 sortedResult.add(current);

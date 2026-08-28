@@ -1,6 +1,7 @@
 package FrontDeskService.boundary;
 
 import FrontDeskService.control.FrontDeskControl;
+import LoyaltyAndRewardsService.entity.PromotionOffer;
 import FrontDeskService.control.FrontDeskControl.CheckInResult;
 import FrontDeskService.control.FrontDeskControl.CheckOutResult;
 import FrontDeskService.control.FrontDeskControl.LateCheckoutResult;
@@ -188,11 +189,12 @@ public class FrontDeskUI {
         if (result == CheckOutResult.SUCCESS) {
             ConsoleAnimation.success("Guest checked out successfully.");
             if (control.getLastAwardedPoints() > 0) {
-                String promotionMessage = control.getLastAppliedPromotionMessage();
+                PromotionOffer offer = control.getLastAppliedPromotionOffer();
                 String earnedPoints = String.valueOf(control.getLastAwardedPoints());
-                if (!promotionMessage.isBlank()) {
+                if (offer != null) {
                     int originalPoints = (int) Math.floor(control.calculateBill(reservation));
-                    earnedPoints += " (" + originalPoints + " * 1.5)";
+                    earnedPoints += " (" + originalPoints + " * "
+                            + offer.getPointMultiplier() + ")";
                 }
                 System.out.println("Points Earned   : " + earnedPoints);
             } else if (control.didLastLoyaltyAwardFail()) {

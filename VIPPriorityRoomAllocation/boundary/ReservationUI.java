@@ -10,6 +10,7 @@ import VIPPriorityRoomAllocation.entity.Room;
 import LoyaltyAndRewardsService.control.LoyaltyServiceControl;
 import LoyaltyAndRewardsService.dao.RequestDao;
 import LoyaltyAndRewardsService.entity.RedemptionRequest;
+import LoyaltyAndRewardsService.entity.PromotionOffer;
 import adt.ArrayList;
 import adt.ListInterface;
 import adt.SortedArrayList;
@@ -127,15 +128,23 @@ public class ReservationUI {
     }
 
     private void displayEligiblePromotion(String memberId) {
-        String promotion = new LoyaltyServiceControl()
-                .getEligibleBookingPromotionMessage(memberId);
-        if (promotion.isBlank()) {
+        PromotionOffer offer = new LoyaltyServiceControl().getBookingPromotionOffer(memberId);
+        if (offer.getPointMultiplier() <= 1.0) {
             return;
         }
 
         System.out.println(ConsoleStyle.title("\n--- Promotion Available ---"));
         MessageUI.displaySuccess("This member qualifies for a booking promotion.");
-        System.out.println(promotion);
+        System.out.println(formatPromotionOffer(offer));
+    }
+
+    private String formatPromotionOffer(PromotionOffer offer) {
+        String stayType = offer.getWeekendStayCount() * 2
+                > offer.getCompletedStayCount() ? "weekend" : "weekday";
+        return "You are eligible to earn " + offer.getPointMultiplier()
+                + "x points when booking a " + stayType
+                + " stay and paying with Cash, Credit / Debit Card, Touch n Go, "
+                + "or Online Banking.";
     }
 
     private void viewMemberReservations() {

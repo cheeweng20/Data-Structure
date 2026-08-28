@@ -56,7 +56,7 @@ public class MemberDao {
 
                     if (memberId.isEmpty() || name.isEmpty() || passport.isEmpty()
                             || phoneNumber.isEmpty() || point < 0
-                            || totalExpenses < point) {
+                            || totalExpenses < 0) {
                         throw new IllegalArgumentException("invalid required member value");
                     }
 
