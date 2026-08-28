@@ -1,6 +1,7 @@
 package FrontDeskService.boundary;
 
 import FrontDeskService.control.FrontDeskControl;
+import FrontDeskService.reporting.ReportPdfExporter;
 import LoyaltyAndRewardsService.entity.PromotionOffer;
 import FrontDeskService.control.FrontDeskControl.CheckInResult;
 import FrontDeskService.control.FrontDeskControl.CheckOutResult;
@@ -19,6 +20,8 @@ import common.ui.InputHelper.EndOfInputException;
 import common.ui.Logo;
 import common.ui.MessageUI;
 import common.utility.Validation;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
@@ -29,6 +32,9 @@ import java.util.Scanner;
  * @author Yi Ren
  */
 public class FrontDeskUI {
+    private static final String REPORT_BORDER =
+            "+------------+----------------------+--------------+------------------------+--------------+";
+
     private final Scanner scanner;
     private final FrontDeskControl control;
 
@@ -258,12 +264,19 @@ public class FrontDeskUI {
     }
 
     private void outstandingBalanceReport() {
-        System.out.println("\nOutstanding balance report (sorted by amount, highest first)");
-        displayReservationList(ConsoleProgress.run(
+        ListInterface<Reservation> reservations = ConsoleProgress.run(
                 control::getOutstandingBalanceReport,
                 "Fetching billing information...",
                 "Calculating outstanding balances...",
-                "Preparing report..."));
+                "Preparing report...");
+        if (reservations.isEmpty()) {
+            System.out.println("\nNo outstanding balance records found.");
+            return;
+        }
+
+        String report = buildOutstandingBalanceReport(reservations);
+        System.out.println(report);
+        offerPdfExport("Outstanding Balance Report", report);
     }
 
     private void paymentMethodReport() {
@@ -277,25 +290,96 @@ public class FrontDeskUI {
             return;
         }
 
-        System.out.println("\n--- Payment Method Room Report ---");
-        String border = "+----------+----------------------+--------------+------------------------+--------------+";
-        System.out.println(border);
-        System.out.printf("| %-8s | %-20s | %-12s | %-22s | %-12s |%n",
-                "Room", "Guest", "Confirm No.", "Payment Method", "Bill (RM)");
-        System.out.println(border);
+        String report = buildPaymentMethodReport(reservations);
+        System.out.println(report);
+        offerPdfExport("Payment Method Room Report", report);
+    }
+
+    private String buildOutstandingBalanceReport(ListInterface<Reservation> reservations) {
+        StringBuilder report = createReportTable(
+                "Outstanding Balance Report", "Payment Status", "Balance (RM)");
         int total = 0;
         for (int position = 1; position <= reservations.getNumberOfEntries(); position++) {
             Reservation reservation = reservations.getEntry(position);
-            System.out.printf("| %-8s | %-20.20s | %-12s | %-22.22s | %-12.2f |%n",
-                    reservation.getAssignedRoom().getRoomNumber(),
-                    reservation.getGuest().getFullName(),
-                    reservation.getConfirmationNumber(),
-                    paymentMethodLabel(reservation),
-                    control.calculateBill(reservation));
+            appendReportRow(report, reservation, roomLabel(reservation),
+                    String.valueOf(reservation.getPaymentStatus()));
             total++;
         }
-        System.out.println(border);
-        System.out.println("Total paid room records: " + total);
+        report.append(REPORT_BORDER).append(System.lineSeparator());
+        report.append("Total outstanding balance records: ").append(total)
+                .append(System.lineSeparator());
+        return report.toString();
+    }
+
+    private String buildPaymentMethodReport(ListInterface<Reservation> reservations) {
+        StringBuilder report = createReportTable(
+                "Payment Method Room Report", "Payment Method", "Bill (RM)");
+        int total = 0;
+        for (int position = 1; position <= reservations.getNumberOfEntries(); position++) {
+            Reservation reservation = reservations.getEntry(position);
+            appendReportRow(report, reservation, roomLabel(reservation),
+                    paymentMethodLabel(reservation));
+            total++;
+        }
+        report.append(REPORT_BORDER).append(System.lineSeparator());
+        report.append("Total paid room records: ").append(total)
+                .append(System.lineSeparator());
+        return report.toString();
+    }
+
+    private StringBuilder createReportTable(String title, String paymentColumn,
+            String amountColumn) {
+        StringBuilder report = new StringBuilder("\n--- ").append(title)
+                .append(" ---").append(System.lineSeparator());
+        report.append(REPORT_BORDER).append(System.lineSeparator());
+        report.append(String.format("| %-10s | %-20s | %-12s | %-22s | %-12s |%n",
+                "Room", "Guest", "Confirm No.", paymentColumn, amountColumn));
+        report.append(REPORT_BORDER).append(System.lineSeparator());
+        return report;
+    }
+
+    private void appendReportRow(StringBuilder report, Reservation reservation,
+            String room, String paymentDetails) {
+        report.append(String.format("| %-10s | %-20.20s | %-12s | %-22.22s | %-12.2f |%n",
+                room,
+                reservation.getGuest().getFullName(),
+                reservation.getConfirmationNumber(),
+                paymentDetails,
+                control.calculateBill(reservation)));
+    }
+
+    private String roomLabel(Reservation reservation) {
+        return reservation.getAssignedRoom() == null
+                ? "Unassigned" : reservation.getAssignedRoom().getRoomNumber();
+    }
+
+    private void offerPdfExport(String title, String report) {
+        String selection = InputHelper.inputString(
+                scanner, "Generate report PDF and open it? (Y/N): ");
+        if (!selection.equalsIgnoreCase("Y") && !selection.equalsIgnoreCase("Yes")) {
+            return;
+        }
+
+        Path pdfPath;
+        try {
+            pdfPath = ConsoleAnimation.runIoWithSpinner(
+                    () -> ReportPdfExporter.export(title, report),
+                    "Generating report PDF");
+        } catch (IOException exception) {
+            MessageUI.displayError("Unable to generate PDF: " + exception.getMessage());
+            return;
+        }
+
+        MessageUI.displaySuccess("PDF generated: " + pdfPath);
+        try {
+            if (!ReportPdfExporter.open(pdfPath)) {
+                MessageUI.displayInfo("Open the PDF manually from the path shown above.");
+            }
+        } catch (IOException exception) {
+            MessageUI.displayInfo(
+                    "The PDF was generated but could not be opened automatically: "
+                            + exception.getMessage());
+        }
     }
 
     private Reservation findReservationByConfirmationNumber() {

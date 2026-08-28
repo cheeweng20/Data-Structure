@@ -1,1 +1,2 @@
 ConfirmationNumber,GuestId,GuestName,PhoneNumber,LoyaltyTier,AssignedRoomNumber,AssignedRoomPrice,AssignedRoomStatus,CheckInDate,CheckOutDate,BookingDateTime,PaymentMethod,PaymentStatus,Status
+68608784,M001,Chee Weng,0183139803,PLATINUM,R101,200.0,OCCUPIED,2026-08-28,2026-08-29,2026-08-28T22:07:49.481275300,Cash,PAID,CHECKED_IN
