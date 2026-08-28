@@ -1,6 +1,7 @@
 package LoyaltyAndRewardsService.dao;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -74,28 +75,38 @@ public class PointTransactionDao {
             System.out.println("No existing transaction data found, starting fresh.");
             createTransactionCSVFile();
         } catch (IOException e) {
-            System.out.println("Error reading transaction file: " + e.getMessage());
+            throw new IllegalStateException("Unable to read transaction file.", e);
         }
         return transactions;
     }
 
     public void saveToFile(ListInterface<PointTransaction> transactions) {
+        createParentDirectory();
         try (PrintWriter writer = new PrintWriter(new FileWriter(fileName))) {
             writer.println(HEADER);
             for (PointTransaction transaction : transactions) {
                 writer.println(transaction.toCsvLine());
             }
         } catch (IOException e) {
-            System.out.println("Error saving transaction file: " + e.getMessage());
+            throw new IllegalStateException("Unable to save transaction file.", e);
         }
     }
 
     private void createTransactionCSVFile() {
+        createParentDirectory();
         try (PrintWriter writer = new PrintWriter(fileName)) {
             writer.println(HEADER);
             System.out.println("CSV File created success !");
         } catch (IOException e) {
-            System.out.println("Error creating transaction file: " + e.getMessage());
+            throw new IllegalStateException("Unable to create transaction file.", e);
+        }
+    }
+
+    private void createParentDirectory() {
+        File file = new File(fileName);
+        File parent = file.getParentFile();
+        if (parent != null && !parent.exists() && !parent.mkdirs()) {
+            throw new IllegalStateException("Unable to create transaction data directory.");
         }
     }
 }

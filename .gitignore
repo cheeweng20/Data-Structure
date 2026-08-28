@@ -25,5 +25,8 @@ replay_pid*
 
 
 
-# ignore csv stats files
+# Runtime data may contain guest identity fields and live operational state.
+# Keep generated CSV/PDF artifacts out of new commits.
 *.csv
+**/src/*.csv
+output/pdf/*.pdf

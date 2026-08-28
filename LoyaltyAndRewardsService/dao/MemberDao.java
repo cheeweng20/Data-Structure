@@ -1,6 +1,7 @@
 package LoyaltyAndRewardsService.dao;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -71,29 +72,39 @@ public class MemberDao {
             createMemberCSVFile();
 
         } catch (IOException e) {
-            System.out.println("Error reading member file: " + e.getMessage());
+            throw new IllegalStateException("Unable to read member file.", e);
         }
         return members;
     }
 
     public void saveToFile(ListInterface<Member> members) {
+        createParentDirectory();
         try (PrintWriter writer = new PrintWriter(new FileWriter(fileName))) {
             writer.println("MemberId,Name,Passport,PhoneNumber,Point,LifetimePointsEarned");
             for (Member member : members) {
                 writer.println(member.toCsvLine());
             }
         } catch (IOException e) {
-            System.out.println("Error saving member file: " + e.getMessage());
+            throw new IllegalStateException("Unable to save member file.", e);
         }
     }
 
     private void createMemberCSVFile() {
+        createParentDirectory();
         try (PrintWriter writer = new PrintWriter(fileName)) {
             writer.println("MemberId,Name,Passport,PhoneNumber,Point,LifetimePointsEarned");
 
             System.out.println("CSV File created success !");
         } catch (IOException e) {
-            System.out.println("Error creating member file: " + e.getMessage());
+            throw new IllegalStateException("Unable to create member file.", e);
+        }
+    }
+
+    private void createParentDirectory() {
+        File file = new File(fileName);
+        File parent = file.getParentFile();
+        if (parent != null && !parent.exists() && !parent.mkdirs()) {
+            throw new IllegalStateException("Unable to create member data directory.");
         }
     }
 }

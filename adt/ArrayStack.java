@@ -18,6 +18,9 @@ public class ArrayStack<T> implements StackInterface<T> {
   }
 
   public ArrayStack(int initialCapacity) {
+    if (initialCapacity < 1) {
+      throw new IllegalArgumentException("Initial capacity must be greater than zero.");
+    }
     array = (T[]) new Object[initialCapacity];
     topIndex = -1;
   }
@@ -26,9 +29,10 @@ public class ArrayStack<T> implements StackInterface<T> {
   public void push(T newEntry) {
     topIndex++;
 
-    if (topIndex < array.length) {
-      array[topIndex] = newEntry;
+    if (topIndex == array.length) {
+      doubleArray();
     }
+    array[topIndex] = newEntry;
   }
 
   @Override
@@ -63,7 +67,17 @@ public class ArrayStack<T> implements StackInterface<T> {
   } 
 
   public void clear() {
+    for (int index = 0; index <= topIndex; index++) {
+      array[index] = null;
+    }
     topIndex = -1;
   } 
+
+  @SuppressWarnings("unchecked")
+  private void doubleArray() {
+    T[] oldArray = array;
+    array = (T[]) new Object[oldArray.length * 2];
+    System.arraycopy(oldArray, 0, array, 0, oldArray.length);
+  }
   
 } 
