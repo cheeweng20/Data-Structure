@@ -21,8 +21,36 @@ public final class MemberPromotionAnalyzer {
         NONE
     }
 
-    public record PromotionOffer(String message, double pointMultiplier,
-            StayPattern eligiblePattern, int historySize) {
+    public static class PromotionOffer {
+        private final String message;
+        private final double pointMultiplier;
+        private final StayPattern eligiblePattern;
+        private final int historySize;
+
+        public PromotionOffer(String message, double pointMultiplier,
+                StayPattern eligiblePattern, int historySize) {
+            this.message = message;
+            this.pointMultiplier = pointMultiplier;
+            this.eligiblePattern = eligiblePattern;
+            this.historySize = historySize;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+
+        public double getPointMultiplier() {
+            return pointMultiplier;
+        }
+
+        public StayPattern getEligiblePattern() {
+            return eligiblePattern;
+        }
+
+        public int getHistorySize() {
+            return historySize;
+        }
+
         public boolean appliesTo(LocalDate checkInDate) {
             if (checkInDate == null || eligiblePattern == StayPattern.NONE) {
                 return false;

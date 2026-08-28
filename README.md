@@ -1,10 +1,15 @@
 # TARUMT Resort Data-Structure Project
 
+## Requirements
+
+- JDK 11 or later (verified with JDK 11.0.21)
+- PowerShell
+
 Compile every Java source from the project root in PowerShell:
 
 ```powershell
 $sources = Get-ChildItem -Recurse -Filter *.java | Select-Object -ExpandProperty FullName
-javac -d bin $sources
+javac --release 11 -d bin $sources
 java -cp bin Main
 ```
 

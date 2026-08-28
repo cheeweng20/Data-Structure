@@ -1,5 +1,7 @@
 package common.reporting.pdf;
 
+import adt.ArrayList;
+import adt.ListInterface;
 import java.awt.Desktop;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -8,8 +10,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
 
 /** Writes dependency-free landscape PDF documents from prepared page streams. */
 public final class PdfDocumentWriter {
@@ -22,7 +22,8 @@ public final class PdfDocumentWriter {
     private PdfDocumentWriter() {
     }
 
-    public static Path write(String title, String fallbackSlug, List<String> pageStreams)
+    public static Path write(String title, String fallbackSlug,
+            ListInterface<String> pageStreams)
             throws IOException {
         if (title == null || title.isBlank()) {
             throw new IllegalArgumentException("PDF title cannot be blank.");
@@ -68,10 +69,10 @@ public final class PdfDocumentWriter {
         return value.substring(0, maximumLength - 3) + "...";
     }
 
-    private static byte[] buildPdf(List<String> pageStreams) throws IOException {
-        int pageCount = pageStreams.size();
+    private static byte[] buildPdf(ListInterface<String> pageStreams) throws IOException {
+        int pageCount = pageStreams.getNumberOfEntries();
         int objectCount = 5 + pageCount * 2;
-        List<byte[]> objects = new ArrayList<>();
+        ListInterface<byte[]> objects = new ArrayList<>(objectCount);
 
         objects.add(bytes("<< /Type /Catalog /Pages 2 0 R >>"));
         StringBuilder kids = new StringBuilder();
@@ -92,7 +93,7 @@ public final class PdfDocumentWriter {
                     + "/Contents " + contentObject + " 0 R >>";
             objects.add(bytes(pageObject));
 
-            byte[] streamBytes = bytes(pageStreams.get(index));
+            byte[] streamBytes = bytes(pageStreams.getEntry(index + 1));
             ByteArrayOutputStream content = new ByteArrayOutputStream();
             content.write(bytes("<< /Length " + streamBytes.length + " >>\nstream\n"));
             content.write(streamBytes);
@@ -103,11 +104,11 @@ public final class PdfDocumentWriter {
         ByteArrayOutputStream pdf = new ByteArrayOutputStream();
         pdf.write(bytes("%PDF-1.4\n%1234\n"));
         long[] offsets = new long[objectCount + 1];
-        for (int index = 0; index < objects.size(); index++) {
+        for (int index = 0; index < objects.getNumberOfEntries(); index++) {
             int objectNumber = index + 1;
             offsets[objectNumber] = pdf.size();
             pdf.write(bytes(objectNumber + " 0 obj\n"));
-            pdf.write(objects.get(index));
+            pdf.write(objects.getEntry(index + 1));
             pdf.write(bytes("\nendobj\n"));
         }
 

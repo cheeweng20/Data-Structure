@@ -11,7 +11,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.time.LocalDateTime;
-import java.util.List;
 
 /**
  * @author Yi Ren
@@ -55,18 +54,19 @@ public class LateCheckoutExtensionDAO {
                 }
 
                 try {
-                    List<String> fields = parseCsvLine(line);
+                    ListInterface<String> fields = parseCsvLine(line);
                     if (lineNumber == 1 && isHeader(fields)) {
                         continue;
                     }
-                    if (fields.size() < 3) {
+                    if (fields.getNumberOfEntries() < 3) {
                         continue;
                     }
 
-                    String reason = joinFields(fields, fields.size() >= 4 ? 3 : 2);
+                    String reason = joinFields(fields,
+                            fields.getNumberOfEntries() >= 4 ? 4 : 3);
                     extensions.add(new LateCheckoutExtension(
-                            fields.get(0),
-                            LocalDateTime.parse(fields.get(1).trim()),
+                            fields.getEntry(1),
+                            LocalDateTime.parse(fields.getEntry(2).trim()),
                             reason));
                 } catch (RuntimeException exception) {
                     // Keep valid historical records available if one row is bad.
@@ -170,25 +170,26 @@ public class LateCheckoutExtensionDAO {
                 + escapeCsv(extension.getReason());
     }
 
-    private boolean isHeader(List<String> fields) {
-        return fields.size() >= 3
-                && "ConfirmationNumber".equalsIgnoreCase(fields.get(0).trim())
-                && "ExtendedCheckOutAt".equalsIgnoreCase(fields.get(1).trim());
+    private boolean isHeader(ListInterface<String> fields) {
+        return fields.getNumberOfEntries() >= 3
+                && "ConfirmationNumber".equalsIgnoreCase(fields.getEntry(1).trim())
+                && "ExtendedCheckOutAt".equalsIgnoreCase(fields.getEntry(2).trim());
     }
 
-    private String joinFields(List<String> fields, int firstPosition) {
+    private String joinFields(ListInterface<String> fields, int firstPosition) {
         StringBuilder value = new StringBuilder();
-        for (int position = firstPosition; position < fields.size(); position++) {
+        for (int position = firstPosition;
+                position <= fields.getNumberOfEntries(); position++) {
             if (position > firstPosition) {
                 value.append(',');
             }
-            value.append(fields.get(position));
+            value.append(fields.getEntry(position));
         }
         return value.toString().trim();
     }
 
-    private List<String> parseCsvLine(String line) {
-        List<String> fields = new java.util.ArrayList<>();
+    private ListInterface<String> parseCsvLine(String line) {
+        ListInterface<String> fields = new ArrayList<>();
         StringBuilder field = new StringBuilder();
         boolean quoted = false;
 

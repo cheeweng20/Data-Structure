@@ -1,10 +1,10 @@
 package HousekeepingAndTaskLog.reporting;
 
+import adt.ArrayList;
+import adt.ListInterface;
 import common.reporting.pdf.PdfDocumentWriter;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
 
 import static common.reporting.pdf.PdfDocumentWriter.abbreviate;
 import static common.reporting.pdf.PdfDocumentWriter.appendText;
@@ -22,37 +22,43 @@ public final class ReportPdfExporter {
                 .append("0.07 0.13 0.24 rg 0 535 ").append(PdfDocumentWriter.PAGE_WIDTH)
                 .append(" 60 re f\n");
         appendText(page, "F1", 19, 42, 557, 1, 1, 1, title);
-        List<String[]> tableRows = extractTableRows(report);
+        ListInterface<String[]> tableRows = extractTableRows(report);
         drawChart(page, tableRows);
         drawTable(page, tableRows);
-        return PdfDocumentWriter.write(title, "housekeeping-report", List.of(page.toString()));
+        ListInterface<String> pages = new ArrayList<>();
+        pages.add(page.toString());
+        return PdfDocumentWriter.write(title, "housekeeping-report", pages);
     }
 
     public static boolean open(Path pdfPath) throws IOException {
         return PdfDocumentWriter.open(pdfPath);
     }
 
-    private static void drawChart(StringBuilder page, List<String[]> tableRows) {
-        List<String> labels = new ArrayList<>();
-        List<Integer> values = new ArrayList<>();
-        if (!tableRows.isEmpty() && tableRows.get(0).length == 2) {
-            for (int index = 1; index < tableRows.size(); index++) {
+    private static void drawChart(StringBuilder page,
+            ListInterface<String[]> tableRows) {
+        ListInterface<String> labels = new ArrayList<>();
+        ListInterface<Integer> values = new ArrayList<>();
+        if (!tableRows.isEmpty() && tableRows.getEntry(1).length == 2) {
+            for (int position = 2;
+                    position <= tableRows.getNumberOfEntries(); position++) {
                 try {
-                    labels.add(tableRows.get(index)[0]);
-                    values.add(Integer.parseInt(tableRows.get(index)[1]));
+                    labels.add(tableRows.getEntry(position)[0]);
+                    values.add(Integer.parseInt(tableRows.getEntry(position)[1]));
                 } catch (NumberFormatException ignored) {
                     // Ignore an invalid table row.
                 }
             }
         } else if (!tableRows.isEmpty()) {
-            for (int index = 1; index < tableRows.size(); index++) {
-                String status = tableRows.get(index)[2];
-                int existing = labels.indexOf(status);
-                if (existing < 0) {
+            for (int position = 2;
+                    position <= tableRows.getNumberOfEntries(); position++) {
+                String status = tableRows.getEntry(position)[2];
+                int existingPosition = findPosition(labels, status);
+                if (existingPosition == 0) {
                     labels.add(status);
                     values.add(1);
                 } else {
-                    values.set(existing, values.get(existing) + 1);
+                    values.replace(existingPosition,
+                            values.getEntry(existingPosition) + 1);
                 }
             }
         }
@@ -61,17 +67,31 @@ public final class ReportPdfExporter {
         int maximum = 1;
         for (int value : values) maximum = Math.max(maximum, value);
         double y = 458;
-        for (int i = 0; i < labels.size(); i++) {
-            appendText(page, "F1", 8, 52, y + 2, 0.16, 0.20, 0.28, abbreviate(labels.get(i), 23));
+        for (int position = 1;
+                position <= labels.getNumberOfEntries(); position++) {
+            appendText(page, "F1", 8, 52, y + 2, 0.16, 0.20, 0.28,
+                    abbreviate(labels.getEntry(position), 23));
             page.append("0.20 0.55 0.86 rg 215 ").append(y).append(' ')
-                    .append(Math.max(2, 430.0 * values.get(i) / maximum)).append(" 12 re f\n");
-            appendText(page, "F1", 8, 660, y + 2, 0.16, 0.20, 0.28, String.valueOf(values.get(i)));
+                    .append(Math.max(2, 430.0 * values.getEntry(position) / maximum))
+                    .append(" 12 re f\n");
+            appendText(page, "F1", 8, 660, y + 2, 0.16, 0.20, 0.28,
+                    String.valueOf(values.getEntry(position)));
             y -= 24;
         }
     }
 
-    private static List<String[]> extractTableRows(String report) {
-        List<String[]> rows = new ArrayList<>();
+    private static int findPosition(ListInterface<String> entries, String value) {
+        for (int position = 1;
+                position <= entries.getNumberOfEntries(); position++) {
+            if (entries.getEntry(position).equals(value)) {
+                return position;
+            }
+        }
+        return 0;
+    }
+
+    private static ListInterface<String[]> extractTableRows(String report) {
+        ListInterface<String[]> rows = new ArrayList<>();
         for (String line : report.split("\\R")) {
             String trimmed = line.trim();
             if (!trimmed.startsWith("|")) {
@@ -88,13 +108,13 @@ public final class ReportPdfExporter {
     }
 
     /** Draws a navy-header, alternating-row table for the PDF report. */
-    private static void drawTable(StringBuilder page, List<String[]> rows) {
+    private static void drawTable(StringBuilder page, ListInterface<String[]> rows) {
         if (rows.isEmpty()) {
             appendText(page, "F1", 10, 44, 280, 0.20, 0.24, 0.30, "No task records found.");
             return;
         }
-        int rowCount = Math.min(rows.size(), 12);
-        int columnCount = rows.get(0).length;
+        int rowCount = Math.min(rows.getNumberOfEntries(), 12);
+        int columnCount = rows.getEntry(1).length;
         double x = 38;
         double width = 766;
         double cellWidth = width / columnCount;
@@ -115,7 +135,8 @@ public final class ReportPdfExporter {
                 double cellX = x + column * cellWidth;
                 appendText(page, row == 0 ? "F3" : "F1", 7.5, cellX + 8, y - 13,
                         row == 0 ? 1 : 0.10, row == 0 ? 1 : 0.14, row == 0 ? 1 : 0.20,
-                        abbreviate(rows.get(row)[column], Math.max(8, (int) (cellWidth / 5))));
+                        abbreviate(rows.getEntry(row + 1)[column],
+                                Math.max(8, (int) (cellWidth / 5))));
                 if (column > 0) {
                     page.append("0.82 0.86 0.91 RG 0.4 w ").append(cellX).append(' ')
                             .append(y - rowHeight).append(" m ").append(cellX).append(' ')

@@ -190,13 +190,13 @@ public final class LoyaltyUI {
     private void displayPointExpiryNotification(String memberId) {
         ExpiringPointSummary summary = serviceControl.getMemberExpiringPointSummary(
                 memberId, DEFAULT_EXPIRY_ALERT_DAYS);
-        if (summary.transactionCount() == 0) {
+        if (summary.getTransactionCount() == 0) {
             displayInformationRow("Status", "No points expire within the next "
                     + DEFAULT_EXPIRY_ALERT_DAYS + " days.");
             return;
         }
-        displayInformationRow("Expiring Points", summary.pointTotal() + " point(s) from "
-                + summary.transactionCount() + " transaction(s) expire within the next "
+        displayInformationRow("Expiring Points", summary.getPointTotal() + " point(s) from "
+                + summary.getTransactionCount() + " transaction(s) expire within the next "
                 + DEFAULT_EXPIRY_ALERT_DAYS + " days.");
     }
 

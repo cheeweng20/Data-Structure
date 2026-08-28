@@ -31,7 +31,22 @@ public class LoyaltyServiceControl {
     private static final String STATUS_REJECTED = "Rejected";
     private static final String STATUS_REJECTED_INSUFFICIENT_POINTS = "Rejected - insufficient points";
 
-    public record ExpiringPointSummary(int transactionCount, int pointTotal) {
+    public static class ExpiringPointSummary {
+        private final int transactionCount;
+        private final int pointTotal;
+
+        public ExpiringPointSummary(int transactionCount, int pointTotal) {
+            this.transactionCount = transactionCount;
+            this.pointTotal = pointTotal;
+        }
+
+        public int getTransactionCount() {
+            return transactionCount;
+        }
+
+        public int getPointTotal() {
+            return pointTotal;
+        }
     }
 
     private final MemberDao memberDao;
@@ -173,7 +188,7 @@ public class LoyaltyServiceControl {
         MemberPromotionAnalyzer.PromotionOffer offer =
                 promotionAnalyzer.analyze(memberId, sourceId);
         double multiplier = offer.appliesTo(checkInDate)
-                ? offer.pointMultiplier() : 1.0;
+                ? offer.getPointMultiplier() : 1.0;
         double calculatedPoints = Math.floor(
                 bookingAmount * POINTS_PER_RINGGIT * multiplier);
         if (calculatedPoints <= 0 || calculatedPoints > Integer.MAX_VALUE) {
@@ -242,7 +257,7 @@ public class LoyaltyServiceControl {
     /** Returns a booking promotion only when the member currently qualifies for one. */
     public String getEligibleBookingPromotionMessage(String memberId) {
         MemberPromotionAnalyzer.PromotionOffer offer = promotionAnalyzer.analyze(memberId);
-        return offer.pointMultiplier() > 1.0 ? offer.message() : "";
+        return offer.getPointMultiplier() > 1.0 ? offer.getMessage() : "";
     }
 
     /** Returns the applied-promotion message for a completed stay, if any. */
@@ -250,10 +265,10 @@ public class LoyaltyServiceControl {
             LocalDate checkInDate) {
         MemberPromotionAnalyzer.PromotionOffer offer =
                 promotionAnalyzer.analyze(memberId, reservationId);
-        if (!offer.appliesTo(checkInDate) || offer.pointMultiplier() <= 1.0) {
+        if (!offer.appliesTo(checkInDate) || offer.getPointMultiplier() <= 1.0) {
             return "";
         }
-        String stayType = offer.eligiblePattern() == MemberPromotionAnalyzer.StayPattern.WEEKEND
+        String stayType = offer.getEligiblePattern() == MemberPromotionAnalyzer.StayPattern.WEEKEND
                 ? "weekend" : "weekday";
         return "Promotion applied: 1.5x points earned for this " + stayType + " stay.";
     }
@@ -568,7 +583,7 @@ public class LoyaltyServiceControl {
     private void appendHistoryBasedPromotion(StringBuilder promotion, String memberId) {
         MemberPromotionAnalyzer.PromotionOffer offer = promotionAnalyzer.analyze(memberId);
         promotion.append("History-based promotion: ")
-                .append(offer.message()).append("\n");
+                .append(offer.getMessage()).append("\n");
     }
 
     private int expirePoints(LocalDate today) {

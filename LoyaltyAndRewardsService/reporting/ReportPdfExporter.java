@@ -2,7 +2,6 @@ package LoyaltyAndRewardsService.reporting;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -34,12 +33,7 @@ public final class ReportPdfExporter {
             throws IOException {
         ListInterface<ReportChart> charts = extractCharts(report, chartType);
         ListInterface<String> pageStreams = createPageStreams(title, report, charts);
-
-        List<String> pages = new java.util.ArrayList<>();
-        for (String pageStream : pageStreams) {
-            pages.add(pageStream);
-        }
-        return PdfDocumentWriter.write(title, "loyalty-report", pages);
+        return PdfDocumentWriter.write(title, "loyalty-report", pageStreams);
     }
 
     public static boolean open(Path pdfPath) throws IOException {

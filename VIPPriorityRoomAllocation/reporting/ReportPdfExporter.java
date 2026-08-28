@@ -1,9 +1,9 @@
 package VIPPriorityRoomAllocation.reporting;
 
+import adt.ArrayList;
+import adt.ListInterface;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
 
 import common.reporting.pdf.PdfDocumentWriter;
 
@@ -26,11 +26,12 @@ public final class ReportPdfExporter {
 
     public static Path export(String title, String report, ChartType chartType)
             throws IOException {
-        List<ChartItem> chartItems = extractChartItems(report, chartType);
+        ListInterface<ChartItem> chartItems = extractChartItems(report, chartType);
         String pageStream = createPageStream(title, report, chartItems, chartType);
 
-        return PdfDocumentWriter.write(
-                title, "reservation-report", List.of(pageStream));
+        ListInterface<String> pages = new ArrayList<>();
+        pages.add(pageStream);
+        return PdfDocumentWriter.write(title, "reservation-report", pages);
     }
 
     public static boolean open(Path pdfPath) throws IOException {
@@ -38,7 +39,7 @@ public final class ReportPdfExporter {
     }
 
     private static String createPageStream(String title, String report,
-            List<ChartItem> chartItems, ChartType chartType) {
+            ListInterface<ChartItem> chartItems, ChartType chartType) {
         StringBuilder stream = new StringBuilder();
         drawPageBackground(stream, title);
         drawChart(stream, chartTitle(chartType), chartItems);
@@ -56,7 +57,8 @@ public final class ReportPdfExporter {
                 "VIP Priority Room Allocation");
     }
 
-    private static void drawChart(StringBuilder stream, String title, List<ChartItem> items) {
+    private static void drawChart(StringBuilder stream, String title,
+            ListInterface<ChartItem> items) {
         stream.append("1 1 1 rg 38 325 766 190 re f\n");
         appendText(stream, "F3", 13, 52, 493, 0.07, 0.13, 0.24, title);
 
@@ -104,8 +106,9 @@ public final class ReportPdfExporter {
         }
     }
 
-    private static List<ChartItem> extractChartItems(String report, ChartType chartType) {
-        List<ChartItem> items = new ArrayList<>();
+    private static ListInterface<ChartItem> extractChartItems(
+            String report, ChartType chartType) {
+        ListInterface<ChartItem> items = new ArrayList<>();
         String sectionTitle = chartType == ChartType.RESERVATION_STATUS
                 ? "=== Reservation Status Chart Data ==="
                 : "=== Loyalty Tier Allocation Chart Data ===";
@@ -124,21 +127,22 @@ public final class ReportPdfExporter {
                 continue;
             }
 
-            List<String> columns = parseTableColumns(line);
-            if (columns.size() != 2 || columns.get(0).equalsIgnoreCase("Label")) {
+            ListInterface<String> columns = parseTableColumns(line);
+            if (columns.getNumberOfEntries() != 2
+                    || columns.getEntry(1).equalsIgnoreCase("Label")) {
                 continue;
             }
 
-            Integer value = parseInteger(columns.get(1));
+            Integer value = parseInteger(columns.getEntry(2));
             if (value != null) {
-                items.add(new ChartItem(columns.get(0), value));
+                items.add(new ChartItem(columns.getEntry(1), value));
             }
         }
         return items;
     }
 
-    private static List<String> parseTableColumns(String line) {
-        List<String> columns = new ArrayList<>();
+    private static ListInterface<String> parseTableColumns(String line) {
+        ListInterface<String> columns = new ArrayList<>();
         for (String rawColumn : line.split("\\|")) {
             if (!rawColumn.isBlank()) {
                 columns.add(rawColumn.trim());
