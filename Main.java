@@ -294,6 +294,8 @@ public class Main {
             System.out.println("Phone     : " + member.getPhoneNumber());
             System.out.println("Tier      : " + loyalty.getTierName(member));
             System.out.println("Points    : " + member.getPoint());
+            displayTierUpgradeNotification(
+                    loyalty.generateTierUpgradeNotification(member.getMemberId()));
             displayMemberPromotionTable(
                     loyalty.generatePersonalizedPromotion(member.getMemberId()));
             System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("MEMBER HOME",
@@ -318,6 +320,14 @@ public class Main {
                 InputHelper.pressEnterToContinue(scanner);
             }
         }
+    }
+
+    private static void displayTierUpgradeNotification(String notification) {
+        if (notification == null || notification.isBlank()) {
+            return;
+        }
+        System.out.println(ConsoleStyle.title("\n--- Loyalty Notification ---"));
+        System.out.println("- " + notification);
     }
 
     private static void displayMemberPromotionTable(String promotion) {

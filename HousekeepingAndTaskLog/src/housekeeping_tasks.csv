@@ -1,4 +1,1 @@
-TaskId,RoomNumber,Status,CreatedAt,CompletedAt,Remarks
-HK1001,R101,READY_FOR_CHECK_IN,2026-08-25T15:01:09.994037200,2026-08-27T15:02:55.992722300,Checked-out reservation: 90953815
-HK1002,R102,DIRTY,2026-08-26T15:01:10.010759100,,Checked-out reservation: 90953819
-HK1003,R103,CLEANING_IN_PROGRESS,2026-08-27T15:02:09.111605100,,need cleaning
+TaskId,RoomNumber,Status,CreatedAt,CompletedAt,ExpectedReadyAt,Remarks
