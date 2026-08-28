@@ -40,10 +40,10 @@ public class ReservationManager {
         this.reservationDAO = reservationDAO;
         this.roomDAO = roomDAO;
         this.loyaltyLookupDAO = loyaltyLookupDAO;
-        reservations = reservationDAO.retrieveFromFile();    // load reservations from CSV file
-        rooms = roomDAO.retrieveFromFile();                     // load rooms from CSV file
-        pendingPriorityReservations = new MaxHeapPriorityQueue<>();   // main non-linear ADT
-        rebuildPendingPriorityQueue(); // put all PENDING reservations back into the heap
+        reservations = reservationDAO.retrieveFromFile(); // load persisted reservations
+        rooms = roomDAO.retrieveFromFile(); // load current room availability
+        pendingPriorityReservations = new MaxHeapPriorityQueue<>(); // main non-linear ADT
+        rebuildPendingPriorityQueue(); // rebuild heap from all PENDING CSV records
     }
 
     // loyalty checking by member ID or phone number
@@ -51,19 +51,19 @@ public class ReservationManager {
         return loyaltyLookupDAO.findProfile(guestId);
     }
 
-    //create a new reservation and add it to the pending priority queue
+    // Creates a new reservation and inserts it into the heap for later allocation.
     public Reservation submitPriorityReservationRequest(Guest guest,
             LocalDate checkInDate, LocalDate checkOutDate) {
         Reservation reservation = new Reservation(generateUniqueConfirmationNumber(), guest,
                 checkInDate, checkOutDate);
 
         reservations.add(reservation);
-        pendingPriorityReservations.enqueue(reservation); // heap will reorder based on tier priority
+        pendingPriorityReservations.enqueue(reservation); // heap reorders by Reservation.compareTo()
         saveData();
         return reservation;
     }
 
-    //view all pending priority reservations
+    // Returns the current pending heap order for the waiting queue display.
     public Iterator<Reservation> getPendingPriorityReservationIterator() {
         return pendingPriorityReservations.getIterator();
     }
@@ -72,31 +72,35 @@ public class ReservationManager {
         return pendingPriorityReservations.getNumberOfEntries();
     }
 
-    // allocate available rooms by taking highest priority guest from heap first
+    // Allocates rooms by repeatedly removing the highest-priority reservation from the heap.
     public AllocationResult allocateAvailableRooms() {
         int confirmedCount = 0;
         int rejectedCount = 0;
+        ListInterface<Reservation> confirmedReservations = new ArrayList<>();
 
         while (!pendingPriorityReservations.isEmpty()) {
             Reservation reservation = pendingPriorityReservations.dequeue(); // highest tier comes out first
-            Room room = findAvailableRoom(); // sequentially find first AVAILABLE room
+            Room room = findAvailableRoom(); // sequentially finds first AVAILABLE room
 
             if (room == null) {
+                // No available room left: the remaining lower-priority request is rejected.
                 reservation.setStatus(ReservationStatus.REJECTED);
                 rejectedCount++;
             } else {
+                // Available room found: assign room and remember it for this run's output table.
                 reservation.setAssignedRoom(room);
                 reservation.setStatus(ReservationStatus.CONFIRMED);
                 room.setStatus(RoomStatus.RESERVED);
+                confirmedReservations.add(reservation);
                 confirmedCount++;
             }
         }
 
         saveData();
-        return new AllocationResult(confirmedCount, rejectedCount);
+        return new AllocationResult(confirmedCount, rejectedCount, confirmedReservations);
     }
 
-    // sequential search, check each reservation one by one
+    // Sequential search checks each reservation one by one for ID, member ID, or guest name.
     public Reservation findReservation(String searchValue) {
         if (searchValue == null) {
             return null;
@@ -157,6 +161,7 @@ public class ReservationManager {
         String normalizedSearchValue = searchValue.trim().toLowerCase();
         Iterator<Reservation> iterator = reservations.iterator();
 
+        // Keep all matches so a member or guest name can show multiple reservations.
         while (iterator.hasNext()) {
             Reservation reservation = iterator.next();
             Guest guest = reservation.getGuest();
@@ -194,6 +199,7 @@ public class ReservationManager {
     public Room findAvailableRoom() {
         Iterator<Room> iterator = rooms.iterator();
 
+        // Room allocation is first-available-room after the reservation priority is decided by heap.
         while (iterator.hasNext()) {
             Room room = iterator.next();
 
@@ -247,7 +253,7 @@ public class ReservationManager {
         return String.format("G%03d", highestNumber + 1); // non-member guest ID format
     }
 
-    //Rebuild the pending priority queue from the reservations list
+    // Rebuilds the heap when the program starts so pending CSV records are not lost.
     private void rebuildPendingPriorityQueue() {
         Iterator<Reservation> iterator = reservations.iterator();
 
@@ -259,7 +265,7 @@ public class ReservationManager {
         }
     }
 
-    //create confirmation num, if duplicate-->generate a new one
+    // Generates a unique confirmation number by checking existing reservations.
     private String generateUniqueConfirmationNumber() {
         String confirmationNumber = ConfirmationNumberGenerator.generate();
 
@@ -282,15 +288,18 @@ public class ReservationManager {
         }
     }
 
-    //RESUT     
+    // Carries allocation totals and the current run's confirmed records back to the UI.
     public static class AllocationResult {
 
         private final int confirmedCount;
         private final int rejectedCount;
+        private final ListInterface<Reservation> confirmedReservations;
 
-        public AllocationResult(int confirmedCount, int rejectedCount) {
+        public AllocationResult(int confirmedCount, int rejectedCount,
+                ListInterface<Reservation> confirmedReservations) {
             this.confirmedCount = confirmedCount;
             this.rejectedCount = rejectedCount;
+            this.confirmedReservations = confirmedReservations;
         }
 
         public int getConfirmedCount() {
@@ -299,6 +308,10 @@ public class ReservationManager {
 
         public int getRejectedCount() {
             return rejectedCount;
+        }
+
+        public ListInterface<Reservation> getConfirmedReservations() {
+            return confirmedReservations;
         }
     }
 }

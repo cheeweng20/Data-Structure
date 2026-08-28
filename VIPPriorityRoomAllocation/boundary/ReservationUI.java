@@ -50,6 +50,7 @@ public class ReservationUI {
                 displayMenu();
                 String choice = InputHelper.inputString(scanner, "Select an option: ").trim();
 
+                // Boundary layer routes each menu option to one reservation use case.
                 switch (choice) {
                     case "1":
                         makeReservation();
@@ -107,6 +108,7 @@ public class ReservationUI {
     }
 
     private LoyaltyProfile loadMemberProfile(String memberId) {
+        // VIP module reads the Loyalty module member CSV to determine the guest tier.
         return ConsoleProgress.run(
                 () -> reservationManager.findLoyaltyProfile(memberId),
                 "Fetching member information...",
@@ -178,6 +180,7 @@ public class ReservationUI {
         }
         Reservation reservation = payableReservations.getEntry(selection);
 
+        // Points payment is handled by Loyalty, then the reservation payment status is updated here.
         LoyaltyServiceControl loyalty = new LoyaltyServiceControl();
         double amount = calculateReservationAmount(reservation);
         int requiredPoints = loyalty.calculatePointsForPaymentAmount(amount);
@@ -241,6 +244,7 @@ public class ReservationUI {
                 reservationManager.findReservationsByGuestId(memberId);
         ListInterface<RedemptionRequest> paymentRequests = new RequestDao().retrieveFromFile();
 
+        // Only confirmed unpaid reservations can be submitted for point-payment approval.
         for (Reservation reservation : memberReservations) {
             if (reservation.getStatus() == ReservationStatus.CONFIRMED
                     && reservation.getAssignedRoom() != null
@@ -254,6 +258,7 @@ public class ReservationUI {
 
     private boolean hasActivePointPaymentRequest(Reservation reservation,
             ListInterface<RedemptionRequest> paymentRequests) {
+        // Prevent duplicate active point-payment requests for the same reservation.
         for (RedemptionRequest request : paymentRequests) {
             boolean sameReservation = request.getConfirmationNumber()
                     .equalsIgnoreCase(reservation.getConfirmationNumber());
@@ -343,7 +348,7 @@ public class ReservationUI {
             return;
         }
 
-        // save as PENDING first, room will be assigned later by heap priority
+        // New reservation is saved as PENDING first; room assignment happens later by heap priority.
         Reservation reservation = ConsoleProgress.run(
                 () -> reservationManager.submitPriorityReservationRequest(
                         guest, checkInDate, checkOutDate),
@@ -357,7 +362,7 @@ public class ReservationUI {
         System.out.println("Pending Count  : " + reservationManager.getPendingPriorityReservationCount());
     }
 
-    // show pending reservations based on heap priority order
+    // Shows the pending heap order without changing any reservation status.
     private void displayPendingPriorityReservations() {
         Iterator<Reservation> iterator = ConsoleProgress.run(
                 reservationManager::getPendingPriorityReservationIterator,
@@ -368,7 +373,7 @@ public class ReservationUI {
                 reservationManager.getPendingPriorityReservationCount());
     }
 
-    // staff clicks this to start automatic room allocation
+    // Staff confirms this to dequeue the pending priority requests and assign available rooms.
     private void allocateAvailableRooms() {
         int pendingCount = reservationManager.getPendingPriorityReservationCount(); // show how many requests are pending
 
@@ -394,11 +399,12 @@ public class ReservationUI {
         System.out.println("Confirmed : " + result.getConfirmedCount());
         System.out.println("Rejected  : " + result.getRejectedCount());
 
-        displaySuccessfulRoomAllocations();
+        // Print only the reservations confirmed in this allocation run, not old confirmed records.
+        displaySuccessfulRoomAllocations(result.getConfirmedReservations());
     }
 
 
-    // search reservation using sequential search
+    // Search uses sequential scanning and can return multiple matching records.
     private void searchReservation() {
         System.out.println("\n--- Search Reservation ---");
         ListInterface<Reservation> matches = findReservationsByPrompt();
@@ -415,7 +421,7 @@ public class ReservationUI {
 
     private ListInterface<Reservation> findReservationsByPrompt() {
         String searchValue = promptRequiredText("Enter reservation ID / Member ID / Guest Name: ");
-        // returns all matched records, not only the first one
+        // Returns all matched records, not only the first one.
         return ConsoleAnimation.runWithSpinner(
                 () -> reservationManager.findMatchingReservations(searchValue),
                 "Searching reservation records");
@@ -425,10 +431,11 @@ public class ReservationUI {
         ReservationTablePrinter.printAll(reservations);
     }
 
-    private void displaySuccessfulRoomAllocations() {
+    private void displaySuccessfulRoomAllocations(ListInterface<Reservation> reservations) {
         SortedListInterface<Reservation> successfulReservations = new SortedArrayList<>(
-                (left, right) -> left.compareTo(right) * -1); // SortedArrayList keeps successful guests in priority order
-        Iterator<Reservation> iterator = reservationManager.getReservations().iterator();
+                // SortedArrayList keeps the displayed allocation result in priority order.
+                (left, right) -> left.compareTo(right) * -1);
+        Iterator<Reservation> iterator = reservations.iterator();
 
         while (iterator.hasNext()) {
             Reservation reservation = iterator.next();
@@ -448,6 +455,7 @@ public class ReservationUI {
     }
 
     private void displayReportMenu() {
+        // Report menu is separated to keep the main reservation UI shorter.
         new ReservationReportUI(scanner, reservationManager).start();
     }
 

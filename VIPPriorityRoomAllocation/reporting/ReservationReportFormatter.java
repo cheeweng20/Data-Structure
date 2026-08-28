@@ -19,6 +19,7 @@ public final class ReservationReportFormatter {
 
     public static String buildMonthlyReservationSummary(
             ListInterface<Reservation> reservations, YearMonth reportMonth) {
+        // Report 1 filters by selected month and sorts records by booking date/time.
         SortedListInterface<Reservation> reportReservations = new SortedArrayList<>(
                 (left, right) -> left.getBookingDateTime()
                         .compareTo(right.getBookingDateTime()));
@@ -32,10 +33,12 @@ public final class ReservationReportFormatter {
                 continue;
             }
 
+            // Count every reservation status so management can see the full monthly result.
             reportReservations.add(reservation);
             statusCounts[reservation.getStatus().ordinal()]++;
             if (reservation.getAssignedRoom() != null
                     && reservation.getStatus() != ReservationStatus.REJECTED) {
+                // Revenue is counted only when a room was successfully assigned.
                 totalRevenue += calculateReservationAmount(reservation);
             }
         }
@@ -72,7 +75,9 @@ public final class ReservationReportFormatter {
 
     public static String buildMonthlyRoomAllocationReport(
             ListInterface<Reservation> reservations, YearMonth reportMonth) {
+        // Report 2 filters by selected month and keeps only successful room allocations.
         SortedListInterface<Reservation> reportReservations = new SortedArrayList<>(
+                // Sort by room number so allocated room usage is easy to review.
                 (left, right) -> left.getAssignedRoom().getRoomNumber()
                         .compareToIgnoreCase(right.getAssignedRoom().getRoomNumber()));
         Iterator<Reservation> iterator = reservations.iterator();
@@ -84,6 +89,7 @@ public final class ReservationReportFormatter {
                     && reservation.getAssignedRoom() != null
                     && reservation.getStatus() != ReservationStatus.REJECTED) {
                 reportReservations.add(reservation);
+                // Count allocations by loyalty tier for the PDF chart.
                 tierCounts[reservation.getGuest().getLoyaltyTier().getPriorityScore()]++;
             }
         }

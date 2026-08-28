@@ -139,21 +139,23 @@ public class Reservation implements Comparable<Reservation> {
 
     @Override
     public int compareTo(Reservation other) {
-        // compareTo is the priority formula used by MaxHeapPriorityQueue
+        // This priority formula is used by MaxHeapPriorityQueue during room allocation.
         int tierCompare = Integer.compare(
-                getGuest().getLoyaltyTier().getPriorityScore(), // higher tier score has higher heap priority
+                getGuest().getLoyaltyTier().getPriorityScore(), // higher tier score gets higher priority
                 other.getGuest().getLoyaltyTier().getPriorityScore());
 
         if (tierCompare != 0) {
             return tierCompare; // different tier: decide by loyalty tier first
         }
 
-        int bookingDateTimeCompare = other.bookingDateTime.compareTo(bookingDateTime); // same tier: earlier request first
+        // Same tier: earlier booking time gets priority first.
+        int bookingDateTimeCompare = other.bookingDateTime.compareTo(bookingDateTime);
         if (bookingDateTimeCompare != 0) {
             return bookingDateTimeCompare;
         }
 
-        return other.confirmationNumber.compareToIgnoreCase(confirmationNumber); // final backup if tier and time are same
+        // Final tie-breaker keeps ordering stable if tier and booking time are the same.
+        return other.confirmationNumber.compareToIgnoreCase(confirmationNumber);
     }
 
     @Override

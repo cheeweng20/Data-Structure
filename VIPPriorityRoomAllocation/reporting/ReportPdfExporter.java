@@ -27,34 +27,164 @@ public final class ReportPdfExporter {
     public static Path export(String title, String report, ChartType chartType)
             throws IOException {
         ListInterface<ChartItem> chartItems = extractChartItems(report, chartType);
-        String pageStream = createPageStream(title, report, chartItems, chartType);
-
-        ListInterface<String> pages = new ArrayList<>();
-        pages.add(pageStream);
-        return PdfDocumentWriter.write(title, "reservation-report", pages);
+        ListInterface<String> pageStreams = createPageStreams(title, report,
+                chartItems, chartType);
+        return PdfDocumentWriter.write(title, "reservation-report", pageStreams);
     }
 
     public static boolean open(Path pdfPath) throws IOException {
         return PdfDocumentWriter.open(pdfPath);
     }
 
-    private static String createPageStream(String title, String report,
+    private static ListInterface<String> createPageStreams(String title, String report,
             ListInterface<ChartItem> chartItems, ChartType chartType) {
-        StringBuilder stream = new StringBuilder();
-        drawPageBackground(stream, title);
-        drawChart(stream, chartTitle(chartType), chartItems);
-        drawReportText(stream, report);
-        return stream.toString();
+        ListInterface<String> streams = new ArrayList<>();
+        int pageNumber = 1;
+        PageCanvas page = createPage(title, pageNumber, chartItems, chartType);
+        int tablePhase = -1;
+        int tableRowIndex = 0;
+        ListInterface<String> tableHeader = null;
+
+        for (String rawLine : visibleReportLines(report)) {
+            String line = rawLine.trim();
+            if (line.isEmpty()) {
+                page.y -= 7;
+                continue;
+            }
+
+            if (line.matches("^\\+[-+]+\\+$")) {
+                if (tablePhase == -1) {
+                    tablePhase = 0;
+                    tableRowIndex = 0;
+                } else if (tablePhase == 1) {
+                    tablePhase = 2;
+                } else {
+                    tablePhase = -1;
+                    tableHeader = null;
+                }
+                continue;
+            }
+
+            if (line.startsWith("===") && line.endsWith("===")) {
+                String heading = line.replace("=", "").trim();
+                if (page.y - 27 < 42) {
+                    streams.add(page.stream.toString());
+                    page = createPage(title, ++pageNumber, new ArrayList<>(), chartType);
+                }
+                drawSectionHeading(page.stream, heading, page.y);
+                page.y -= 28;
+                continue;
+            }
+
+            ListInterface<String> columns = parseTableColumns(line);
+            if (!columns.isEmpty()) {
+                boolean isHeader = tablePhase == 0;
+                if (page.y - 19 < 42) {
+                    streams.add(page.stream.toString());
+                    page = createPage(title, ++pageNumber, new ArrayList<>(), chartType);
+                    if (!isHeader && tablePhase == 2 && tableHeader != null) {
+                        drawTableRow(page.stream, tableHeader, page.y, true, 0);
+                        page.y -= 19;
+                    }
+                }
+
+                drawTableRow(page.stream, columns, page.y, isHeader, tableRowIndex);
+                page.y -= 19;
+                if (isHeader) {
+                    tableHeader = columns;
+                    tablePhase = 1;
+                } else {
+                    tableRowIndex++;
+                }
+                continue;
+            }
+
+            if (page.y - 21 < 42) {
+                streams.add(page.stream.toString());
+                page = createPage(title, ++pageNumber, new ArrayList<>(), chartType);
+            }
+            drawSummaryRow(page.stream, line, page.y);
+            page.y -= 21;
+        }
+
+        streams.add(page.stream.toString());
+        return streams;
     }
 
-    private static void drawPageBackground(StringBuilder stream, String title) {
+    private static PageCanvas createPage(String title, int pageNumber,
+            ListInterface<ChartItem> chartItems, ChartType chartType) {
+        StringBuilder stream = new StringBuilder();
+        drawPageBackground(stream, title, pageNumber);
+        if (pageNumber == 1) {
+            drawChart(stream, chartTitle(chartType), chartItems);
+            return new PageCanvas(stream, 292);
+        }
+        return new PageCanvas(stream, 507);
+    }
+
+    private static void drawPageBackground(StringBuilder stream, String title,
+            int pageNumber) {
         stream.append("0.96 0.97 0.99 rg 0 0 ")
                 .append(PAGE_WIDTH).append(' ').append(PAGE_HEIGHT).append(" re f\n");
         stream.append("0.07 0.13 0.24 rg 0 535 ")
                 .append(PAGE_WIDTH).append(" 60 re f\n");
         appendText(stream, "F1", 19, 42, 557, 1, 1, 1, title);
-        appendText(stream, "F1", 7, 42, 18, 0.38, 0.43, 0.50,
-                "VIP Priority Room Allocation");
+        appendText(stream, "F1", 8, 735, 558, 0.82, 0.87, 0.95,
+                "Page " + pageNumber);
+        stream.append("0.78 0.82 0.88 RG 0.6 w 38 31 m 804 31 l S\n");
+    }
+
+    private static void drawSectionHeading(StringBuilder stream, String heading, double y) {
+        stream.append("0.88 0.93 0.98 rg 44 ").append(y - 5)
+                .append(" 756 21 re f\n");
+        appendText(stream, "F3", 10.5, 54, y + 1, 0.07, 0.20, 0.36, heading);
+    }
+
+    private static void drawSummaryRow(StringBuilder stream, String line, double y) {
+        stream.append("1 1 1 rg 44 ").append(y - 5).append(" 756 18 re f\n");
+        int separator = line.indexOf(':');
+        if (separator > 0 && separator < 38) {
+            String label = line.substring(0, separator).trim();
+            String value = line.substring(separator + 1).trim();
+            appendText(stream, "F3", 8, 54, y, 0.17, 0.27, 0.40,
+                    abbreviate(label, 30));
+            appendText(stream, "F1", 8, 245, y, 0.20, 0.24, 0.30,
+                    abbreviate(value, 80));
+        } else {
+            appendText(stream, "F1", 8, 54, y, 0.20, 0.24, 0.30,
+                    abbreviate(line, 130));
+        }
+    }
+
+    private static void drawTableRow(StringBuilder stream, ListInterface<String> columns,
+            double y, boolean header, int rowIndex) {
+        double tableX = 44;
+        double tableWidth = 756;
+        double cellWidth = tableWidth / columns.getNumberOfEntries();
+        if (header) {
+            stream.append("0.09 0.23 0.40 rg ").append(tableX).append(' ')
+                    .append(y - 5).append(' ').append(tableWidth).append(" 18 re f\n");
+        } else {
+            double shade = rowIndex % 2 == 0 ? 1.0 : 0.94;
+            stream.append(shade).append(' ').append(shade == 1.0 ? 1.0 : 0.96)
+                    .append(' ').append(shade == 1.0 ? 1.0 : 0.98).append(" rg ")
+                    .append(tableX).append(' ').append(y - 5).append(' ')
+                    .append(tableWidth).append(" 18 re f\n");
+        }
+
+        for (int index = 0; index < columns.getNumberOfEntries(); index++) {
+            double cellX = tableX + index * cellWidth;
+            int maximumCharacters = Math.max(4, (int) ((cellWidth - 14) / 4.0));
+            appendText(stream, header ? "F3" : "F1", 7.5, cellX + 7, y,
+                    header ? 1 : 0.18, header ? 1 : 0.22, header ? 1 : 0.28,
+                    abbreviate(columns.getEntry(index + 1), maximumCharacters));
+            if (index > 0) {
+                stream.append(header ? "0.35 0.48 0.62 RG " : "0.82 0.85 0.89 RG ")
+                        .append("0.4 w ").append(cellX).append(' ').append(y - 5)
+                        .append(" m ").append(cellX).append(' ').append(y + 13)
+                        .append(" l S\n");
+            }
+        }
     }
 
     private static void drawChart(StringBuilder stream, String title,
@@ -86,24 +216,16 @@ public final class ReportPdfExporter {
         }
     }
 
-    private static void drawReportText(StringBuilder stream, String report) {
-        double y = 292;
+    private static ListInterface<String> visibleReportLines(String report) {
+        ListInterface<String> lines = new ArrayList<>();
         for (String rawLine : report.split("\\R")) {
-            if (y < 42) {
-                break;
-            }
             String line = rawLine.trim();
             if (line.contains("Chart Data")) {
                 break;
             }
-            if (line.isEmpty()) {
-                y -= 8;
-                continue;
-            }
-            appendText(stream, "F2", 7.2, 44, y, 0.20, 0.24, 0.30,
-                    abbreviate(line, 145));
-            y -= 13;
+            lines.add(rawLine);
         }
+        return lines;
     }
 
     private static ListInterface<ChartItem> extractChartItems(
@@ -161,8 +283,8 @@ public final class ReportPdfExporter {
 
     private static String chartTitle(ChartType chartType) {
         return chartType == ChartType.RESERVATION_STATUS
-                ? "Reservation status count"
-                : "Allocated rooms by loyalty tier";
+                ? "Reservation Status Summary"
+                : "Room Allocation by Loyalty Tier";
     }
 
     private static final class ChartItem {
@@ -172,6 +294,16 @@ public final class ReportPdfExporter {
         private ChartItem(String label, int value) {
             this.label = label;
             this.value = value;
+        }
+    }
+
+    private static final class PageCanvas {
+        private final StringBuilder stream;
+        private double y;
+
+        private PageCanvas(StringBuilder stream, double y) {
+            this.stream = stream;
+            this.y = y;
         }
     }
 }
