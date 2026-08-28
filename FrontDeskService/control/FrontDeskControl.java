@@ -190,6 +190,10 @@ public class FrontDeskControl {
             return CheckInResult.ROOM_NOT_RESERVED;
         }
 
+        if ("POINTS_PENDING".equalsIgnoreCase(reservation.getPaymentStatus())) {
+            return CheckInResult.POINTS_PAYMENT_PENDING;
+        }
+
         boolean alreadyPaid = "PAID".equalsIgnoreCase(reservation.getPaymentStatus());
         if (!alreadyPaid && (paymentMethod == null || paymentMethod.trim().isEmpty())) {
             return CheckInResult.PAYMENT_REQUIRED;
@@ -378,7 +382,8 @@ public class FrontDeskControl {
         NOT_CONFIRMED,
         CHECK_IN_DATE_NOT_REACHED,
         ROOM_NOT_RESERVED,
-        PAYMENT_REQUIRED
+        PAYMENT_REQUIRED,
+        POINTS_PAYMENT_PENDING
     }
 
     public enum CheckOutResult {

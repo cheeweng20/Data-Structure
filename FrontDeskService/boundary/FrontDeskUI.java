@@ -107,6 +107,11 @@ public class FrontDeskUI {
         }
 
         displayReservationDetails(reservation);
+        if ("POINTS_PENDING".equalsIgnoreCase(reservation.getPaymentStatus())) {
+            System.out.println("Check-in blocked: points payment is awaiting Loyalty approval.");
+            return;
+        }
+
         String paymentMethod = reservation.getPaymentMethod();
         if ("PAID".equalsIgnoreCase(reservation.getPaymentStatus())) {
             System.out.println("Payment has already been completed using "
@@ -456,6 +461,8 @@ public class FrontDeskUI {
                 return "only confirmed reservations can be checked in.";
             case CHECK_IN_DATE_NOT_REACHED:
                 return "the check-in date has not been reached.";
+            case POINTS_PAYMENT_PENDING:
+                return "member-points payment is awaiting Loyalty approval.";
             default:
                 return "unable to complete check-in.";
         }
