@@ -5,6 +5,9 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 
 /** Verifies a member using data collected during registration. */
+/**
+ * @author Chee Weng
+ */
 public final class MemberIdentityControl {
     private MemberIdentityControl() {
     }

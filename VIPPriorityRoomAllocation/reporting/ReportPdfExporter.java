@@ -11,6 +11,9 @@ import static common.reporting.pdf.PdfDocumentWriter.abbreviate;
 import static common.reporting.pdf.PdfDocumentWriter.appendText;
 
 // Creates a PDF copy of a reservation report with one bar chart.
+/**
+ * @author Wan Yin
+ */
 public final class ReportPdfExporter {
 
     public enum ChartType {

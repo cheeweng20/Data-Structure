@@ -19,9 +19,18 @@ public final class LoyaltyReportFormatter {
             return "";
         }
 
+        int totalPointsExpiring = 0;
+        for (PointTransaction transaction : transactions) {
+            totalPointsExpiring += transaction.getPointsRemaining();
+        }
+
         StringBuilder output = new StringBuilder();
         String border = "+----------------+------------+-----------------+--------------+";
         output.append("=== Expiring Points Alert ===\n");
+        output.append("Total Affected Transactions: ")
+                .append(transactions.getNumberOfEntries()).append('\n');
+        output.append("Total Points Expiring: ")
+                .append(totalPointsExpiring).append("\n\n");
         output.append(border).append('\n');
         output.append(String.format("| %-14s | %-10s | %15s | %-12s |%n",
                 "Transaction ID", "Member ID", "Points Expiring", "Expiry Date"));

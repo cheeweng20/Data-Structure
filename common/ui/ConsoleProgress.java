@@ -12,6 +12,9 @@ import java.util.function.Supplier;
  * {@code -Dcli.progress=false} to disable the animation without changing the
  * underlying operation.</p>
  */
+/**
+ * @author Chee Weng
+ */
 public final class ConsoleProgress {
     private static final int BAR_WIDTH = 28;
     private static final long ANIMATION_MILLIS = 1200L;

@@ -1,9 +1,6 @@
 package VIPPriorityRoomAllocation.boundary;
 
 import VIPPriorityRoomAllocation.control.ReservationManager;
-import VIPPriorityRoomAllocation.reporting.ReportPdfExporter;
-import VIPPriorityRoomAllocation.reporting.ReportPdfExporter.ChartType;
-import VIPPriorityRoomAllocation.reporting.ReservationReportFormatter;
 import common.ui.ConsoleAnimation;
 import common.ui.ConsoleProgress;
 import common.ui.ConsoleStyle;
@@ -16,7 +13,11 @@ import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
 import java.util.Scanner;
 
-/** Handles the reservation report menu, display, and optional PDF export. */
+/**
+ * Handles the reservation report menu, display, and optional PDF export.
+ *
+ * @author Wan Yin
+ */
 final class ReservationReportUI {
 
     private final Scanner scanner;
@@ -65,8 +66,7 @@ final class ReservationReportUI {
     private void displayMonthlyReservationSummary() {
         YearMonth reportMonth = promptReportMonth();
         String report = ConsoleProgress.run(
-                () -> ReservationReportFormatter.buildMonthlyReservationSummary(
-                        reservationManager.getReservations(), reportMonth),
+                () -> reservationManager.getMonthlyReservationSummary(reportMonth),
                 "Fetching reservation information...",
                 "Calculating reservation summary...",
                 "Preparing report...");
@@ -74,15 +74,14 @@ final class ReservationReportUI {
         if (displayReport(report,
                 "No reservation records found for " + reportMonth + ".")) {
             offerPdfExport("Monthly Reservation Summary", report,
-                    ChartType.RESERVATION_STATUS);
+                    "RESERVATION_STATUS");
         }
     }
 
     private void displayMonthlyRoomAllocationReport() {
         YearMonth reportMonth = promptReportMonth();
         String report = ConsoleProgress.run(
-                () -> ReservationReportFormatter.buildMonthlyRoomAllocationReport(
-                        reservationManager.getReservations(), reportMonth),
+                () -> reservationManager.getMonthlyRoomAllocationReport(reportMonth),
                 "Fetching room allocation information...",
                 "Calculating allocation summary...",
                 "Preparing report...");
@@ -90,7 +89,7 @@ final class ReservationReportUI {
         if (displayReport(report,
                 "No allocated room records found for " + reportMonth + ".")) {
             offerPdfExport("Monthly Room Allocation Report", report,
-                    ChartType.TIER_ALLOCATION);
+                    "TIER_ALLOCATION");
         }
     }
 
@@ -104,7 +103,7 @@ final class ReservationReportUI {
         return true;
     }
 
-    private void offerPdfExport(String title, String report, ChartType chartType) {
+    private void offerPdfExport(String title, String report, String chartType) {
         String selection = InputHelper.inputString(
                 scanner, "Generate chart PDF and open it? (Y/N): ");
         if (!selection.equalsIgnoreCase("Y") && !selection.equalsIgnoreCase("Yes")) {
@@ -114,7 +113,7 @@ final class ReservationReportUI {
         Path pdfPath;
         try {
             pdfPath = ConsoleAnimation.runIoWithSpinner(
-                    () -> ReportPdfExporter.export(title, report, chartType),
+                    () -> reservationManager.exportReport(title, report, chartType),
                     "Generating report PDF");
         } catch (IOException exception) {
             MessageUI.displayError("Unable to generate PDF: " + exception.getMessage());
@@ -123,7 +122,7 @@ final class ReservationReportUI {
 
         MessageUI.displaySuccess("PDF generated: " + pdfPath);
         try {
-            if (!ReportPdfExporter.open(pdfPath)) {
+            if (!reservationManager.openReport(pdfPath)) {
                 MessageUI.displayInfo("Open the PDF manually from the path shown above.");
             }
         } catch (IOException exception) {

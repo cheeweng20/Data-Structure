@@ -1,5 +1,7 @@
 package adt;
 
+// Source: Adapted from Frank M. Carrano, Data Structures and Abstractions.
+
 import java.util.Iterator;
 
 /**

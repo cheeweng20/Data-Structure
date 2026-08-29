@@ -10,6 +10,9 @@ import static common.reporting.pdf.PdfDocumentWriter.abbreviate;
 import static common.reporting.pdf.PdfDocumentWriter.appendText;
 
 /** Exports Housekeeping reports through the shared PDF document writer. */
+/**
+ * @author Zhe Sheng
+ */
 public final class ReportPdfExporter {
 
     private ReportPdfExporter() {

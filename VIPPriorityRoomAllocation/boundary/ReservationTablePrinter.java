@@ -9,7 +9,11 @@ import common.ui.ConsoleAnimation;
 import common.ui.MessageUI;
 import java.util.Iterator;
 
-/** Prints reservation tables and detail views without changing reservation data. */
+/**
+ * Prints reservation tables and detail views without changing reservation data.
+ *
+ * @author Wan Yin
+ */
 final class ReservationTablePrinter {
 
     private ReservationTablePrinter() {

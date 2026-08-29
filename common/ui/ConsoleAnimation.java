@@ -4,6 +4,9 @@ import java.io.IOException;
 import java.util.function.Supplier;
 
 /** Reusable lightweight animations for the console UI. */
+/**
+ * @author Chee Weng
+ */
 public final class ConsoleAnimation {
     private static final String[] SPINNER_FRAMES = {"|", "/", "-", "\\"};
     private static final long FRAME_MILLIS = 140L;

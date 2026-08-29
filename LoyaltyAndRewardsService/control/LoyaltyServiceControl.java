@@ -8,7 +8,9 @@ import LoyaltyAndRewardsService.entity.PointTransaction;
 import LoyaltyAndRewardsService.entity.PromotionOffer;
 import LoyaltyAndRewardsService.entity.RedemptionRequest;
 import LoyaltyAndRewardsService.entity.Tier;
-import LoyaltyAndRewardsService.utility.TransactionDateComparator;
+import LoyaltyAndRewardsService.reporting.LoyaltyReportFormatter;
+import LoyaltyAndRewardsService.reporting.ReportPdfExporter;
+import LoyaltyAndRewardsService.reporting.ReportPdfExporter.ChartType;
 import VIPPriorityRoomAllocation.dao.ReservationDAO;
 import VIPPriorityRoomAllocation.entity.Reservation;
 import VIPPriorityRoomAllocation.entity.ReservationStatus;
@@ -19,6 +21,8 @@ import adt.QueueInterface;
 import adt.SortedArrayList;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.Iterator;
 
 /**
@@ -290,6 +294,35 @@ public class LoyaltyServiceControl {
         }
 
         return sortedResult;
+    }
+
+    public String getExpiringPointsReport(int withinDays) {
+        return LoyaltyReportFormatter.buildExpiringPointsReport(generateExpiringReport(withinDays));
+    }
+
+    public String getPointsTransactionReport(LocalDate startDate, LocalDate endDate) {
+        return LoyaltyReportFormatter.buildPointsTransactionReport(startDate, endDate,
+                generateTransactionReport(startDate, endDate));
+    }
+
+    public boolean isValidMemberName(String memberName) {
+        return Validation.isValidMemberName(memberName);
+    }
+
+    public boolean isValidPassport(String passport) {
+        return Validation.isValidPassport(passport);
+    }
+
+    public boolean isValidPhoneNumber(String phoneNumber) {
+        return Validation.isValidPhoneNumber(phoneNumber);
+    }
+
+    public Path exportReport(String title, String report, String chartType) throws IOException {
+        return ReportPdfExporter.export(title, report, ChartType.valueOf(chartType));
+    }
+
+    public boolean openReport(Path pdfPath) throws IOException {
+        return ReportPdfExporter.open(pdfPath);
     }
 
     private void deductPointsFromOldestTransactions(String memberId, int pointsToDeduct) {

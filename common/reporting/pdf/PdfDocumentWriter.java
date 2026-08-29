@@ -12,6 +12,9 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 /** Writes dependency-free landscape PDF documents from prepared page streams. */
+/**
+ * @author Chee Weng
+ */
 public final class PdfDocumentWriter {
 
     public static final double PAGE_WIDTH = 842;

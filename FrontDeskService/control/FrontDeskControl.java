@@ -2,6 +2,8 @@ package FrontDeskService.control;
 
 import FrontDeskService.dao.LateCheckoutExtensionDAO;
 import FrontDeskService.entity.LateCheckoutExtension;
+import FrontDeskService.reporting.ReportPdfExporter;
+import FrontDeskService.reporting.ReportPdfExporter.ChartType;
 import HousekeepingAndTaskLog.control.HousekeepingControl;
 import LoyaltyAndRewardsService.control.LoyaltyServiceControl;
 import LoyaltyAndRewardsService.entity.PromotionOffer;
@@ -17,13 +19,18 @@ import adt.ListInterface;
 import adt.SearchTreeInterface;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.Iterator;
+import common.utility.Validation;
 
 /** Business rules for Front Desk guest service operations.
  * @author Yi Ren
  */
 public class FrontDeskControl {
     private static final String MEMBER_POINTS_PAYMENT_METHOD = "Member Points";
+    private static final String REPORT_BORDER =
+            "+------------+----------------------+--------------+------------------------+--------------+";
 
     private final ReservationDAO reservationDAO;
     private final RoomDAO roomDAO;
@@ -164,6 +171,34 @@ public class FrontDeskControl {
         }
         sortReservationsByPaymentMethodThenRoom(result);
         return result;
+    }
+
+    public String getOutstandingBalanceReportDisplay() {
+        ListInterface<Reservation> reportReservations = getOutstandingBalanceReport();
+        if (reportReservations.isEmpty()) {
+            return "";
+        }
+        return buildOutstandingBalanceReport(reportReservations);
+    }
+
+    public String getPaymentMethodReportDisplay() {
+        ListInterface<Reservation> reportReservations = getPaymentMethodReport();
+        if (reportReservations.isEmpty()) {
+            return "";
+        }
+        return buildPaymentMethodReport(reportReservations);
+    }
+
+    public Path exportReport(String title, String report, String chartType) throws IOException {
+        return ReportPdfExporter.export(title, report, ChartType.valueOf(chartType));
+    }
+
+    public boolean openReport(Path pdfPath) throws IOException {
+        return ReportPdfExporter.open(pdfPath);
+    }
+
+    public boolean isValidConfirmationNumber(String confirmationNumber) {
+        return Validation.isValidConfirmationNumber(confirmationNumber);
     }
 
     /**
@@ -369,6 +404,56 @@ public class FrontDeskControl {
         String paymentMethod = reservation.getPaymentMethod();
         return paymentMethod == null || paymentMethod.trim().isEmpty()
                 ? "Unspecified" : paymentMethod.trim();
+    }
+
+    private String buildOutstandingBalanceReport(ListInterface<Reservation> reportReservations) {
+        StringBuilder report = createReportTable(
+                "Outstanding Balance Report", "Payment Status", "Balance (RM)");
+        int total = 0;
+        for (Reservation reservation : reportReservations) {
+            appendReportRow(report, reservation, roomLabel(reservation),
+                    String.valueOf(reservation.getPaymentStatus()));
+            total++;
+        }
+        report.append(REPORT_BORDER).append(System.lineSeparator());
+        return report.append("Total outstanding balance records: ").append(total)
+                .append(System.lineSeparator()).toString();
+    }
+
+    private String buildPaymentMethodReport(ListInterface<Reservation> reportReservations) {
+        StringBuilder report = createReportTable(
+                "Payment Method Room Report", "Payment Method", "Bill (RM)");
+        int total = 0;
+        for (Reservation reservation : reportReservations) {
+            appendReportRow(report, reservation, roomLabel(reservation),
+                    paymentMethodLabel(reservation));
+            total++;
+        }
+        report.append(REPORT_BORDER).append(System.lineSeparator());
+        return report.append("Total paid room records: ").append(total)
+                .append(System.lineSeparator()).toString();
+    }
+
+    private StringBuilder createReportTable(String title, String paymentColumn,
+            String amountColumn) {
+        StringBuilder report = new StringBuilder("\n--- ").append(title)
+                .append(" ---").append(System.lineSeparator());
+        report.append(REPORT_BORDER).append(System.lineSeparator());
+        report.append(String.format("| %-10s | %-20s | %-12s | %-22s | %-12s |%n",
+                "Room", "Guest", "Confirm No.", paymentColumn, amountColumn));
+        return report.append(REPORT_BORDER).append(System.lineSeparator());
+    }
+
+    private void appendReportRow(StringBuilder report, Reservation reservation,
+            String room, String paymentDetails) {
+        report.append(String.format("| %-10s | %-20.20s | %-12s | %-22.22s | %-12.2f |%n",
+                room, reservation.getGuest().getFullName(),
+                reservation.getConfirmationNumber(), paymentDetails, calculateBill(reservation)));
+    }
+
+    private String roomLabel(Reservation reservation) {
+        return reservation.getAssignedRoom() == null
+                ? "Unassigned" : reservation.getAssignedRoom().getRoomNumber();
     }
 
     private void saveData() {

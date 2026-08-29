@@ -7,7 +7,7 @@ import java.util.Scanner;
  * @author Yi Ren
  */
 public class FrontDeskService {
-    public static void FrontDeskServiceMain(Scanner input) {
+    public static void startModule(Scanner input) {
         new FrontDeskUI(input).start();
     }
 }

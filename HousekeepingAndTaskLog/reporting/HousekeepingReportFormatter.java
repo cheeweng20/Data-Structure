@@ -6,9 +6,12 @@ import adt.ListInterface;
 import java.util.Iterator;
 
 /** Builds the text reports used by Housekeeping's console and PDF exports. */
-public final class HouseKeepingReportFormatter {
+/**
+ * @author Zhe Sheng
+ */
+public final class HousekeepingReportFormatter {
 
-    private HouseKeepingReportFormatter() {
+    private HousekeepingReportFormatter() {
     }
 
     public static String buildTaskStatusSummary(int[] totals) {

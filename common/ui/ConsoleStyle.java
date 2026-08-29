@@ -6,6 +6,9 @@ package common.ui;
  * <p>Colours can be disabled with the {@code NO_COLOR} environment variable
  * or by running Java with {@code -Dcli.color=false}.</p>
  */
+/**
+ * @author Chee Weng
+ */
 public final class ConsoleStyle {
     /** Menu width matches the 76-character TARUMT Resort logo. */
     private static final int MENU_LABEL_WIDTH = 66;

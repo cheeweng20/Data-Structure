@@ -1,8 +1,6 @@
 package FrontDeskService.boundary;
 
 import FrontDeskService.control.FrontDeskControl;
-import FrontDeskService.reporting.ReportPdfExporter;
-import FrontDeskService.reporting.ReportPdfExporter.ChartType;
 import LoyaltyAndRewardsService.entity.PromotionOffer;
 import FrontDeskService.control.FrontDeskControl.CheckInResult;
 import FrontDeskService.control.FrontDeskControl.CheckOutResult;
@@ -20,7 +18,6 @@ import common.ui.InputHelper;
 import common.ui.InputHelper.EndOfInputException;
 import common.ui.Logo;
 import common.ui.MessageUI;
-import common.utility.Validation;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -265,98 +262,38 @@ public class FrontDeskUI {
     }
 
     private void outstandingBalanceReport() {
-        ListInterface<Reservation> reservations = ConsoleProgress.run(
-                control::getOutstandingBalanceReport,
+        String report = ConsoleProgress.run(
+                control::getOutstandingBalanceReportDisplay,
                 "Fetching billing information...",
                 "Calculating outstanding balances...",
                 "Preparing report...");
-        if (reservations.isEmpty()) {
+        if (report.isEmpty()) {
             System.out.println("\nNo outstanding balance records found.");
             return;
         }
 
-        String report = buildOutstandingBalanceReport(reservations);
         System.out.println(report);
         offerPdfExport("Outstanding Balance Report", report,
-                ChartType.OUTSTANDING_BALANCE);
+                "OUTSTANDING_BALANCE");
     }
 
     private void paymentMethodReport() {
-        ListInterface<Reservation> reservations = ConsoleProgress.run(
-                control::getPaymentMethodReport,
+        String report = ConsoleProgress.run(
+                control::getPaymentMethodReportDisplay,
                 "Fetching payment information...",
                 "Grouping paid reservations...",
                 "Preparing report...");
-        if (reservations.isEmpty()) {
+        if (report.isEmpty()) {
             System.out.println("\nNo paid room records found.");
             return;
         }
 
-        String report = buildPaymentMethodReport(reservations);
         System.out.println(report);
         offerPdfExport("Payment Method Room Report", report,
-                ChartType.PAYMENT_METHOD);
+                "PAYMENT_METHOD");
     }
 
-    private String buildOutstandingBalanceReport(ListInterface<Reservation> reservations) {
-        StringBuilder report = createReportTable(
-                "Outstanding Balance Report", "Payment Status", "Balance (RM)");
-        int total = 0;
-        for (int position = 1; position <= reservations.getNumberOfEntries(); position++) {
-            Reservation reservation = reservations.getEntry(position);
-            appendReportRow(report, reservation, roomLabel(reservation),
-                    String.valueOf(reservation.getPaymentStatus()));
-            total++;
-        }
-        report.append(REPORT_BORDER).append(System.lineSeparator());
-        report.append("Total outstanding balance records: ").append(total)
-                .append(System.lineSeparator());
-        return report.toString();
-    }
-
-    private String buildPaymentMethodReport(ListInterface<Reservation> reservations) {
-        StringBuilder report = createReportTable(
-                "Payment Method Room Report", "Payment Method", "Bill (RM)");
-        int total = 0;
-        for (int position = 1; position <= reservations.getNumberOfEntries(); position++) {
-            Reservation reservation = reservations.getEntry(position);
-            appendReportRow(report, reservation, roomLabel(reservation),
-                    paymentMethodLabel(reservation));
-            total++;
-        }
-        report.append(REPORT_BORDER).append(System.lineSeparator());
-        report.append("Total paid room records: ").append(total)
-                .append(System.lineSeparator());
-        return report.toString();
-    }
-
-    private StringBuilder createReportTable(String title, String paymentColumn,
-            String amountColumn) {
-        StringBuilder report = new StringBuilder("\n--- ").append(title)
-                .append(" ---").append(System.lineSeparator());
-        report.append(REPORT_BORDER).append(System.lineSeparator());
-        report.append(String.format("| %-10s | %-20s | %-12s | %-22s | %-12s |%n",
-                "Room", "Guest", "Confirm No.", paymentColumn, amountColumn));
-        report.append(REPORT_BORDER).append(System.lineSeparator());
-        return report;
-    }
-
-    private void appendReportRow(StringBuilder report, Reservation reservation,
-            String room, String paymentDetails) {
-        report.append(String.format("| %-10s | %-20.20s | %-12s | %-22.22s | %-12.2f |%n",
-                room,
-                reservation.getGuest().getFullName(),
-                reservation.getConfirmationNumber(),
-                paymentDetails,
-                control.calculateBill(reservation)));
-    }
-
-    private String roomLabel(Reservation reservation) {
-        return reservation.getAssignedRoom() == null
-                ? "Unassigned" : reservation.getAssignedRoom().getRoomNumber();
-    }
-
-    private void offerPdfExport(String title, String report, ChartType chartType) {
+    private void offerPdfExport(String title, String report, String chartType) {
         String selection = InputHelper.inputString(
                 scanner, "Generate chart PDF and open it? (Y/N): ");
         if (!selection.equalsIgnoreCase("Y") && !selection.equalsIgnoreCase("Yes")) {
@@ -366,7 +303,7 @@ public class FrontDeskUI {
         Path pdfPath;
         try {
             pdfPath = ConsoleAnimation.runIoWithSpinner(
-                    () -> ReportPdfExporter.export(title, report, chartType),
+                    () -> control.exportReport(title, report, chartType),
                     "Generating report PDF");
         } catch (IOException exception) {
             MessageUI.displayError("Unable to generate PDF: " + exception.getMessage());
@@ -375,7 +312,7 @@ public class FrontDeskUI {
 
         MessageUI.displaySuccess("PDF generated: " + pdfPath);
         try {
-            if (!ReportPdfExporter.open(pdfPath)) {
+            if (!control.openReport(pdfPath)) {
                 MessageUI.displayInfo("Open the PDF manually from the path shown above.");
             }
         } catch (IOException exception) {
@@ -388,7 +325,7 @@ public class FrontDeskUI {
     private Reservation findReservationByConfirmationNumber() {
         String confirmationNumber = InputHelper.inputString(
                 scanner, "8-digit confirmation number: ").trim();
-        if (!Validation.isValidConfirmationNumber(confirmationNumber)) {
+        if (!control.isValidConfirmationNumber(confirmationNumber)) {
             System.out.println("Confirmation number must contain exactly 8 digits.");
             return null;
         }

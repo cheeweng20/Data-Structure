@@ -10,7 +10,7 @@ import HousekeepingAndTaskLog.boundary.HousekeepingUI;
 
 public class HousekeepingAndTaskLog {
 
-    public static void HousekeepingAndTaskLogMain(Scanner input) {
+    public static void startModule(Scanner input) {
         HousekeepingUI housekeepingUI = new HousekeepingUI(input);
         housekeepingUI.start();
     }

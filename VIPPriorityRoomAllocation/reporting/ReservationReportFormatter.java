@@ -11,7 +11,11 @@ import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.Iterator;
 
-/** Builds reservation report text and the chart-data sections used by PDF export. */
+/**
+ * Builds reservation report text and the chart-data sections used by PDF export.
+ *
+ * @author Wan Yin
+ */
 public final class ReservationReportFormatter {
 
     private ReservationReportFormatter() {

@@ -12,6 +12,9 @@ import common.ui.Logo;
 import common.ui.MessageUI;
 
 /** Routes users to functional hotel modules. */
+/**
+ * @author Chee Weng
+ */
 public final class MainUI {
     private final Scanner scanner;
 

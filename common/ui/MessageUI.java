@@ -1,6 +1,9 @@
 package common.ui;
 
 /** Displays consistent success, error, and informational console messages. */
+/**
+ * @author Chee Weng
+ */
 public final class MessageUI {
 
     private MessageUI() {

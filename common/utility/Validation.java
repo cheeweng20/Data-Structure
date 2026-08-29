@@ -3,6 +3,9 @@ package common.utility;
 import java.time.LocalDate;
 
 /** Shared stateless validation rules used by all application modules. */
+/**
+ * @author Chee Weng
+ */
 public final class Validation {
 
     private Validation() {

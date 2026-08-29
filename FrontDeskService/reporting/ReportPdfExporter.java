@@ -10,6 +10,9 @@ import static common.reporting.pdf.PdfDocumentWriter.abbreviate;
 import static common.reporting.pdf.PdfDocumentWriter.appendText;
 
 /** Exports Front Desk table reports through the shared PDF document writer. */
+/**
+ * @author Yi Ren
+ */
 public final class ReportPdfExporter {
 
     /** The chart shown for each Front Desk report PDF. */

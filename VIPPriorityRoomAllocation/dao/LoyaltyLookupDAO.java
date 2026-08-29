@@ -5,7 +5,11 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 
-// Reads existing loyalty module files to determine reservation priority.
+/**
+ * Reads existing loyalty module files to determine reservation priority.
+ *
+ * @author Wan Yin
+ */
 public class LoyaltyLookupDAO {
 
     private final String memberFileName;

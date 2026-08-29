@@ -1,6 +1,9 @@
 package common.ui;
 
 /** Shared TARUMT Resort logo used by every portal and service. */
+/**
+ * @author Chee Weng
+ */
 public final class Logo {
     private Logo() {
     }

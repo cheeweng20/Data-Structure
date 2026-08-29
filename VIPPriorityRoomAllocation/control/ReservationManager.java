@@ -9,13 +9,20 @@ import VIPPriorityRoomAllocation.entity.Reservation;
 import VIPPriorityRoomAllocation.entity.ReservationStatus;
 import VIPPriorityRoomAllocation.entity.Room;
 import VIPPriorityRoomAllocation.entity.Room.RoomStatus;
+import VIPPriorityRoomAllocation.reporting.ReportPdfExporter;
+import VIPPriorityRoomAllocation.reporting.ReportPdfExporter.ChartType;
+import VIPPriorityRoomAllocation.reporting.ReservationReportFormatter;
 import VIPPriorityRoomAllocation.utility.ConfirmationNumberGenerator;
 import adt.ArrayList;
 import adt.ListInterface;
 import adt.MaxHeapPriorityQueue;
 import adt.PriorityQueueInterface;
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.Iterator;
+import common.utility.Validation;
 
 /**
  * Handles VIP priority reservations and automatic room allocation.
@@ -232,6 +239,34 @@ public class ReservationManager {
 
     public ListInterface<Reservation> getReservations() {
         return reservations;
+    }
+
+    /** Builds the current monthly reservation report for the boundary. */
+    public String getMonthlyReservationSummary(YearMonth reportMonth) {
+        return ReservationReportFormatter.buildMonthlyReservationSummary(
+                getReservations(), reportMonth);
+    }
+
+    /** Builds the current monthly room-allocation report for the boundary. */
+    public String getMonthlyRoomAllocationReport(YearMonth reportMonth) {
+        return ReservationReportFormatter.buildMonthlyRoomAllocationReport(
+                getReservations(), reportMonth);
+    }
+
+    public Path exportReport(String title, String report, String chartType) throws IOException {
+        return ReportPdfExporter.export(title, report, ChartType.valueOf(chartType));
+    }
+
+    public boolean openReport(Path pdfPath) throws IOException {
+        return ReportPdfExporter.open(pdfPath);
+    }
+
+    public boolean isValidStay(LocalDate checkInDate, LocalDate checkOutDate) {
+        return Validation.isValidStay(checkInDate, checkOutDate);
+    }
+
+    public boolean isNonBlank(String value) {
+        return Validation.isNonBlank(value);
     }
 
     public ListInterface<Room> getRooms() {

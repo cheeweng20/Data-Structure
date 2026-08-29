@@ -2,6 +2,9 @@ package common.ui;
 
 import java.util.Scanner;
 
+/**
+ * @author Chee Weng
+ */
 public class InputHelper {
 
     private static final String CLEAR_SCREEN = "\u001B[H\u001B[2J";

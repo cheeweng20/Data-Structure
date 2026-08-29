@@ -14,9 +14,6 @@ import LoyaltyAndRewardsService.entity.PointTransaction;
 import LoyaltyAndRewardsService.entity.PromotionOffer;
 import LoyaltyAndRewardsService.entity.RedemptionRequest;
 import LoyaltyAndRewardsService.entity.Tier;
-import LoyaltyAndRewardsService.reporting.LoyaltyReportFormatter;
-import LoyaltyAndRewardsService.reporting.ReportPdfExporter;
-import LoyaltyAndRewardsService.reporting.ReportPdfExporter.ChartType;
 import common.ui.InputHelper;
 import common.ui.InputHelper.EndOfInputException;
 import common.ui.Logo;
@@ -24,7 +21,6 @@ import common.ui.MessageUI;
 import common.ui.ConsoleStyle;
 import common.ui.ConsoleProgress;
 import common.ui.ConsoleAnimation;
-import common.utility.Validation;
 
 /**
  * Handles all actor interaction for loyalty and rewards use cases.
@@ -220,16 +216,6 @@ public final class LoyaltyUI {
     }
 
     private void displayPromotionInformation(Member member) {
-        Tier nextTier = Tier.fromPoints(member.getTotalExpenses()).getNextTier();
-        if (nextTier == null) {
-            displayInformationRow("Tier Progress",
-                    "You have reached the highest membership tier.");
-        } else {
-            int remainingPoints = nextTier.getMinPoint() - member.getTotalExpenses();
-            displayInformationRow("Tier Progress", "Spend RM" + remainingPoints
-                    + " more to reach " + nextTier.getTierLevel() + ".");
-        }
-
         int pendingPoints = serviceControl.getPendingPointsForMember(member.getMemberId());
         if (pendingPoints > 0) {
             int availablePoints = serviceControl.getAvailablePointsForPayment(member.getMemberId());
@@ -292,7 +278,7 @@ public final class LoyaltyUI {
     private String promptValidMemberName() {
         while (true) {
             String name = InputHelper.inputString(scanner, "Name: ").trim();
-            if (Validation.isValidMemberName(name)) {
+            if (serviceControl.isValidMemberName(name)) {
                 return name;
             }
             MessageUI.displayError(
@@ -303,7 +289,7 @@ public final class LoyaltyUI {
     private String promptValidPassport() {
         while (true) {
             String passport = InputHelper.inputString(scanner, "Passport: ").trim();
-            if (Validation.isValidPassport(passport)) {
+            if (serviceControl.isValidPassport(passport)) {
                 return passport;
             }
             MessageUI.displayError("Invalid passport. Use 5-20 letters or digits.");
@@ -313,7 +299,7 @@ public final class LoyaltyUI {
     private String promptValidPhoneNumber() {
         while (true) {
             String phoneNumber = InputHelper.inputString(scanner, "Phone Number: ").trim();
-            if (Validation.isValidPhoneNumber(phoneNumber)) {
+            if (serviceControl.isValidPhoneNumber(phoneNumber)) {
                 return phoneNumber;
             }
             MessageUI.displayError("Invalid phone number.");
@@ -552,14 +538,13 @@ public final class LoyaltyUI {
         }
 
         String report = ConsoleProgress.run(
-                () -> LoyaltyReportFormatter.buildExpiringPointsReport(
-                        serviceControl.generateExpiringReport(withinDays)),
+                () -> serviceControl.getExpiringPointsReport(withinDays),
                 "Fetching points information...",
                 "Calculating expiry details...",
                 "Preparing report...");
         if (displayReport(report, "No points are expiring within the selected period.")) {
             offerPdfExport("Expiring Points Alert", report,
-                    ChartType.EXPIRING_POINTS);
+                    "EXPIRING_POINTS");
         }
     }
 
@@ -577,17 +562,15 @@ public final class LoyaltyUI {
             return;
         }
 
-        SortedArrayList<PointTransaction> transactions = ConsoleProgress.run(
-                () -> serviceControl.generateTransactionReport(startDate, endDate),
+        String report = ConsoleProgress.run(
+                () -> serviceControl.getPointsTransactionReport(startDate, endDate),
                 "Fetching point transactions...",
                 "Calculating transaction totals...",
                 "Preparing report data...");
-        String report = LoyaltyReportFormatter.buildPointsTransactionReport(
-                startDate, endDate, transactions);
         if (displayReport(report,
                 "No point transactions found within the selected period.")) {
             offerPdfExport("Points Transaction Report", report,
-                    ChartType.POINTS_TRANSACTION);
+                    "POINTS_TRANSACTION");
         }
     }
 
@@ -612,7 +595,7 @@ public final class LoyaltyUI {
     }
 
     private void offerPdfExport(String title, String report,
-            ChartType chartType) {
+            String chartType) {
         String selection = InputHelper.inputString(
                 scanner, "Generate chart PDF and open it? (Y/N): ");
         if (!selection.equalsIgnoreCase("Y") && !selection.equalsIgnoreCase("Yes")) {
@@ -622,7 +605,7 @@ public final class LoyaltyUI {
         Path pdfPath;
         try {
             pdfPath = ConsoleAnimation.runIoWithSpinner(
-                    () -> ReportPdfExporter.export(title, report, chartType),
+                    () -> serviceControl.exportReport(title, report, chartType),
                     "Generating report PDF");
         } catch (IOException exception) {
             MessageUI.displayError("Unable to generate PDF: " + exception.getMessage());
@@ -631,7 +614,7 @@ public final class LoyaltyUI {
 
         MessageUI.displaySuccess("PDF generated: " + pdfPath);
         try {
-            if (!ReportPdfExporter.open(pdfPath)) {
+            if (!serviceControl.openReport(pdfPath)) {
                 MessageUI.displayInfo("Open the PDF manually from the path shown above.");
             }
         } catch (IOException exception) {

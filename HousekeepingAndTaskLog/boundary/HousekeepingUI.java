@@ -1,25 +1,16 @@
 package HousekeepingAndTaskLog.boundary;
 
 import HousekeepingAndTaskLog.control.HousekeepingControl;
-import HousekeepingAndTaskLog.entity.HousekeepingTask;
-import HousekeepingAndTaskLog.entity.StatusChange;
-import HousekeepingAndTaskLog.entity.TaskStatus;
-import HousekeepingAndTaskLog.reporting.HouseKeepingReportFormatter;
-import HousekeepingAndTaskLog.reporting.ReportPdfExporter;
-import adt.ListInterface;
 import common.ui.Logo;
 import common.ui.ConsoleStyle;
 import common.ui.ConsoleProgress;
 import common.ui.ConsoleAnimation;
 import common.ui.InputHelper;
 import common.ui.InputHelper.EndOfInputException;
-import common.utility.Validation;
 import java.time.LocalDate;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.Iterator;
 import java.util.Scanner;
 
 /**
@@ -102,32 +93,32 @@ public class HousekeepingUI {
 
         String remarks = promptText("Remarks: ");
 
-        HousekeepingTask task = ConsoleProgress.run(
-                () -> housekeepingControl.addTask(roomNumber, remarks),
+        String taskDetails = ConsoleProgress.run(
+                () -> housekeepingControl.addTaskAndGetDetails(roomNumber, remarks),
                 "Processing cleaning task...",
                 "Creating task record...",
                 "Saving task log...");
 
-        if (task == null) {
+        if (taskDetails == null) {
             ConsoleAnimation.error("Unable to add cleaning task.");
         } else {
             ConsoleAnimation.success("Cleaning task added.");
-            displayTaskDetails(task);
+            System.out.println(taskDetails);
         }
     }
 
     private void updateCleaningStatus() {
         System.out.println("\n--- Update Cleaning Status ---");
         String taskId = promptRequiredText("Task ID: ");
-        HousekeepingTask task = housekeepingControl.findTaskById(taskId);
+        String taskDetails = housekeepingControl.getTaskDetails(taskId);
 
-        if (task == null) {
+        if (taskDetails == null) {
             System.out.println("Task not found.");
             return;
         }
 
-        displayTaskDetails(task);
-        TaskStatus newStatus = promptStatus();
+        System.out.println(taskDetails);
+        String newStatus = promptStatus();
 
         boolean updated = ConsoleProgress.run(
                 () -> housekeepingControl.updateTaskStatus(taskId, newStatus),
@@ -136,7 +127,7 @@ public class HousekeepingUI {
                 "Saving task log...");
         if (updated) {
             ConsoleAnimation.success("Status updated.");
-            displayTaskDetails(housekeepingControl.findTaskById(taskId));
+            System.out.println(housekeepingControl.getTaskDetails(taskId));
         } else {
             ConsoleAnimation.error("Status update failed.");
         }
@@ -144,29 +135,25 @@ public class HousekeepingUI {
 
     private void rollbackLastChange() {
         System.out.println("\n--- Roll Back Last Status Change ---");
-        StatusChange statusChange = ConsoleProgress.run(
-                housekeepingControl::rollbackLastChange,
+        String statusChangeSummary = ConsoleProgress.run(
+                housekeepingControl::rollbackLastChangeSummary,
                 "Restoring previous task status...",
                 "Updating room status...",
                 "Saving task log...");
 
-        if (statusChange == null) {
+        if (statusChangeSummary == null) {
             ConsoleAnimation.error("No change is available to roll back.");
             return;
         }
 
-        ConsoleAnimation.success("Rolled back task " + statusChange.getTaskId()
-                + " from " + statusChange.getNewStatus()
-                + " to " + statusChange.getPreviousStatus() + ".");
-        System.out.println("Original change: " + statusChange.getChangedAt()
-                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")) + ".");
+        ConsoleAnimation.success(statusChangeSummary);
     }
 
     private void searchByRoom() {
         System.out.println("\n--- Search Task by Room ---");
         String roomNumber = promptRoomNumber();
-        displayTasks(ConsoleAnimation.runWithSpinner(
-                () -> housekeepingControl.searchByRoom(roomNumber),
+        System.out.println(ConsoleAnimation.runWithSpinner(
+                () -> housekeepingControl.getTasksByRoomDisplay(roomNumber),
                 "Searching housekeeping tasks"));
     }
 
@@ -189,8 +176,8 @@ public class HousekeepingUI {
                     displayStatusSummaryReport();
                     break;
                 case "2":
-                    displayTasks(ConsoleProgress.run(
-                            housekeepingControl::getTasks,
+                    System.out.println(ConsoleProgress.run(
+                            housekeepingControl::getAllTasksDisplay,
                             "Fetching housekeeping information...",
                             "Loading task records...",
                             "Preparing results..."));
@@ -211,18 +198,11 @@ public class HousekeepingUI {
     }
 
     private void displayStatusSummaryReport() {
-        int[] totals = ConsoleProgress.run(() -> {
-            int[] result = new int[TaskStatus.values().length];
-            for (TaskStatus status : TaskStatus.values()) {
-                result[status.ordinal()] = housekeepingControl.countByStatus(status);
-            }
-            return result;
-        },
+        String report = ConsoleProgress.run(housekeepingControl::getTaskStatusSummaryReport,
                 "Fetching housekeeping information...",
                 "Calculating task status totals...",
                 "Preparing report...");
 
-        String report = HouseKeepingReportFormatter.buildTaskStatusSummary(totals);
         System.out.println(report);
         offerPdfExport("Task Status Summary Report", report);
     }
@@ -241,12 +221,11 @@ public class HousekeepingUI {
         } while (endDate.isBefore(startDate));
 
         final LocalDate selectedEndDate = endDate;
-        ListInterface<HousekeepingTask> tasks = ConsoleProgress.run(
-                () -> housekeepingControl.filterTasksByCreatedDateRange(startDate, selectedEndDate),
+        String report = ConsoleProgress.run(
+                () -> housekeepingControl.getTasksCreatedBetweenReport(startDate, selectedEndDate),
                 "Fetching housekeeping information...",
                 "Filtering tasks by date range...",
                 "Preparing results...");
-        String report = HouseKeepingReportFormatter.buildTaskListReport(tasks);
         System.out.println(report);
         offerPdfExport("Tasks Created " + startDate + " to " + endDate, report);
     }
@@ -259,9 +238,9 @@ public class HousekeepingUI {
         }
 
         try {
-            Path pdfPath = ReportPdfExporter.export(title, report);
+            Path pdfPath = housekeepingControl.exportReport(title, report);
             System.out.println("PDF generated: " + pdfPath);
-            if (!ReportPdfExporter.open(pdfPath)) {
+            if (!housekeepingControl.openReport(pdfPath)) {
                 System.out.println("Open the PDF manually from the path shown above.");
             }
         } catch (IOException exception) {
@@ -273,7 +252,7 @@ public class HousekeepingUI {
         while (true) {
             String roomNumber = InputHelper.inputString(scanner, "Room number: ").trim();
 
-            if (Validation.isValidRoomNumber(roomNumber)) {
+            if (housekeepingControl.isValidRoomNumber(roomNumber)) {
                 if (housekeepingControl.roomExists(roomNumber)) {
                     return roomNumber;
                 }
@@ -288,7 +267,7 @@ public class HousekeepingUI {
         while (true) {
             String value = InputHelper.inputString(scanner, prompt).trim();
 
-            if (Validation.isNonBlank(value)) {
+            if (housekeepingControl.isNonBlank(value)) {
                 return value;
             }
 
@@ -299,7 +278,7 @@ public class HousekeepingUI {
     private String promptText(String prompt) {
         String value = InputHelper.inputString(scanner, prompt).trim();
 
-        if (Validation.isBlank(value)) {
+        if (!housekeepingControl.isNonBlank(value)) {
             value = "-";
         }
 
@@ -318,7 +297,7 @@ public class HousekeepingUI {
         }
     }
 
-    private TaskStatus promptStatus() {
+    private String promptStatus() {
         while (true) {
             System.out.println(ConsoleStyle.menu(ConsoleStyle.menuBox("CLEANING STATUS",
                     "1|Dirty", "2|Cleaning In Progress", "3|Inspected",
@@ -328,65 +307,17 @@ public class HousekeepingUI {
 
             switch (choice) {
                 case "1":
-                    return TaskStatus.DIRTY;
+                    return "DIRTY";
                 case "2":
-                    return TaskStatus.CLEANING_IN_PROGRESS;
+                    return "CLEANING_IN_PROGRESS";
                 case "3":
-                    return TaskStatus.INSPECTED;
+                    return "INSPECTED";
                 case "4":
-                    return TaskStatus.READY_FOR_CHECK_IN;
+                    return "READY_FOR_CHECK_IN";
                 default:
                     System.out.println("Invalid status. Please try again.");
             }
         }
-    }
-
-    private void displayTasks(ListInterface<HousekeepingTask> tasks) {
-        if (tasks.isEmpty()) {
-            System.out.println("No housekeeping task record found.");
-            return;
-        }
-
-        printTableHeader();
-        Iterator<HousekeepingTask> iterator = tasks.iterator();
-
-        while (iterator.hasNext()) {
-            printTaskLine(iterator.next());
-        }
-
-        printTableBorder();
-    }
-
-    private void displayTaskDetails(HousekeepingTask task) {
-        System.out.println("\n--- Housekeeping Task Details ---");
-        System.out.println("Task ID           : " + task.getTaskId());
-        System.out.println("Room Number       : " + task.getRoomNumber());
-        System.out.println("Status            : " + task.getStatus());
-        System.out.println("Created At        : " + task.getCreatedAt());
-        System.out.println("Completed At      : " + task.getCompletedAt());
-        System.out.println("Remarks           : " + task.getRemarks());
-    }
-
-    private void printTableHeader() {
-        printTableBorder();
-        System.out.printf("| %-8s | %-12s | %-22s | %-19s | %-19s | %-48s |%n",
-                "Task ID", "Room", "Status", "Created At", "Completed At", "Remarks");
-        printTableBorder();
-    }
-
-    private void printTaskLine(HousekeepingTask task) {
-        String remarks = task.getRemarks() == null ? "-" : task.getRemarks();
-        System.out.printf("| %-8s | %-12s | %-22s | %-19s | %-19s | %-48.48s |%n",
-                task.getTaskId(),
-                task.getRoomNumber(),
-                task.getStatus(),
-                task.getCreatedAt(),
-                task.getCompletedAt(),
-                remarks);
-    }
-
-    private void printTableBorder() {
-        System.out.println("+----------+--------------+------------------------+---------------------+---------------------+--------------------------------------------------+");
     }
 
     public static void main(String[] args) {

@@ -1,6 +1,10 @@
 import java.util.Scanner;
 
-/** Application entry point for the unified hotel management system. */
+/**
+ * Application entry point for the unified hotel management system.
+ *
+ * @author Chee Weng
+ */
 public final class Main {
     private Main() {
     }

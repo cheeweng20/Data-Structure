@@ -1,5 +1,8 @@
 package LoyaltyAndRewardsService.entity;
 
+/**
+ * @author Chee Weng
+ */
 public class PromotionOffer {
     private final int completedStayCount;
     private final int weekendStayCount;

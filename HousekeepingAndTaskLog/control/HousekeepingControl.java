@@ -4,6 +4,8 @@ import HousekeepingAndTaskLog.dao.HousekeepingTaskDAO;
 import HousekeepingAndTaskLog.entity.HousekeepingTask;
 import HousekeepingAndTaskLog.entity.StatusChange;
 import HousekeepingAndTaskLog.entity.TaskStatus;
+import HousekeepingAndTaskLog.reporting.HousekeepingReportFormatter;
+import HousekeepingAndTaskLog.reporting.ReportPdfExporter;
 import FrontDeskService.dao.LateCheckoutExtensionDAO;
 import VIPPriorityRoomAllocation.dao.ReservationDAO;
 import VIPPriorityRoomAllocation.dao.RoomDAO;
@@ -17,7 +19,11 @@ import adt.ListInterface;
 import adt.StackInterface;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.Iterator;
+import common.utility.Validation;
 
 /**
  * @author Zhe Sheng
@@ -349,5 +355,116 @@ public class HousekeepingControl {
         }
 
         return "HK" + (largestNumber + 1);
+    }
+
+    /**
+     * Returns the existing task-detail presentation without exposing an entity
+     * object to the console boundary.
+     *
+     * @param taskId task identifier
+     * @return formatted task details, or {@code null} when the task is absent
+     */
+    public String getTaskDetails(String taskId) {
+        HousekeepingTask task = findTaskById(taskId);
+        return task == null ? null : formatTaskDetails(task);
+    }
+
+    /** Adds a task and returns the same details formerly rendered by the UI. */
+    public String addTaskAndGetDetails(String roomNumber, String remarks) {
+        HousekeepingTask task = addTask(roomNumber, remarks);
+        return task == null ? null : formatTaskDetails(task);
+    }
+
+    /** Updates task status from its UI-safe name. */
+    public boolean updateTaskStatus(String taskId, String statusName) {
+        try {
+            return updateTaskStatus(taskId, TaskStatus.valueOf(statusName));
+        } catch (IllegalArgumentException | NullPointerException exception) {
+            return false;
+        }
+    }
+
+    /** Rolls back the latest change and returns its existing display message. */
+    public String rollbackLastChangeSummary() {
+        StatusChange statusChange = rollbackLastChange();
+        if (statusChange == null) {
+            return null;
+        }
+        return "Rolled back task " + statusChange.getTaskId()
+                + " from " + statusChange.getNewStatus()
+                + " to " + statusChange.getPreviousStatus() + "."
+                + System.lineSeparator()
+                + "Original change: " + statusChange.getChangedAt()
+                        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")) + ".";
+    }
+
+    /** Returns the task-table display for all matching room records. */
+    public String getTasksByRoomDisplay(String roomNumber) {
+        return formatTaskTable(searchByRoom(roomNumber));
+    }
+
+    /** Returns the task-table display for all records. */
+    public String getAllTasksDisplay() {
+        return formatTaskTable(tasks);
+    }
+
+    /** Returns the existing status summary report text. */
+    public String getTaskStatusSummaryReport() {
+        int[] totals = new int[TaskStatus.values().length];
+        for (TaskStatus status : TaskStatus.values()) {
+            totals[status.ordinal()] = countByStatus(status);
+        }
+        return HousekeepingReportFormatter.buildTaskStatusSummary(totals);
+    }
+
+    /** Returns the existing date-range report text. */
+    public String getTasksCreatedBetweenReport(LocalDate startDate, LocalDate endDate) {
+        return HousekeepingReportFormatter.buildTaskListReport(
+                filterTasksByCreatedDateRange(startDate, endDate));
+    }
+
+    public boolean isValidRoomNumber(String roomNumber) {
+        return Validation.isValidRoomNumber(roomNumber);
+    }
+
+    public boolean isNonBlank(String value) {
+        return Validation.isNonBlank(value);
+    }
+
+    public Path exportReport(String title, String report) throws IOException {
+        return ReportPdfExporter.export(title, report);
+    }
+
+    public boolean openReport(Path pdfPath) throws IOException {
+        return ReportPdfExporter.open(pdfPath);
+    }
+
+    private String formatTaskDetails(HousekeepingTask task) {
+        return "\n--- Housekeeping Task Details ---" + System.lineSeparator()
+                + "Task ID           : " + task.getTaskId() + System.lineSeparator()
+                + "Room Number       : " + task.getRoomNumber() + System.lineSeparator()
+                + "Status            : " + task.getStatus() + System.lineSeparator()
+                + "Created At        : " + task.getCreatedAt() + System.lineSeparator()
+                + "Completed At      : " + task.getCompletedAt() + System.lineSeparator()
+                + "Remarks           : " + task.getRemarks();
+    }
+
+    private String formatTaskTable(ListInterface<HousekeepingTask> taskList) {
+        if (taskList.isEmpty()) {
+            return "No housekeeping task record found.";
+        }
+        StringBuilder result = new StringBuilder();
+        String border = "+----------+--------------+------------------------+---------------------+---------------------+--------------------------------------------------+";
+        result.append(border).append(System.lineSeparator());
+        result.append(String.format("| %-8s | %-12s | %-22s | %-19s | %-19s | %-48s |%n",
+                "Task ID", "Room", "Status", "Created At", "Completed At", "Remarks"));
+        result.append(border).append(System.lineSeparator());
+        for (HousekeepingTask task : taskList) {
+            String remarks = task.getRemarks() == null ? "-" : task.getRemarks();
+            result.append(String.format("| %-8s | %-12s | %-22s | %-19s | %-19s | %-48.48s |%n",
+                    task.getTaskId(), task.getRoomNumber(), task.getStatus(),
+                    task.getCreatedAt(), task.getCompletedAt(), remarks));
+        }
+        return result.append(border).toString();
     }
 }

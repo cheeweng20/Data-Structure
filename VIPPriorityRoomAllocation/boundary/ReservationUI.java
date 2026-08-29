@@ -22,7 +22,6 @@ import common.ui.ConsoleStyle;
 import common.ui.ConsoleProgress;
 import common.ui.ConsoleAnimation;
 import common.ui.Logo;
-import common.utility.Validation;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.Iterator;
@@ -486,7 +485,7 @@ public class ReservationUI {
         while (true) {
             LocalDate checkOutDate = promptDate("Check-out date (yyyy-MM-dd): ");
 
-            if (Validation.isValidStay(checkInDate, checkOutDate)) {
+            if (reservationManager.isValidStay(checkInDate, checkOutDate)) {
                 return checkOutDate;
             }
 
@@ -510,7 +509,7 @@ public class ReservationUI {
         while (true) {
             String value = InputHelper.inputString(scanner, prompt).trim();
 
-            if (Validation.isNonBlank(value)) {
+            if (reservationManager.isNonBlank(value)) {
                 return value;
             }
 

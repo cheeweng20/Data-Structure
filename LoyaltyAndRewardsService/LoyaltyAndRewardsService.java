@@ -9,7 +9,7 @@ import LoyaltyAndRewardsService.boundary.LoyaltyUI;
  */
 public class LoyaltyAndRewardsService {
 
-    public static void LoyaltyAndRewardsServiceMain(Scanner input) {
+    public static void startModule(Scanner input) {
         LoyaltyUI loyaltyUI = new LoyaltyUI(input);
         loyaltyUI.start();
     }
